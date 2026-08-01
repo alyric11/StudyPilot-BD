@@ -1,0 +1,8 @@
+{
+  "name": "StudyPilot BD",
+  "description": "An AI-powered academic companion and study operating system for the Bangladesh NCTB curriculum (Classes IX-XII), featuring interactive AI study guides, daily planners, homework tracking, offline notebooks, and active AI co-pilot tutoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
