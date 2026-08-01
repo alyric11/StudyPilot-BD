@@ -1,6 +1,6 @@
 # StudyPilot BD - NCTB Academic Companion (MVP)
 
-StudyPilot BD is a full-stack learning platform and academic companion designed specifically for school and college students in Bangladesh following the **NCTB (National Curriculum and Textbook Board)** syllabus. It supports **Classes IX, X, XI, and XII (SSC & HSC candidates)**.
+StudyPilot BD is a learning platform and academic companion designed specifically for school and college students in Bangladesh following the **NCTB (National Curriculum and Textbook Board)** syllabus. It supports **Classes IX, X, XI, and XII (SSC & HSC candidates)**.
 
 This Minimum Viable Product (MVP) has been refactored and structured to be simple, clean, and modular—specifically designed for a beginner developer (such as a Class XI student with knowledge of CS50P, HTML, JavaScript, SQL, and basic programming) to understand, maintain, and easily extend.
 
