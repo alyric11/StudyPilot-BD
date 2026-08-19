@@ -119,23 +119,23 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
   };
 
   const triggerGoogleLogin = () => {
-    setName("Utpal Roy");
-    setEmail("utpal5505@gmail.com");
-    setSchool("Dhaka Residential Model College");
+    setName("Jesica Jerin");
+    setEmail("jesica123@gmail.com");
+    setSchool("Dhaka City College");
     setBoard("Dhaka");
-    setClassLevel("Class 9");
+    setClassLevel("Class 11");
     setGroup("Science");
-    setExamYear("2027");
+    setExamYear("2027-28");
     setPhone("01712345678");
     setErrors({});
   };
 
   return (
     <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200/60 overflow-hidden" id="profile-setup-card">
-      <div className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-indigo-800 px-6 py-8 text-white">
+      <div className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-indigo-800 px-6 py-8 text-white text-center">
         <h2 className="text-2xl font-display font-bold tracking-tight">Set Up Your Academic Profile</h2>
         <p className="text-indigo-100 mt-2 text-sm leading-relaxed">
-          Welcome to StudyPilot BD. Please select your class level and group so we can customize your personal learning dashboard.
+          
         </p>
       </div>
 
@@ -175,7 +175,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                 d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.43-3.43C17.96 1.19 15.24 0 12 0 7.32 0 3.32 2.69 1.32 6.65l3.92 3.1c.95-2.87 3.61-5 6.76-5z"
               />
             </svg>
-            Import Demo Profile (Utpal Roy)
+            Import Demo Profile (Jesica Jerin)
           </button>
         </div>
 
@@ -355,7 +355,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
           className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
           id="profile-submit-btn"
         >
-          Confirm & Access Flight Deck
+          Confirm & Access
           <ArrowRight className="w-5 h-5" />
         </button>
       </form>
