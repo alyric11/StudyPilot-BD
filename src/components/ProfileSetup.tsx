@@ -119,7 +119,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
   };
 
   const triggerGoogleLogin = () => {
-    setName("Jesica");
+    setName("Jesica Jerin");
     setEmail("jesica123@gmail.com");
     setSchool("Dhaka City College");
     setBoard("Dhaka");
