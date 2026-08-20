@@ -188,7 +188,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <input
                 id="name-input"
                 type="text"
-                placeholder="e.g. Adnan Rahman"
+                placeholder="Enter Your Full Name"
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -209,7 +209,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <input
                 id="email-input"
                 type="text"
-                placeholder="e.g. adnan@gmail.com"
+                placeholder="Enter Your Email Address"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -233,7 +233,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <input
                 id="phone-input"
                 type="tel"
-                placeholder="e.g. 01712345678"
+                placeholder="Enter Your Mobile Number"
                 value={phone}
                 onChange={(e) => {
                   setPhone(e.target.value);
@@ -254,7 +254,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <input
                 id="school-input"
                 type="text"
-                placeholder="e.g. Viqarunnisa Noon School"
+                placeholder="School / College Name"
                 value={school}
                 onChange={(e) => {
                   setSchool(e.target.value);
