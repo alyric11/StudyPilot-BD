@@ -231,6 +231,19 @@ export const class11Subjects = (group: string): Subject[] => {
       ]
     });
 
+    // Accounting 2nd Paper
+    subjectsList.push({
+      id: "accounting2",
+      name: "Accounting 2nd Paper",
+      banglaName: "হিসাববিজ্ঞান ২য় পত্র (এইচএসসি)",
+      color: "from-indigo-500 to-violet-600",
+      chapters: [
+        createChapter("acc2_11_ch1", "Chapter 2", "Partnership Accounting", "অংশীদারি কারবারের হিসাব", "Profit-loss appropriation accounts, capital accounts of partners, and goodwill valuation.", CLASS_NAME, "Business Studies", "Accounting 2nd Paper", "NCTB HSC Accounting Second Paper"),
+        createChapter("acc2_11_ch2", "Chapter 4", "Joint Stock Company Capital", "যৌথ মূলধনী কোম্পানির মূলধন", "Issuing shares, premium, discount, journal entries, and statement of financial position.", CLASS_NAME, "Business Studies", "Accounting 2nd Paper", "NCTB HSC Accounting Second Paper"),
+        createChapter("acc2_11_ch3", "Chapter 5", "Financial Statement Analysis", "আর্থিক বিবরণী বিশ্লেষণ", "Ratio analysis, liquid ratios, profitability ratios, and working capital ratios.", CLASS_NAME, "Business Studies", "Accounting 2nd Paper", "NCTB HSC Accounting Second Paper")
+      ]
+    });
+
     // Finance, Banking & Insurance 1st Paper
     subjectsList.push({
       id: "finance1",
@@ -243,6 +256,18 @@ export const class11Subjects = (group: string): Subject[] => {
       ]
     });
 
+    // Finance, Banking & Insurance 2nd Paper
+    subjectsList.push({
+      id: "finance2",
+      name: "Finance 2nd Paper",
+      banglaName: "ফিন্যান্স ও ব্যাংকিং ২য় পত্র",
+      color: "from-amber-500 to-yellow-600",
+      chapters: [
+        createChapter("fin2_11_ch1", "Chapter 1", "Introduction to Banking", "ব্যাংক ব্যবস্থার প্রাথমিক ধারণা", "Definitions, origin, classification of banks, and banking structures in Bangladesh.", CLASS_NAME, "Business Studies", "Finance 2nd Paper", "NCTB HSC Finance Second Paper"),
+        createChapter("fin2_11_ch2", "Chapter 2", "Central Banking", "কেন্দ্রীয় ব্যাংক", "Bangladesh Bank, currency control, credit regulation, and clearinghouse operations.", CLASS_NAME, "Business Studies", "Finance 2nd Paper", "NCTB HSC Finance Second Paper")
+      ]
+    });
+
     // Business Organization & Management 1st Paper
     subjectsList.push({
       id: "bus_org1",
@@ -252,6 +277,18 @@ export const class11Subjects = (group: string): Subject[] => {
       chapters: [
         createChapter("bo1_11_ch1", "Chapter 1", "Basic Concepts of Business", "ব্যবসায়ের মৌলিক ধারণা", "Definitions, industry, commerce, direct service, and economic significance.", CLASS_NAME, "Business Studies", "Business Org 1st Paper", "NCTB HSC Business Organization Book"),
         createChapter("bo1_11_ch2", "Chapter 2", "Sole Proprietorship Business", "একমালিকানা ব্যবসায়", "Definition, advantages, limitations, and scope of sole proprietorship in Bangladesh.", CLASS_NAME, "Business Studies", "Business Org 1st Paper", "NCTB HSC Business Organization Book")
+      ]
+    });
+
+      // Business Organization & Management 2nd Paper
+    subjectsList.push({
+      id: "bus_org2",
+      name: "Business Org 2nd Paper",
+      banglaName: "ব্যবসায় সংগঠন ও ব্যবস্থাপনা ২য় পত্র",
+      color: "from-sky-500 to-cyan-600",
+      chapters: [
+        createChapter("bo2_11_ch1", "Chapter 1", "Management Concepts", "ব্যবস্থাপনার ধারণা", "Principles of management, functions (Planning, Organizing, Staffing, Directing, Controlling).", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch2", "Chapter 2", "Planning & Decision Making", "পরিকল্পনা প্রণয়ন ও সিদ্ধান্ত গ্রহণ", "Types of plans, steps in plan design, and standard corporate decision models.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper")
       ]
     });
   }
