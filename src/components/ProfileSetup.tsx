@@ -1,6 +1,6 @@
 /**
  * STUDYPILOT BD - Profile Setup and Onboarding Panel
- * 
+ *
  * Purpose:
  * Provides an elegant onboarding form for Bangladeshi students to configure their profile.
  * Students can save their Name, Email, School, Grade Level (Classes IX-XII), Study Group (Science, Commerce, Arts),
@@ -23,9 +23,16 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
   const [phone, setPhone] = useState(initialProfile?.phone || "");
   const [school, setSchool] = useState(initialProfile?.school || "");
   const [classLevel, setClassLevel] = useState(initialProfile?.classLevel || "Class 9");
+  const [classLevelTouched, setClassLevelTouched] = useState(false);
   const [group, setGroup] = useState<any>(initialProfile?.group || "Science");
+  const [groupTouched, setGroupTouched] = useState(false);
   const [board, setBoard] = useState(initialProfile?.board || "Dhaka");
-  const [examYear, setExamYear] = useState(initialProfile?.examYear || "2027");
+  const [boardTouched, setBoardTouched] = useState(false);
+  const [examYear, setExamYear] = useState(
+   initialProfile?.examYear || String(new Date().getFullYear() + 1)
+  );
+  const [examYearTouched, setExamYearTouched] = useState(false);
+  const [demoImported, setDemoImported] = useState(false);
 
   // Validation state
   const [errors, setErrors] = useState<{
@@ -125,8 +132,9 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
     setBoard("Dhaka");
     setClassLevel("Class 11");
     setGroup("Science");
-    setExamYear("2027-28");
+    setExamYear(String(new Date().getFullYear() + 2));
     setPhone("01712345678");
+    setDemoImported(true);
     setErrors({});
   };
 
@@ -135,7 +143,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
       <div className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-indigo-800 px-6 py-8 text-white text-center">
         <h2 className="text-2xl font-display font-bold tracking-tight">Set Up Your Academic Profile</h2>
         <p className="text-indigo-100 mt-2 text-sm leading-relaxed">
-          
+
         </p>
       </div>
 
@@ -157,24 +165,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
             className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium flex items-center justify-center gap-2 transition-all cursor-pointer"
             id="google-signin-btn"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.9h6.6c-.28 1.5-1.11 2.76-2.39 3.62v3h3.86c2.26-2.09 3.67-5.17 3.67-8.45z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.86-3c-1.08.72-2.45 1.16-4.1 1.16-3.15 0-5.81-2.13-6.76-5H1.32v3.1A11.996 11.996 0 0 0 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.24 14.25c-.24-.72-.38-1.5-.38-2.25s.14-1.53.38-2.25V6.65H1.32A11.996 11.996 0 0 0 0 12c0 1.92.45 3.74 1.32 5.35l3.92-3.1z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.43-3.43C17.96 1.19 15.24 0 12 0 7.32 0 3.32 2.69 1.32 6.65l3.92 3.1c.95-2.87 3.61-5 6.76-5z"
-              />
-            </svg>
+
             Import Demo Profile (Jesica Jerin)
           </button>
         </div>
@@ -278,8 +269,11 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <select
                 id="class-select"
                 value={classLevel}
-                onChange={handleClassChange}
-                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all text-slate-800 font-medium cursor-pointer"
+                onChange={(e) => {
+                  handleClassChange(e);
+                  setClassLevelTouched(true);
+                }}
+                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || classLevelTouched ? "text-slate-800" : "text-slate-400"} font-medium cursor-pointer`}
               >
                 {Object.keys(NCTB_CURRICULUM).map((cl) => (
                   <option key={cl} value={cl}>
@@ -297,9 +291,12 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <select
                 id="group-select"
                 value={group}
-                onChange={(e) => setGroup(e.target.value)}
+                onChange={(e) => {
+                 setGroup(e.target.value);
+                 setGroupTouched(true);
+     }}
                 disabled={availableGroups.length === 1 && availableGroups[0] === "None"}
-                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all text-slate-800 font-medium cursor-pointer disabled:opacity-50"
+                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || groupTouched ? "text-slate-800" : "text-slate-400"} font-medium cursor-pointer disabled:opacity-50`}
               >
                 {availableGroups.map((grp: string) => (
                   <option key={grp} value={grp}>
@@ -320,8 +317,11 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <select
                 id="board-select"
                 value={board}
-                onChange={(e) => setBoard(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all text-slate-800 font-medium cursor-pointer"
+                onChange={(e) => {
+                  setBoard(e.target.value);
+                  setBoardTouched(true);
+        }}
+                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || boardTouched ? "text-slate-800" : "text-slate-400"} font-medium cursor-pointer`}
               >
                 {NCTB_BOARDS.map((bd) => (
                   <option key={bd} value={bd}>
@@ -339,10 +339,13 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <input
                 id="year-input"
                 type="number"
-                placeholder="e.g. 2027"
+                placeholder="2027"
                 value={examYear}
-                onChange={(e) => setExamYear(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-all text-slate-800 font-medium"
+                onChange={(e) => {
+                 setExamYear(e.target.value);
+                 setExamYearTouched(true);
+     }}
+                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-all ${demoImported || examYearTouched ? "text-slate-800" : "text-slate-400"} font-medium`}
                 required
               />
             </div>
