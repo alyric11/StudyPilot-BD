@@ -35,8 +35,9 @@ export const class11Subjects = (group: string): Subject[] => {
   const subjectsList: Subject[] = [];
 
   // Compulsory Subjects
+  // Bangla 1st Paper
   subjectsList.push({
-    id: "bangla_11",
+    id: "bangla_1",
     name: "Bangla 1st Paper",
     banglaName: "বাংলা ১ম পত্র (এইচএসসি)",
     color: "from-emerald-500 to-emerald-600",
@@ -48,7 +49,20 @@ export const class11Subjects = (group: string): Subject[] => {
   });
 
   subjectsList.push({
-    id: "english_11",
+    id: "bangla_2",
+    name: "Bangla 2nd Paper",
+    banglaName: "বাংলা ২য় পত্র (ব্যাকরণ)",
+    color: "from-emerald-500 to-emerald-600",
+    chapters: [
+      createChapter("b2_11_ch1", "Chapter 1", "Pronunciation and Spelling Rules", "উচ্চারণ ও বানান বিধি", "Standard spoken pronunciation and Bangla Academy Spelling rules (বানান নিয়ম).", CLASS_NAME, group, "Bangla 2nd Paper", "NCTB Class 12 Bangla Bhyakoron"),
+      createChapter("b2_11_ch2", "Chapter 2", "Syntax and Sentences", "বাক্য তত্ত্ব", "Sentence transformation, classification, active-passive voice changes in Bangla.", CLASS_NAME, group, "Bangla 2nd Paper", "NCTB Class 12 Bangla Bhyakoron"),
+      createChapter("b2_11_ch3", "Chapter 3", "Official Letters & Essays", "আবেদনপত্র ও প্রবন্ধ রচনা", "Formatting official complaints, job application covers, and writing critical socio-economic essays.", CLASS_NAME, group, "Bangla 2nd Paper", "NCTB Class 12 Bangla Bhyakoron")
+    ]
+  });
+
+   // English 1st Paper
+  subjectsList.push({
+    id: "english_1",
     name: "English 1st Paper",
     banglaName: "English 1st Paper",
     color: "from-blue-500 to-indigo-600",
@@ -59,6 +73,19 @@ export const class11Subjects = (group: string): Subject[] => {
     ]
   });
 
+  subjectsList.push({
+    id: "english_2",
+    name: "English 2nd Paper",
+    banglaName: "English 2nd Paper",
+    color: "from-blue-500 to-indigo-600",
+    chapters: [
+      createChapter("e2_11_ch1", "Chapter 1", "HSC Grammar Essentials", "English Grammar Practice", "Prepositions, gap fillers, modifiers, connector words, synonym/antonym, and punctuation.", CLASS_NAME, group, "English 2nd Paper", "NCTB Class 12 English Grammar"),
+      createChapter("e2_11_ch2", "Chapter 2", "Sentence Connectors & Pronoun Reference", "Pronoun & Connectors", "Fixing faulty pronoun references and mastering coherent transitional connectors.", CLASS_NAME, group, "English 2nd Paper", "NCTB Class 12 English Grammar"),
+      createChapter("e2_11_ch3", "Chapter 3", "Academic Composition & Report Writing", "Academic Composition", "Drafting newspaper reports, paragraphs, formal argument essays, and email layouts.", CLASS_NAME, group, "English 2nd Paper", "NCTB Class 12 English Grammar")
+    ]
+  });
+
+  // ICT
   subjectsList.push({
     id: "ict_11",
     name: "ICT",
@@ -88,6 +115,21 @@ export const class11Subjects = (group: string): Subject[] => {
       ]
     });
 
+    // Physics 2nd Paper
+    subjectsList.push({
+      id: "physics2",
+      name: "Physics 2nd Paper",
+      banglaName: "পদার্থবিজ্ঞান ২য় পত্র (এইচএসসি)",
+      color: "from-cyan-500 to-blue-600",
+      chapters: [
+        createChapter("p2_11_ch1", "Chapter 1", "Thermodynamics", "তাপগতিবিদ্যা", "Thermal equilibrium, Zeroth, 1st and 2nd laws, Carnot engine, entropy, and heat death.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch2", "Chapter 2", "Static Electricity", "স্থির তড়িৎ", "Coulomb's law, electric field, potential, Gauss's law, capacitance, and capacitor combinations.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch3", "Chapter 3", "Current Electricity", "চল তড়িৎ", "Ohm's law, shunt, wheatstone bridge, Kirchhoff's laws, potentiometer, and Joule heating.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch4", "Chapter 6", "Physical Optics", "ভৌত আলোকবিজ্ঞান", "Wave theory, Huygens' principle, interference, Young's double-slit experiment, polarization.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch5", "Chapter 10", "Semiconductor & Electronics", "সেমিকন্ডাক্টর ও ইলেকট্রনিক্স", "p-n junction, diodes, rectifiers, transistors (NPN, PNP), and digital logic gates.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)")
+      ]
+    });
+
     // Chemistry 1st Paper
     subjectsList.push({
       id: "chemistry1",
@@ -99,6 +141,20 @@ export const class11Subjects = (group: string): Subject[] => {
         createChapter("c1_11_ch2", "Chapter 2", "Qualitative Chemistry", "গুণগত রসায়ন", "Rutherford/Bohr models, quantum numbers, Aufbau/Hund/Pauli rules, solubility product (Ksp), and chromatography.", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
         createChapter("c1_11_ch3", "Chapter 3", "Periodic Properties of Elements", "মৌলের পর্যায়বৃত্ত ধর্ম", "s, p, d, f blocks, atomic radius, ionization energy, electronegativity, hybridization, and hydrogen bonds.", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
         createChapter("c1_11_ch4", "Chapter 4", "Chemical Changes", "রাসায়নিক পরিবর্তন", "Reversible reactions, rate law, Kc and Kp derivations, pH scale, buffer solutions, and Born-Haber cycle.", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)")
+      ]
+    });
+
+    // Chemistry 2nd Paper
+    subjectsList.push({
+      id: "chemistry2",
+      name: "Chemistry 2nd Paper",
+      banglaName: "রসায়ন ২য় পত্র (এইচএসসি)",
+      color: "from-pink-500 to-rose-600",
+      chapters: [
+        createChapter("c2_11_ch1", "Chapter 1", "Environmental Chemistry", "পরিবেশ রসায়ন", "Gas laws (Boyle, Charles, Dalton), greenhouse effect, acid rain, and BOD/COD standards.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
+        createChapter("c2_11_ch2", "Chapter 2", "Organic Chemistry", "জৈব রসায়ন", "Classification, IUPAC naming, aliphatic vs aromatic hydrocarbons, reaction mechanisms, and polymers.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
+        createChapter("c2_11_ch3", "Chapter 3", "Quantitative Chemistry", "পরিমাণগত রসায়ন", "Acid-base titrations, redox titrations, oxidation numbers, molality, molarity, and ppm conversions.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
+        createChapter("c2_11_ch4", "Chapter 4", "Electrochemistry", "তড়িৎ রসায়ন", "Electrolysis, Faraday's laws, galvanic cell, Nernst equation, and fuel cells.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)")
       ]
     });
 
@@ -118,6 +174,21 @@ export const class11Subjects = (group: string): Subject[] => {
       ]
     });
 
+    // Higher Math 2nd Paper
+    subjectsList.push({
+      id: "math2",
+      name: "Higher Math 2nd Paper",
+      banglaName: "উচ্চতর গণিত ২য় পত্র",
+      color: "from-amber-500 to-orange-600",
+      chapters: [
+        createChapter("hm2_11_ch1", "Chapter 1", "Real Numbers & Inequalities", "বাস্তব সংখ্যা ও অসমতা", "Syllabus properties of real numbers, proving intervals, and solving quadratic inequalities.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch2", "Chapter 3", "Complex Numbers", "জटिल সংখ্যা", "Imaginary unit 'i', modulus, argument, polar representation, and square roots of complex sums.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch3", "Chapter 4", "Polynomials and Polynomial Equations", "বহুপদী ও বহুপদী সমীকরণ", "Roots of quadratic and cubic equations, symmetric functions of roots, and nature of roots.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch4", "Chapter 6", "Conics", "কনিক", "Standard equations, focus, directrix, eccentricity of Parabola, Ellipse, and Hyperbola.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch5", "Chapter 7", "Inverse Trigonometric Functions & Equations", "বিপরীত ত্রিকোণমিতিক ফাংশন ও সমীকরণ", "Formulas of inverse sine/cosine, and solving general trigonometric equations inside bounds.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper")
+      ]
+    });
+
     // Biology 1st Paper (Botany)
     subjectsList.push({
       id: "biology1",
@@ -130,6 +201,20 @@ export const class11Subjects = (group: string): Subject[] => {
         createChapter("bio1_11_ch3", "Chapter 4", "Microorganisms", "অণুজীব", "Virus replication, bacteriophage, bacteria structures, Malaria parasite life cycle.", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper")
       ]
     });
+
+    // Biology 2nd Paper (Zoology)
+    subjectsList.push({
+      id: "biology2",
+      name: "Biology 2nd Paper",
+      banglaName: "জীববিজ্ঞান ২য় পত্র (প্রাণীবিজ্ঞান)",
+      color: "from-green-500 to-emerald-600",
+      chapters: [
+        createChapter("bio2_11_ch1", "Chapter 1", "Animal Diversity & Classification", "প্রাণীর বিভিন্নতা ও শ্রেণীবিন্যাস", "Non-chordates (Phylum Porifera to Echinodermata) and Chordata classification.", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch2", "Chapter 2", "Animal Physiology: Digestion", "প্রাণীর শরীরবৃত্ত: পরিপাক", "Digestive system of human, enzyme actions, and absorption of carbohydrates/proteins/fats.", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch3", "Chapter 4", "Human Circulation", "রক্ত সঞ্চালন", "Cardiac cycle, ECG, pacemaker, double circulation, and standard coronary block treatments.", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper")
+      ]
+    });
+
   }
 
   if (isBusiness) {
