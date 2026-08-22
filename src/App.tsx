@@ -19,6 +19,7 @@ import ChapterPage from "./components/ChapterPage";
 import StudyPlanner from "./components/StudyPlanner";
 import HomeworkManager from "./components/HomeworkManager";
 import StudyDiary from "./components/StudyDiary";
+import SubjectPaperPage from "./components/SubjectPaperPage";
 
 // Vector Icons
 import {
@@ -46,6 +47,8 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<'dashboard' | 'planner' | 'homework' | 'diary'>('dashboard');
   
   // Currently studied textbook chapter
+  const [selectedSubjectPaper, setSelectedSubjectPaper] = useState<string | null>(null);
+  
   const [selectedChapter, setSelectedChapter] = useState<{
     subjectId: string;
     subjectName: string;
@@ -535,6 +538,28 @@ export default function App() {
               }
               onBack={() => setSelectedChapter(null)}
             />
+          ) : selectedSubjectPaper ? (
+            <SubjectPaperPage
+              subject={
+                activeSubjects.find(
+                  (sub) => sub.id === selectedSubjectPaper
+                )!
+              }
+              mastery={subjectMasteries[selectedSubjectPaper] || 0}
+              onBack={() => setSelectedSubjectPaper(null)}
+              onSelectChapter={(chapter) =>
+                setSelectedChapter({
+                  subjectId: selectedSubjectPaper,
+                  subjectName:
+                    activeSubjects.find(
+                      (sub) => sub.id === selectedSubjectPaper
+                    )!.name,
+                  chapterId: chapter.id,
+                  chapterName: chapter.name,
+                  chapterBanglaName: chapter.banglaName
+                })
+              }
+            />
           ) : (
             <>
               {/* Cockpit - Dashboard view */}
@@ -598,7 +623,9 @@ export default function App() {
                                 className="p-4 bg-white rounded-xl border border-slate-200/70 hover:border-indigo-300 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                               >
                                 <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
+                                  <div className="flex items-center justify-between cursor-pointer"
+                                  onClick={() => setSelectedSubjectPaper(sub.id)}
+                                  >
                                     <span className="text-xs font-bold text-slate-800 font-display">{sub.banglaName}</span>
                                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">{sub.name}</span>
                                   </div>
