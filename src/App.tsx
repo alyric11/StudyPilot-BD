@@ -42,13 +42,13 @@ import {
 export default function App() {
   // Authentication & Profile state
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  
+
   // Navigation Section (MVP includes only these 4 views)
   const [activeSection, setActiveSection] = useState<'dashboard' | 'planner' | 'homework' | 'diary'>('dashboard');
-  
+
   // Currently studied textbook chapter
   const [selectedSubjectPaper, setSelectedSubjectPaper] = useState<string | null>(null);
-  
+
   const [selectedChapter, setSelectedChapter] = useState<{
     subjectId: string;
     subjectName: string;
@@ -269,7 +269,7 @@ export default function App() {
     const updated = homeworks.map((h) => (h.id === id ? { ...h, completed: !h.completed } : h));
     setHomeworks(updated);
     localStorage.setItem("sp_homework", JSON.stringify(updated));
-    
+
     if (homework) {
       if (!homework.completed) {
         showToast("Assignment marked as completed! Keep it up!", "success");
@@ -408,8 +408,8 @@ export default function App() {
           </button>
 
           {/* Logo Brand */}
-          <div 
-            className="flex items-center gap-2.5 cursor-pointer group" 
+          <div
+            className="flex items-center gap-2.5 cursor-pointer group"
             onClick={() => { setActiveSection('dashboard'); setSelectedChapter(null); }}
           >
             <div className="w-8.5 h-8.5 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-display font-bold shadow-md shadow-indigo-150 transition-transform group-hover:scale-105">
@@ -447,9 +447,8 @@ export default function App() {
       <div className="flex-1 flex" id="app-main-pane">
         {/* Navigation Sidebar Drawer */}
         <aside
-          className={`fixed md:sticky top-[58px] bottom-0 z-40 bg-slate-900 border-r border-slate-800 w-[240px] p-4 shrink-0 shadow-lg md:shadow-none transition-transform duration-300 transform md:transform-none ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-          }`}
+          className={`fixed md:sticky top-[58px] bottom-0 z-40 bg-slate-900 border-r border-slate-800 w-[260px] p-4 shrink-0 shadow-lg md:shadow-none transition-transform duration-300 transform md:transform-none ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+            }`}
           id="app-navigation-sidebar"
         >
           <div className="flex flex-col justify-between h-full">
@@ -473,11 +472,10 @@ export default function App() {
                           setSelectedChapter(null);
                           setSidebarOpen(false);
                         }}
-                        className={`w-full py-2 px-3 rounded-lg text-left text-xs font-semibold flex items-center gap-3 transition-all cursor-pointer ${
-                          isActive
-                            ? "bg-slate-800 text-white font-bold border-l-4 border-indigo-500"
-                            : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                        }`}
+                        className={`w-full py-2 px-3 rounded-lg text-left text-xs font-semibold flex items-center gap-3 transition-all cursor-pointer ${isActive
+                          ? "bg-slate-800 text-white font-bold border-l-4 border-indigo-500"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                          }`}
                         id={`sidebar-link-${item.id}`}
                       >
                         <Icon className="w-4 h-4 shrink-0" />
@@ -565,7 +563,7 @@ export default function App() {
               {/* Cockpit - Dashboard view */}
               {activeSection === 'dashboard' && (
                 <div className="space-y-6 text-left" id="cockpit-dashboard-view">
-                  
+
                   {/* Onboarding Summary Header card */}
                   <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/60 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6" id="dashboard-header-block">
                     <div className="flex items-center gap-4 min-w-0">
@@ -617,6 +615,16 @@ export default function App() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {activeSubjects.map((sub) => {
                             const mastery = subjectMasteries[sub.id] || 0;
+                            const totalChapters = sub.chapters.length;
+                            const completedChapters = sub.chapters.filter(
+                              (ch) => studentProgress[sub.id]?.[ch.id]?.revisionCompleted
+                            ).length;
+
+                            const sectionCount = new Set(
+                              sub.chapters
+                                .map((ch) => ch.section)
+                                .filter((section): section is string => Boolean(section))
+                            ).size;
                             return (
                               <div
                                 key={sub.id}
@@ -624,13 +632,20 @@ export default function App() {
                               >
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between cursor-pointer"
-                                  onClick={() => setSelectedSubjectPaper(sub.id)}
+                                    onClick={() => setSelectedSubjectPaper(sub.id)}
                                   >
                                     <span className="text-xs font-bold text-slate-800 font-display">{sub.banglaName}</span>
                                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">{sub.name}</span>
                                   </div>
                                   <div className="flex items-center gap-1.5 text-xs">
-                                    <span className="font-bold text-indigo-600">{mastery}%</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-indigo-600">{mastery}%</span>
+                                      <span className="text-[10px] font-semibold text-slate-400">
+                                        {sectionCount > 0
+                                          ? `${completedChapters} / ${sectionCount} Units`
+                                          : `${completedChapters} / ${totalChapters} chapters`}
+                                      </span>
+                                    </div>
                                     <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                       <div
                                         className="bg-indigo-600 h-full transition-all duration-500"
@@ -644,7 +659,7 @@ export default function App() {
                                 <div className="space-y-1.5 border-t border-slate-100 pt-3">
                                   <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Syllabus Chapters:</span>
                                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                                    {sub.chapters.map((ch) => (
+                                    {sub.chapters.slice(0, 3).map((ch) => (
                                       <button
                                         key={ch.id}
                                         onClick={() =>
@@ -762,21 +777,20 @@ export default function App() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 15, scale: 0.95 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className={`p-4 rounded-xl shadow-lg border pointer-events-auto flex items-start gap-3 ${
-                toast.type === "success"
-                  ? "bg-emerald-50 border-emerald-100 text-emerald-800"
-                  : toast.type === "error"
+              className={`p-4 rounded-xl shadow-lg border pointer-events-auto flex items-start gap-3 ${toast.type === "success"
+                ? "bg-emerald-50 border-emerald-100 text-emerald-800"
+                : toast.type === "error"
                   ? "bg-rose-50 border-rose-100 text-rose-800"
                   : toast.type === "warning"
-                  ? "bg-amber-50 border-amber-100 text-amber-800"
-                  : "bg-blue-50 border-blue-100 text-blue-800"
-              }`}
+                    ? "bg-amber-50 border-amber-100 text-amber-800"
+                    : "bg-blue-50 border-blue-100 text-blue-800"
+                }`}
             >
               {toast.type === "success" && <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />}
               {toast.type === "error" && <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />}
               {toast.type === "warning" && <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />}
               {toast.type === "info" && <BookOpen className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />}
-              
+
               <div className="flex-1">
                 <p className="text-xs font-semibold leading-relaxed">{toast.message}</p>
               </div>
@@ -808,9 +822,9 @@ export default function App() {
                 <h3 className="text-lg font-display font-bold tracking-tight">Reset Data & Logout?</h3>
               </div>
               <p className="text-slate-600 text-xs leading-relaxed">
-                Are you sure you want to reset your local StudyPilot data and log out? 
-                This will clear all your <strong>subject progress checklists</strong>, 
-                <strong>homework logs</strong>, and <strong>study diary entries</strong> from this browser. 
+                Are you sure you want to reset your local StudyPilot data and log out?
+                This will clear all your <strong>subject progress checklists</strong>,
+                <strong>homework logs</strong>, and <strong>study diary entries</strong> from this browser.
                 This action cannot be undone.
               </p>
               <div className="flex items-center justify-end gap-3 pt-2">

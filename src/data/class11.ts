@@ -1,6 +1,7 @@
 import { Subject, Chapter } from "./curriculum";
 
 // Helper to construct Chapter objects consistently
+
 function createChapter(
   id: string,
   chapterNumber: string,
@@ -10,7 +11,8 @@ function createChapter(
   classLevel: string,
   group: string,
   subject: string,
-  bookName: string
+  bookName: string,
+  section?: string
 ): Chapter {
   return {
     id,
@@ -21,7 +23,8 @@ function createChapter(
     class: classLevel,
     group,
     subject,
-    nctbBookName: bookName
+    nctbBookName: bookName,
+    section
   };
 }
 
@@ -39,19 +42,43 @@ export const class11Subjects = (group: string): Subject[] => {
   subjectsList.push({
     id: "bangla_1",
     name: "Bangla 1st Paper",
-    banglaName: "বাংলা ১ম পত্র (এইচএসসি)",
+    banglaName: "বাংলা ১ম পত্র",
     color: "from-emerald-500 to-emerald-600",
     chapters: [
-      createChapter("b1_11_ch1", "Chapter 1", "Chorok", "বিড়াল ও চাষার দুক্ষু", "Analytical studying of Bankimchandra's social satires and Rokeya Sakhawat Hossain's critical essays.", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path"),
-      createChapter("b1_11_ch2", "Chapter 2", "Ahban and Sonar Tori", "আহ্বান ও সোনার তরী", "Studying Rabindranath Tagore's Sonar Tori poem and Bibhutibhushan's storytelling masterclass.", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path"),
-      createChapter("b1_11_ch3", "Chapter 3", "Lalshalu and Sirajuddaula", "লালসালু ও সিরাজউদ্দৌলা", "In-depth review of Syed Waliullah's 'Lalshalu' novel and Sikandar Abu Zafar's 'Sirajuddaula' play.", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path")
+      createChapter("b1_11_ch1", "Chapter 1", "Chapter 1", "বাঙ্গালার নব্য লেখকদিগের প্রতি নিবেদন", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch2", "Chapter 2", "Chapter 2", "অপরিচিতা", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch3", "Chapter 3", "Chapter 3", "বিলাসী", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch4", "Chapter 4", "Chapter 4", "সাহিত্যে খেলা", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch5", "Chapter 5", "Chapter 5", "অর্ধাঙ্গী", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch6", "Chapter 6", "Chapter 6", "যৌবনের গান", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch7", "Chapter 7", "Chapter 7", "জীবন ও বৃক্ষ", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch8", "Chapter 8", "Chapter 8", "গন্তব্য কাবুল", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch9", "Chapter 9", "Chapter 9", "মাসি-পিসি", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch10", "Chapter 10", "Chapter 10", "কাপিলদাস মুর্মুর শেষ কাজ", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch11", "Chapter 11", "Chapter 11", "রেইনকোট", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+      createChapter("b1_11_ch12", "Chapter 12", "Chapter 12", "নেকলেস", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
+
+      createChapter("b1_11_ch13", "Chapter 13", "Chapter 13", "ঋতু বর্ণন", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch14", "Chapter 14", "Chapter 14", "বিভীষণের প্রতি মেঘনাদ", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch15", "Chapter 15", "Chapter 15", "সোনার তরী", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch16", "Chapter 16", "Chapter 16", "বিদ্রোহী", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch17", "Chapter 17", "Chapter 17", "চেতনা", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch18", "Chapter 18", "Chapter 18", "প্রতিদান", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch19", "Chapter 19", "Chapter 19", "তাহারেই পড়ে মনে", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch20", "Chapter 20", "Chapter 20", "পদ্মা", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch21", "Chapter 21", "Chapter 21", "আঠারো বছর বয়সে", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch22", "Chapter 22", "Chapter 22", "আমি কিংবদন্তির কথা বলছি", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+      createChapter("b1_11_ch23", "Chapter 23", "Chapter 23", "ফেব্রুয়ারি ১৯৬৯", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "কবিতা"),
+
+      createChapter("b1_11_ch24", "Chapter 24", "Chapter 24", "লালসালু", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "উপন্যাস"),
+      createChapter("b1_11_ch25", "Chapter 25", "Chapter 25", "সিরাজউদ্দৌলা", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "নাটক")
     ]
   });
 
   subjectsList.push({
     id: "bangla_2",
     name: "Bangla 2nd Paper",
-    banglaName: "বাংলা ২য় পত্র (ব্যাকরণ)",
+    banglaName: "বাংলা ২য় পত্র",
     color: "from-emerald-500 to-emerald-600",
     chapters: [
       createChapter("b2_11_ch1", "Chapter 1", "Pronunciation and Spelling Rules", "উচ্চারণ ও বানান বিধি", "Standard spoken pronunciation and Bangla Academy Spelling rules (বানান নিয়ম).", CLASS_NAME, group, "Bangla 2nd Paper", "NCTB Class 12 Bangla Bhyakoron"),
@@ -60,16 +87,72 @@ export const class11Subjects = (group: string): Subject[] => {
     ]
   });
 
-   // English 1st Paper
+  // English 1st Paper
   subjectsList.push({
     id: "english_1",
     name: "English 1st Paper",
     banglaName: "English 1st Paper",
     color: "from-blue-500 to-indigo-600",
     chapters: [
-      createChapter("e1_11_ch1", "Chapter 1", "People or Institutions Making History", "People or Institutions Making History", "Nelson Mandela, Sheikh Mujibur Rahman's historic 7th March Speech, and world-changing leaders.", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today"),
-      createChapter("e1_11_ch2", "Chapter 2", "Dreams and Dreamers", "Dreams", "Dream poetry analysis (Langston Hughes, D.H. Lawrence) and psychological aspects of dreaming.", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today"),
-      createChapter("e1_11_ch3", "Chapter 3", "Human Relationship and Etiquette", "Human Relationships", "Understanding family manners, core communication, and societal codes of conduct.", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today")
+      createChapter("e1_11_u1_l1", "Lesson 1", "The Parrot's Tale", "The Parrot's Tale", "Unit One: Education and Life", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit One: Education and Life"),
+      createChapter("e1_11_u1_l2", "Lesson 2", "Education and Technology", "Education and Technology", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit One: Education and Life"),
+      createChapter("e1_11_u1_l3", "Lesson 3", "Children in School", "Children in School", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit One: Education and Life"),
+      createChapter("e1_11_u1_l4", "Lesson 4", "Civic Engagement", "Civic Engagement", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit One: Education and Life"),
+
+      createChapter("e1_11_u2_l1", "Lesson 1", "What is Beauty?", "What is Beauty?", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Two: Art and Craft"),
+      createChapter("e1_11_u2_l2", "Lesson 2", "Folk Music", "Folk Music", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Two: Art and Craft"),
+      createChapter("e1_11_u2_l3", "Lesson 3", "Art", "Art", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Two: Art and Craft"),
+      createChapter("e1_11_u2_l4", "Lesson 4", "Craft", "Craft", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Two: Art and Craft"),
+
+      createChapter("e1_11_u3_l1", "Lesson 1", "Myths of Bengal", "Myths of Bengal", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Three: Myths and Literature"),
+      createChapter("e1_11_u3_l2", "Lesson 2", "Icarus", "Icarus", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Three: Myths and Literature"),
+      createChapter("e1_11_u3_l3", "Lesson 3", "The Legend of Gazi", "The Legend of Gazi", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Three: Myths and Literature"),
+      createChapter("e1_11_u3_l4", "Lesson 4", "Khona", "Khona", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Three: Myths and Literature"),
+
+      createChapter("e1_11_u4_l1", "Lesson 1", "July Uprising: A Transformative Movement", "July Uprising: A Transformative Movement", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Four: History"),
+      createChapter("e1_11_u4_l2", "Lesson 2", "Transformative Speeches", "Transformative Speeches", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Four: History"),
+      createChapter("e1_11_u4_l3", "Lesson 3", "Great Women", "Great Women", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Four: History"),
+
+      createChapter("e1_11_u5_l1", "Lesson 1", "Are We Aware of These Rights-I?", "Are We Aware of These Rights-I?", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Five: Human Rights"),
+      createChapter("e1_11_u5_l2", "Lesson 2", "Are We Aware of These Rights-II?", "Are We Aware of These Rights-II?", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Five: Human Rights"),
+      createChapter("e1_11_u5_l3", "Lesson 3", "Rights to Health and Education", "Rights to Health and Education", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Five: Human Rights"),
+      createChapter("e1_11_u5_l4", "Lesson 4", "Coal Miners", "Coal Miners", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Five: Human Rights"),
+      createChapter("e1_11_u5_l5", "Lesson 5", "Frederick Douglass", "Frederick Douglass", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Five: Human Rights"),
+
+      createChapter("e1_11_u6_l1", "Lesson 1", "What is a Dream?", "What is a Dream?", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Six: Dreams"),
+      createChapter("e1_11_u6_l2", "Lesson 2", "Dreams in Literature", "Dreams in Literature", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Six: Dreams"),
+
+      createChapter("e1_11_u7_l1", "Lesson 1", "Brojen Das: On Crossing the English Channel", "Brojen Das: On Crossing the English Channel", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Seven: Youthful Achievers"),
+      createChapter("e1_11_u7_l2", "Lesson 2", "Scaling a Mountain Peak", "Scaling a Mountain Peak", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Seven: Youthful Achievers"),
+      createChapter("e1_11_u7_l3", "Lesson 3", "The Unbeaten Girls", "The Unbeaten Girls", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Seven: Youthful Achievers"),
+
+      createChapter("e1_11_u8_l1", "Lesson 1", "Family Relationship", "Family Relationship", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eight: Relationships"),
+      createChapter("e1_11_u8_l2", "Lesson 2", "Warmth in Relationships", "Warmth in Relationships", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eight: Relationships"),
+      createChapter("e1_11_u8_l3", "Lesson 3", "A Mother in Manville", "A Mother in Manville", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eight: Relationships"),
+      createChapter("e1_11_u8_l4", "Lesson 4", "Love", "Love", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eight: Relationships"),
+
+      createChapter("e1_11_u9_l1", "Lesson 1", "Storm and Stresses of Adolescence", "Storm and Stresses of Adolescence", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Nine: Adolescence"),
+      createChapter("e1_11_u9_l2", "Lesson 2", "Adolescence and Some (Related) Problems in Bangladesh", "Adolescence and Some (Related) Problems in Bangladesh", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Nine: Adolescence"),
+      createChapter("e1_11_u9_l3", "Lesson 3", "The Story of Shilpi", "The Story of Shilpi", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Nine: Adolescence"),
+      createChapter("e1_11_u9_l4", "Lesson 4", "Say 'No' to Bullying", "Say 'No' to Bullying", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Nine: Adolescence"),
+
+      createChapter("e1_11_u10_l1", "Lesson 1", "Manners around the World", "Manners around the World", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Ten: Lifestyle"),
+      createChapter("e1_11_u10_l2", "Lesson 2", "Etiquette Netiquette", "Etiquette Netiquette", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Ten: Lifestyle"),
+      createChapter("e1_11_u10_l3", "Lesson 3", "Food and Culture", "Food and Culture", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Ten: Lifestyle"),
+      createChapter("e1_11_u10_l4", "Lesson 4", "Fitness", "Fitness", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Ten: Lifestyle"),
+      createChapter("e1_11_u10_l5", "Lesson 5", "Consumerism", "Consumerism", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Ten: Lifestyle"),
+
+      createChapter("e1_11_u11_l1", "Lesson 1", "Situations of Conflict", "Situations of Conflict", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eleven: Peace and Conflict"),
+      createChapter("e1_11_u11_l2", "Lesson 2", "The Old Man at the Bridge by Ernest Hemingway", "The Old Man at the Bridge by Ernest Hemingway", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eleven: Peace and Conflict"),
+      createChapter("e1_11_u11_l3", "Lesson 3", "Stories From Gaza", "Stories From Gaza", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eleven: Peace and Conflict"),
+      createChapter("e1_11_u11_l4", "Lesson 4", "Peace in Literature", "Peace in Literature", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eleven: Peace and Conflict"),
+      createChapter("e1_11_u11_l5", "Lesson 5", "Opinions through images", "Opinions through images", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Eleven: Peace and Conflict"),
+
+      createChapter("e1_11_u12_l1", "Lesson 1", "Water, Water Everywhere...", "Water, Water Everywhere...", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Twelve: Environment and Nature"),
+      createChapter("e1_11_u12_l2", "Lesson 2", "The Greta Effect", "The Greta Effect", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Twelve: Environment and Nature"),
+      createChapter("e1_11_u12_l3", "Lesson 3", "Endangered Species", "Endangered Species", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Twelve: Environment and Nature"),
+      createChapter("e1_11_u12_l4", "Lesson 4", "What is Environmental Justice?", "What is Environmental Justice?", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Twelve: Environment and Nature"),
+      createChapter("e1_11_u12_l5", "Lesson 5", "Limits of the Scientific Method", "Limits of the Scientific Method", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit Twelve: Environment and Nature")
     ]
   });
 
@@ -104,7 +187,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "physics1",
       name: "Physics 1st Paper",
-      banglaName: "পদার্থবিজ্ঞান ১ম পত্র (এইচএসসি)",
+      banglaName: "পদার্থবিজ্ঞান ১ম পত্র",
       color: "from-cyan-500 to-blue-600",
       chapters: [
         createChapter("p1_11_ch1", "Chapter 2", "Vector", "ভেক্টর", "Vector addition, triangle law, resolution of vectors, dot product, cross product, and river-boat velocity vectors.", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
@@ -119,7 +202,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "physics2",
       name: "Physics 2nd Paper",
-      banglaName: "পদার্থবিজ্ঞান ২য় পত্র (এইচএসসি)",
+      banglaName: "পদার্থবিজ্ঞান ২য় পত্র",
       color: "from-cyan-500 to-blue-600",
       chapters: [
         createChapter("p2_11_ch1", "Chapter 1", "Thermodynamics", "তাপগতিবিদ্যা", "Thermal equilibrium, Zeroth, 1st and 2nd laws, Carnot engine, entropy, and heat death.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
@@ -134,7 +217,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "chemistry1",
       name: "Chemistry 1st Paper",
-      banglaName: "রসায়ন ১ম পত্র (এইচএসসি)",
+      banglaName: "রসায়ন ১ম পত্র",
       color: "from-pink-500 to-rose-600",
       chapters: [
         createChapter("c1_11_ch1", "Chapter 1", "Safe Laboratory Use", "ল্যাবরেটরির নিরাপদ ব্যবহার", "Safety goggles, chemical handling, cleaning glasswares, and disposing of laboratory hazards safely.", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
@@ -148,7 +231,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "chemistry2",
       name: "Chemistry 2nd Paper",
-      banglaName: "রসায়ন ২য় পত্র (এইচএসসি)",
+      banglaName: "রসায়ন ২য় পত্র",
       color: "from-pink-500 to-rose-600",
       chapters: [
         createChapter("c2_11_ch1", "Chapter 1", "Environmental Chemistry", "পরিবেশ রসায়ন", "Gas laws (Boyle, Charles, Dalton), greenhouse effect, acid rain, and BOD/COD standards.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
@@ -193,7 +276,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "biology1",
       name: "Biology 1st Paper",
-      banglaName: "জীববিজ্ঞান ১ম পত্র (উদ্ভিদবিজ্ঞান)",
+      banglaName: "জীববিজ্ঞান ১ম পত্র",
       color: "from-green-500 to-emerald-600",
       chapters: [
         createChapter("bio1_11_ch1", "Chapter 1", "Cell and its Structure", "কোষ ও এর গঠন", "Ultrastructure of plant cell, fluid mosaic model, DNA double helix, transcription, and translation.", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
@@ -206,7 +289,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "biology2",
       name: "Biology 2nd Paper",
-      banglaName: "জীববিজ্ঞান ২য় পত্র (প্রাণীবিজ্ঞান)",
+      banglaName: "জীববিজ্ঞান ২য় পত্র",
       color: "from-green-500 to-emerald-600",
       chapters: [
         createChapter("bio2_11_ch1", "Chapter 1", "Animal Diversity & Classification", "প্রাণীর বিভিন্নতা ও শ্রেণীবিন্যাস", "Non-chordates (Phylum Porifera to Echinodermata) and Chordata classification.", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
@@ -222,7 +305,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "accounting1",
       name: "Accounting 1st Paper",
-      banglaName: "হিসাববিজ্ঞান ১ম পত্র (এইচএসসি)",
+      banglaName: "হিসাববিজ্ঞান ১ম পত্র",
       color: "from-indigo-500 to-violet-600",
       chapters: [
         createChapter("acc1_11_ch1", "Chapter 1", "Accounting Process", "হিসাববিজ্ঞান পরিচিতি", "Basic definitions, transactions, dual aspects, accounting equation, and history.", CLASS_NAME, "Business Studies", "Accounting 1st Paper", "NCTB HSC Accounting First Paper"),
@@ -235,7 +318,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "accounting2",
       name: "Accounting 2nd Paper",
-      banglaName: "হিসাববিজ্ঞান ২য় পত্র (এইচএসসি)",
+      banglaName: "হিসাববিজ্ঞান ২য় পত্র",
       color: "from-indigo-500 to-violet-600",
       chapters: [
         createChapter("acc2_11_ch1", "Chapter 2", "Partnership Accounting", "অংশীদারি কারবারের হিসাব", "Profit-loss appropriation accounts, capital accounts of partners, and goodwill valuation.", CLASS_NAME, "Business Studies", "Accounting 2nd Paper", "NCTB HSC Accounting Second Paper"),
@@ -280,7 +363,7 @@ export const class11Subjects = (group: string): Subject[] => {
       ]
     });
 
-      // Business Organization & Management 2nd Paper
+    // Business Organization & Management 2nd Paper
     subjectsList.push({
       id: "bus_org2",
       name: "Business Org 2nd Paper",
@@ -310,7 +393,7 @@ export const class11Subjects = (group: string): Subject[] => {
     subjectsList.push({
       id: "history1",
       name: "History 1st Paper",
-      banglaName: "ইতিহাস ১ম পত্র (এইচএসসি)",
+      banglaName: "ইতিহাস ১ম পত্র",
       color: "from-orange-500 to-red-600",
       chapters: [
         createChapter("his1_11_ch1", "Chapter 1", "Arrival of Europeans in Bengal", "ইউরোপীয়দের বাংলায় আগমন", "The Portuguese, Dutch, French, and British traders, and setting up East India company.", CLASS_NAME, "Humanities", "History 1st Paper", "NCTB HSC History First Paper"),
