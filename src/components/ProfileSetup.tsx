@@ -29,7 +29,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
   const [board, setBoard] = useState(initialProfile?.board || "Dhaka");
   const [boardTouched, setBoardTouched] = useState(false);
   const [examYear, setExamYear] = useState(
-   initialProfile?.examYear || String(new Date().getFullYear() + 1)
+    initialProfile?.examYear || String(new Date().getFullYear() + 1)
   );
   const [examYearTouched, setExamYearTouched] = useState(false);
   const [demoImported, setDemoImported] = useState(false);
@@ -49,9 +49,13 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
 
   // Handle class level change to auto-adjust group if not available
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedClass = e.target.value;
+    const selectedClass =
+      e.target.value as "Class 9" | "Class 10" | "Class 11" | "Class 12";
+
     setClassLevel(selectedClass);
+
     const newConfig = NCTB_CURRICULUM[selectedClass];
+
     if (newConfig && newConfig.groups && !newConfig.groups.includes(group)) {
       setGroup(newConfig.groups[0]);
     }
@@ -185,9 +189,8 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                   setName(e.target.value);
                   if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
                 }}
-                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${
-                  errors.name ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
-                }`}
+                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${errors.name ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
+                  }`}
               />
             </div>
             {errors.name && <p className="text-rose-600 text-[10px] mt-1 font-semibold">{errors.name}</p>}
@@ -206,9 +209,8 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                   setEmail(e.target.value);
                   if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
                 }}
-                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${
-                  errors.email ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
-                }`}
+                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${errors.email ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
+                  }`}
               />
             </div>
             {errors.email && <p className="text-rose-600 text-[10px] mt-1 font-semibold">{errors.email}</p>}
@@ -230,9 +232,8 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                   setPhone(e.target.value);
                   if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
                 }}
-                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${
-                  errors.phone ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
-                }`}
+                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${errors.phone ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
+                  }`}
               />
             </div>
             {errors.phone && <p className="text-rose-600 text-[10px] mt-1 font-semibold">{errors.phone}</p>}
@@ -251,9 +252,8 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                   setSchool(e.target.value);
                   if (errors.school) setErrors(prev => ({ ...prev, school: undefined }));
                 }}
-                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${
-                  errors.school ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
-                }`}
+                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${errors.school ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
+                  }`}
               />
             </div>
             {errors.school && <p className="text-rose-600 text-[10px] mt-1 font-semibold">{errors.school}</p>}
@@ -292,9 +292,9 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                 id="group-select"
                 value={group}
                 onChange={(e) => {
-                 setGroup(e.target.value);
-                 setGroupTouched(true);
-     }}
+                  setGroup(e.target.value);
+                  setGroupTouched(true);
+                }}
                 disabled={availableGroups.length === 1 && availableGroups[0] === "None"}
                 className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || groupTouched ? "text-slate-800" : "text-slate-400"} font-medium cursor-pointer disabled:opacity-50`}
               >
@@ -320,7 +320,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                 onChange={(e) => {
                   setBoard(e.target.value);
                   setBoardTouched(true);
-        }}
+                }}
                 className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || boardTouched ? "text-slate-800" : "text-slate-400"} font-medium cursor-pointer`}
               >
                 {NCTB_BOARDS.map((bd) => (
@@ -342,9 +342,9 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                 placeholder="2027"
                 value={examYear}
                 onChange={(e) => {
-                 setExamYear(e.target.value);
-                 setExamYearTouched(true);
-     }}
+                  setExamYear(e.target.value);
+                  setExamYearTouched(true);
+                }}
                 className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-all ${demoImported || examYearTouched ? "text-slate-800" : "text-slate-400"} font-medium`}
                 required
               />

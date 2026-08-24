@@ -81,9 +81,19 @@ export const class11Subjects = (group: string): Subject[] => {
     banglaName: "বাংলা ২য় পত্র",
     color: "from-emerald-500 to-emerald-600",
     chapters: [
-      createChapter("b2_11_ch1", "Chapter 1", "Pronunciation and Spelling Rules", "উচ্চারণ ও বানান বিধি", "Standard spoken pronunciation and Bangla Academy Spelling rules (বানান নিয়ম).", CLASS_NAME, group, "Bangla 2nd Paper", "NCTB Class 12 Bangla Bhyakoron"),
-      createChapter("b2_11_ch2", "Chapter 2", "Syntax and Sentences", "বাক্য তত্ত্ব", "Sentence transformation, classification, active-passive voice changes in Bangla.", CLASS_NAME, group, "Bangla 2nd Paper", "NCTB Class 12 Bangla Bhyakoron"),
-      createChapter("b2_11_ch3", "Chapter 3", "Official Letters & Essays", "আবেদনপত্র ও প্রবন্ধ রচনা", "Formatting official complaints, job application covers, and writing critical socio-economic essays.", CLASS_NAME, group, "Bangla 2nd Paper", "NCTB Class 12 Bangla Bhyakoron")
+      createChapter("b2_11_q1", "Question 1", "Rules of Bangla Pronunciation", "বাংলা উচ্চারণের নিয়ম", "বাংলা উচ্চারণের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q2", "Question 2", "Rules of Bangla Spelling", "বাংলা বানানের নিয়ম", "বাংলা বানানের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q3", "Question 3", "Grammatical Word Classes", "বাংলা ভাষার ব্যাকরণিক শব্দশ্রেণি", "বাংলা ভাষার ব্যাকরণিক শব্দশ্রেণি।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q4", "Question 4", "Prefixes, Suffixes and Samasa", "উপসর্গ, প্রত্যয় ও সমাস", "উপসর্গ, প্রত্যয় ও সমাস।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q5", "Question 5", "Syntax and Sentence Structure", "বাক্যতত্ত্ব / বাক্য প্রকরণ", "বাক্যতত্ত্ব / বাক্য প্রকরণ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q6", "Question 6", "Correct and Incorrect Usage", "বাংলা ভাষার অপপ্রয়োগ ও শুদ্ধ প্রয়োগ", "বাংলা ভাষার অপপ্রয়োগ ও শুদ্ধ প্রয়োগ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+
+      createChapter("b2_11_q7", "Question 7", "Technical Terms / English to Bangla Translation", "পারিভাষিক শব্দ / ইংরেজি থেকে বাংলা অনুবাদ", "পারিভাষিক শব্দ / ইংরেজি থেকে বাংলা অনুবাদ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q8", "Question 8", "Diary / Experience Description / Speech / Report", "দিনলিপি / অভিজ্ঞতা বর্ণনা অথবা ভাষণ / প্রতিবেদন", "দিনলিপি / অভিজ্ঞতা বর্ণনা অথবা ভাষণ / প্রতিবেদন।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q9", "Question 9", "Email / Letter / Application", "বৈদ্যুতিন চিঠি (ই-মেইল) / পত্র / আবেদনপত্র", "বৈদ্যুতিন চিঠি (ই-মেইল) / পত্র / আবেদনপত্র।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q10", "Question 10", "Summary / Main Idea / Summary / Expansion of Ideas", "সারাংশ / সারমর্ম / সারসংক্ষেপ অথবা ভাবসম্প্রসারণ", "সারাংশ / সারমর্ম / সারসংক্ষেপ অথবা ভাবসম্প্রসারণ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q11", "Question 11", "Dialogue / Short Story", "সংলাপ অথবা ক্ষুদে গল্প", "সংলাপ অথবা ক্ষুদে গল্প।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q12", "Question 12", "Essay Writing", "প্রবন্ধ রচনা", "প্রবন্ধ রচনা।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি")
     ]
   });
 
@@ -156,15 +166,30 @@ export const class11Subjects = (group: string): Subject[] => {
     ]
   });
 
+  // English 2nd Paper
   subjectsList.push({
     id: "english_2",
     name: "English 2nd Paper",
     banglaName: "English 2nd Paper",
     color: "from-blue-500 to-indigo-600",
     chapters: [
-      createChapter("e2_11_ch1", "Chapter 1", "HSC Grammar Essentials", "English Grammar Practice", "Prepositions, gap fillers, modifiers, connector words, synonym/antonym, and punctuation.", CLASS_NAME, group, "English 2nd Paper", "NCTB Class 12 English Grammar"),
-      createChapter("e2_11_ch2", "Chapter 2", "Sentence Connectors & Pronoun Reference", "Pronoun & Connectors", "Fixing faulty pronoun references and mastering coherent transitional connectors.", CLASS_NAME, group, "English 2nd Paper", "NCTB Class 12 English Grammar"),
-      createChapter("e2_11_ch3", "Chapter 3", "Academic Composition & Report Writing", "Academic Composition", "Drafting newspaper reports, paragraphs, formal argument essays, and email layouts.", CLASS_NAME, group, "English 2nd Paper", "NCTB Class 12 English Grammar")
+      createChapter("e2_11_q1", "Question 1", "Article", "Article", "Grammar — Article.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q2", "Question 2", "Prepositions", "Prepositions", "Grammar — Prepositions.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q3", "Question 3", "Gap Filling with Clues", "Gap Filling with Clues", "Grammar — Gap filling with clues.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q4", "Question 4", "Completing Sentences", "Completing Sentences", "Grammar — Completing sentences.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q5", "Question 5", "Right Form of Verb", "Right Form of Verb", "Grammar — Right form of verb.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q6", "Question 6", "Pronoun Reference / Agreement", "Pronoun Reference / Agreement", "Grammar — Pronoun reference / agreement.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q7", "Question 7", "Narrative Style", "Narrative Style", "Grammar — Narrative style.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q8", "Question 8", "Transformation / Changing Sentences", "Transformation / Changing Sentences", "Grammar — Transformation / changing sentences.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q9", "Question 9", "Use of Modifiers", "Use of Modifiers", "Grammar — Use of modifiers.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q10", "Question 10", "Sentence Connectors", "Sentence Connectors", "Grammar — Sentence connectors.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q11", "Question 11", "Synonyms and Antonyms", "Synonyms and Antonyms", "Grammar — Synonyms and antonyms.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+      createChapter("e2_11_q12", "Question 12", "Punctuation", "Punctuation", "Grammar — Punctuation.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
+
+      createChapter("e2_11_q13", "Question 13", "Formal Letter / E-mail", "Formal Letter / E-mail", "Composition — Formal letter / E-mail.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Composition"),
+      createChapter("e2_11_q14", "Question 14", "Report Writing", "Report Writing", "Composition — Report writing.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Composition"),
+      createChapter("e2_11_q15", "Question 15", "Paragraph Writing", "Paragraph Writing", "Composition — Paragraph writing.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Composition"),
+      createChapter("e2_11_q16", "Question 16", "Composition / Free Writing", "Composition / Free Writing", "Composition — Composition / free writing.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Composition")
     ]
   });
 
@@ -175,9 +200,12 @@ export const class11Subjects = (group: string): Subject[] => {
     banglaName: "তথ্য ও যোগাযোগ প্রযুক্তি",
     color: "from-purple-500 to-violet-600",
     chapters: [
-      createChapter("ict_11_ch1", "Chapter 1", "Information & Communication Technology: World & BD Profile", "তথ্য ও যোগাযোগ প্রযুক্তি: বিশ্ব ও বাংলাদেশ প্রেক্ষিত", "Virtual reality, artificial intelligence, robotics, biometrics, nanotechnology, and cyber security.", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
-      createChapter("ict_11_ch2", "Chapter 2", "Communication Systems & Networking", "কমিউনিকেশন সিস্টেমস ও নেটওয়ার্কিং", "Data transmission modes, fiber optics, wireless, mobile generations (1G to 5G), and network topologies.", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
-      createChapter("ict_11_ch3", "Chapter 3", "Number Systems & Digital Device", "সংখ্যা পদ্ধতি ও ডিজিটাল ডিভাইস", "Binary, octal, hex conversion, 2's complement, logic gates (AND, OR, NOT, NAND, NOR), and flip-flops.", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book")
+      createChapter("ict_11_ch1", "Chapter 1", "Information and Communication Technology: World and Bangladesh Perspective", "তথ্য ও যোগাযোগ প্রযুক্তি: বিশ্ব ও বাংলাদেশ প্রেক্ষিত", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
+      createChapter("ict_11_ch2", "Chapter 2", "Communication Systems and Networking", "কমিউনিকেশন সিস্টেমস ও নেটওয়ার্কিং", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
+      createChapter("ict_11_ch3", "Chapter 3", "Number Systems and Digital Devices", "সংখ্যা পদ্ধতি ও ডিজিটাল ডিভাইস", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
+      createChapter("ict_11_ch4", "Chapter 4", "Introduction to Web Design and HTML", "ওয়েব ডিজাইন পরিচিতি এবং HTML", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
+      createChapter("ict_11_ch5", "Chapter 5", "Programming Language", "প্রোগ্রামিং ভাষা", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
+      createChapter("ict_11_ch6", "Chapter 6", "Database Management System", "ডেটাবেজ ম্যানেজমেন্ট সিস্টেম", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book")
     ]
   });
 
@@ -190,11 +218,16 @@ export const class11Subjects = (group: string): Subject[] => {
       banglaName: "পদার্থবিজ্ঞান ১ম পত্র",
       color: "from-cyan-500 to-blue-600",
       chapters: [
-        createChapter("p1_11_ch1", "Chapter 2", "Vector", "ভেক্টর", "Vector addition, triangle law, resolution of vectors, dot product, cross product, and river-boat velocity vectors.", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
-        createChapter("p1_11_ch2", "Chapter 4", "Newtonian Mechanics", "নিউটনীয় বলবিদ্যা", "Newton's laws, linear momentum, friction, torque, moment of inertia, angular momentum, and road banking.", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
-        createChapter("p1_11_ch3", "Chapter 5", "Work, Energy and Power", "কাজ, শক্তি ও ক্ষমতা", "Work done by constant/variable force, potential & kinetic energy, conservation of mechanical energy, and spring force.", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
-        createChapter("p1_11_ch4", "Chapter 6", "Gravitation and Gravity", "মহাকর্ষ ও অভিকর্ষ", "Kepler's laws, Newton's law of gravitation, variation of 'g' with height/depth, escape velocity, and satellites.", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
-        createChapter("p1_11_ch5", "Chapter 10", "Ideal Gas and Kinetics of Gas", "আদর্শ গ্যাস ও গ্যাসের গতিতত্ব", "Boyle's law, Charles' law, ideal gas equation, root mean square (RMS) velocity, humidity, and dew point.", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)")
+        createChapter("p1_11_ch1", "Chapter 1", "Physical World and Measurement", "ভৌতজগৎ ও পরিমাপ", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch2", "Chapter 2", "Vector", "ভেক্টর", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch3", "Chapter 3", "Kinematics", "গতিবিদ্যা", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch4", "Chapter 4", "Newtonian Mechanics", "নিউটনীয় বলবিদ্যা", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch5", "Chapter 5", "Work, Energy and Power", "কাজ, শক্তি ও ক্ষমতা", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch6", "Chapter 6", "Gravitation and Gravity", "মহাকর্ষ ও অভিকর্ষ", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch7", "Chapter 7", "Structural Properties of Matter", "পদার্থের গাঠনিক ধর্ম", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch8", "Chapter 8", "Periodic Motion", "পর্যাবৃত্ত গতি", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch9", "Chapter 9", "Waves", "তরঙ্গ", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
+        createChapter("p1_11_ch10", "Chapter 10", "Ideal Gas and Kinetic Theory of Gases", "আদর্শ গ্যাস ও গ্যাসের গতিতত্ত্ব", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)")
       ]
     });
 
@@ -205,11 +238,17 @@ export const class11Subjects = (group: string): Subject[] => {
       banglaName: "পদার্থবিজ্ঞান ২য় পত্র",
       color: "from-cyan-500 to-blue-600",
       chapters: [
-        createChapter("p2_11_ch1", "Chapter 1", "Thermodynamics", "তাপগতিবিদ্যা", "Thermal equilibrium, Zeroth, 1st and 2nd laws, Carnot engine, entropy, and heat death.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
-        createChapter("p2_11_ch2", "Chapter 2", "Static Electricity", "স্থির তড়িৎ", "Coulomb's law, electric field, potential, Gauss's law, capacitance, and capacitor combinations.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
-        createChapter("p2_11_ch3", "Chapter 3", "Current Electricity", "চল তড়িৎ", "Ohm's law, shunt, wheatstone bridge, Kirchhoff's laws, potentiometer, and Joule heating.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
-        createChapter("p2_11_ch4", "Chapter 6", "Physical Optics", "ভৌত আলোকবিজ্ঞান", "Wave theory, Huygens' principle, interference, Young's double-slit experiment, polarization.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
-        createChapter("p2_11_ch5", "Chapter 10", "Semiconductor & Electronics", "সেমিকন্ডাক্টর ও ইলেকট্রনিক্স", "p-n junction, diodes, rectifiers, transistors (NPN, PNP), and digital logic gates.", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)")
+        createChapter("p2_11_ch1", "Chapter 1", "Thermodynamics", "তাপগতিবিদ্যা", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch2", "Chapter 2", "Static Electricity", "স্থির তড়িৎ", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch3", "Chapter 3", "Current Electricity", "চল তড়িৎ", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch4", "Chapter 4", "Magnetic Effects of Electric Current and Magnetism", "তড়িৎ প্রবাহের চৌম্বক ক্রিয়া ও চুম্বকত্ব", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch5", "Chapter 5", "Electromagnetic Induction and Alternating Current", "তাড়িতচৌম্বকীয় আবেশ ও পরিবর্তী প্রবাহ", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch6", "Chapter 6", "Geometrical Optics", "জ্যামিতিক আলোকবিজ্ঞান", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch7", "Chapter 7", "Physical Optics", "ভৌত আলোকবিজ্ঞান", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch8", "Chapter 8", "Introduction to Modern Physics", "আধুনিক পদার্থবিজ্ঞানের সূচনা", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch9", "Chapter 9", "Atomic Model and Nuclear Physics", "পরমাণুর মডেল ও নিউক্লিয়ার পদার্থবিজ্ঞান", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch10", "Chapter 10", "Semiconductor and Electronics", "সেমিকন্ডাক্টর ও ইলেকট্রনিক্স", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
+        createChapter("p2_11_ch11", "Chapter 11", "Astronomy", "জ্যোতির্বিজ্ঞান", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)")
       ]
     });
 
@@ -220,10 +259,11 @@ export const class11Subjects = (group: string): Subject[] => {
       banglaName: "রসায়ন ১ম পত্র",
       color: "from-pink-500 to-rose-600",
       chapters: [
-        createChapter("c1_11_ch1", "Chapter 1", "Safe Laboratory Use", "ল্যাবরেটরির নিরাপদ ব্যবহার", "Safety goggles, chemical handling, cleaning glasswares, and disposing of laboratory hazards safely.", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
-        createChapter("c1_11_ch2", "Chapter 2", "Qualitative Chemistry", "গুণগত রসায়ন", "Rutherford/Bohr models, quantum numbers, Aufbau/Hund/Pauli rules, solubility product (Ksp), and chromatography.", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
-        createChapter("c1_11_ch3", "Chapter 3", "Periodic Properties of Elements", "মৌলের পর্যায়বৃত্ত ধর্ম", "s, p, d, f blocks, atomic radius, ionization energy, electronegativity, hybridization, and hydrogen bonds.", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
-        createChapter("c1_11_ch4", "Chapter 4", "Chemical Changes", "রাসায়নিক পরিবর্তন", "Reversible reactions, rate law, Kc and Kp derivations, pH scale, buffer solutions, and Born-Haber cycle.", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)")
+        createChapter("c1_11_ch1", "Chapter 1", "Safe Laboratory Use", "ল্যাবরেটরির নিরাপদ ব্যবহার", "", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
+        createChapter("c1_11_ch2", "Chapter 2", "Qualitative Chemistry", "গুণগত রসায়ন", "", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
+        createChapter("c1_11_ch3", "Chapter 3", "Periodic Properties of Elements and Chemical Bonding", "মৌলের পর্যায়বৃত্ত ধর্ম ও রাসায়নিক বন্ধন", "", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
+        createChapter("c1_11_ch4", "Chapter 4", "Chemical Changes", "রাসায়নিক পরিবর্তন", "", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
+        createChapter("c1_11_ch5", "Chapter 5", "Applied Chemistry", "কর্মমুখী রসায়ন", "", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)")
       ]
     });
 
@@ -234,10 +274,11 @@ export const class11Subjects = (group: string): Subject[] => {
       banglaName: "রসায়ন ২য় পত্র",
       color: "from-pink-500 to-rose-600",
       chapters: [
-        createChapter("c2_11_ch1", "Chapter 1", "Environmental Chemistry", "পরিবেশ রসায়ন", "Gas laws (Boyle, Charles, Dalton), greenhouse effect, acid rain, and BOD/COD standards.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
-        createChapter("c2_11_ch2", "Chapter 2", "Organic Chemistry", "জৈব রসায়ন", "Classification, IUPAC naming, aliphatic vs aromatic hydrocarbons, reaction mechanisms, and polymers.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
-        createChapter("c2_11_ch3", "Chapter 3", "Quantitative Chemistry", "পরিমাণগত রসায়ন", "Acid-base titrations, redox titrations, oxidation numbers, molality, molarity, and ppm conversions.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
-        createChapter("c2_11_ch4", "Chapter 4", "Electrochemistry", "তড়িৎ রসায়ন", "Electrolysis, Faraday's laws, galvanic cell, Nernst equation, and fuel cells.", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)")
+        createChapter("c2_11_ch1", "Chapter 1", "Environmental Chemistry", "পরিবেশ রসায়ন", "", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
+        createChapter("c2_11_ch2", "Chapter 2", "Organic Chemistry", "জৈব রসায়ন", "", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
+        createChapter("c2_11_ch3", "Chapter 3", "Quantitative Chemistry", "পরিমাণগত রসায়ন", "", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
+        createChapter("c2_11_ch4", "Chapter 4", "Electrochemistry", "তড়িৎ রসায়ন", "", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
+        createChapter("c2_11_ch5", "Chapter 5", "Economic Chemistry", "অর্থনৈতিক রসায়ন", "", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)")
       ]
     });
 
@@ -248,12 +289,16 @@ export const class11Subjects = (group: string): Subject[] => {
       banglaName: "উচ্চতর গণিত ১ম পত্র",
       color: "from-amber-500 to-orange-600",
       chapters: [
-        createChapter("hm1_11_ch1", "Chapter 1", "Matrix and Determinants", "ম্যাট্রিক্স ও নির্ণায়ক", "Types of matrices, matrix addition/multiplication, determinants properties, Cramer's rule, and inverse matrix.", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch2", "Chapter 3", "Straight Line", "সরলরেখা", "Cartesian/polar coordinates, distance between points, division of segments, slope, and intercept equations.", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch3", "Chapter 4", "Circle", "বৃত্ত", "Standard equation of circle, finding center/radius, tangents, orthogonal circles, and chord equations.", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch4", "Chapter 7", "Trigonometry Basics", "ত্রিকোণমিতি", "Trigonometric ratios of compound angles, multiple/sub-multiple angles, and proving standard identities.", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch5", "Chapter 9", "Differentiation", "অন্তরীকরণ", "Limits, continuity, differentiation from first principles, chain rule, tangents, and maxima/minima.", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch6", "Chapter 10", "Integration", "যোগজীকরণ", "Indefinite integration, integration by parts, substitution method, definite integrals, and area under curves.", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper")
+        createChapter("hm1_11_ch1", "Chapter 1", "Matrix and Determinants", "ম্যাট্রিক্স ও নির্ণায়ক", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch2", "Chapter 2", "Vector", "ভেক্টর", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch3", "Chapter 3", "Straight Line", "সরলরেখা", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch4", "Chapter 4", "Circle", "বৃত্ত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch5", "Chapter 5", "Permutation and Combination", "বিন্যাস ও সমাবেশ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch6", "Chapter 6", "Trigonometric Ratios", "ত্রিকোণমিতিক অনুপাত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch7", "Chapter 7", "Trigonometric Ratios of Compound Angles", "সংযুক্ত কোণের ত্রিকোণমিতিক অনুপাত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch8", "Chapter 8", "Functions and Graphs of Functions", "ফাংশন ও ফাংশনের লেখচিত্র", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch9", "Chapter 9", "Differentiation", "অন্তরীকরণ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+        createChapter("hm1_11_ch10", "Chapter 10", "Integration", "যোগজীকরণ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper")
       ]
     });
 
@@ -264,11 +309,16 @@ export const class11Subjects = (group: string): Subject[] => {
       banglaName: "উচ্চতর গণিত ২য় পত্র",
       color: "from-amber-500 to-orange-600",
       chapters: [
-        createChapter("hm2_11_ch1", "Chapter 1", "Real Numbers & Inequalities", "বাস্তব সংখ্যা ও অসমতা", "Syllabus properties of real numbers, proving intervals, and solving quadratic inequalities.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch2", "Chapter 3", "Complex Numbers", "জटिल সংখ্যা", "Imaginary unit 'i', modulus, argument, polar representation, and square roots of complex sums.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch3", "Chapter 4", "Polynomials and Polynomial Equations", "বহুপদী ও বহুপদী সমীকরণ", "Roots of quadratic and cubic equations, symmetric functions of roots, and nature of roots.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch4", "Chapter 6", "Conics", "কনিক", "Standard equations, focus, directrix, eccentricity of Parabola, Ellipse, and Hyperbola.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch5", "Chapter 7", "Inverse Trigonometric Functions & Equations", "বিপরীত ত্রিকোণমিতিক ফাংশন ও সমীকরণ", "Formulas of inverse sine/cosine, and solving general trigonometric equations inside bounds.", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper")
+        createChapter("hm2_11_ch1", "Chapter 1", "Real Numbers and Inequalities", "বাস্তব সংখ্যা ও অসমতা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch2", "Chapter 2", "Linear Programming", "যোগাশ্রয়ী প্রোগ্রাম", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch3", "Chapter 3", "Complex Numbers", "জটিল সংখ্যা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch4", "Chapter 4", "Polynomials and Polynomial Equations", "বহুপদী ও বহুপদী সমীকরণ", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch5", "Chapter 5", "Binomial Expansion", "দ্বিপদী বিস্তৃতি", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch6", "Chapter 6", "Conics", "কণিক", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch7", "Chapter 7", "Inverse Trigonometric Functions and Trigonometric Equations", "বিপরীত ত্রিকোণমিতিক ফাংশন ও ত্রিকোণমিতিক সমীকরণ", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch8", "Chapter 8", "Statics", "স্থিতিবিদ্যা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch9", "Chapter 9", "Motion of Particles in a Plane", "সমতলে বস্তুকণার গতি", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+        createChapter("hm2_11_ch10", "Chapter 10", "Measures of Dispersion and Probability", "বিস্তার পরিমাপ ও সম্ভাবনা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper")
       ]
     });
 
@@ -279,9 +329,18 @@ export const class11Subjects = (group: string): Subject[] => {
       banglaName: "জীববিজ্ঞান ১ম পত্র",
       color: "from-green-500 to-emerald-600",
       chapters: [
-        createChapter("bio1_11_ch1", "Chapter 1", "Cell and its Structure", "কোষ ও এর গঠন", "Ultrastructure of plant cell, fluid mosaic model, DNA double helix, transcription, and translation.", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
-        createChapter("bio1_11_ch2", "Chapter 2", "Cell Division", "কোষ বিভাজন", "Amitosis, Mitosis phases, crossing over, Meiosis-I and II significance.", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
-        createChapter("bio1_11_ch3", "Chapter 4", "Microorganisms", "অণুজীব", "Virus replication, bacteriophage, bacteria structures, Malaria parasite life cycle.", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper")
+        createChapter("bio1_11_ch1", "Chapter 1", "Cell and its Structure", "কোষ ও এর গঠন", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch2", "Chapter 2", "Cell Division", "কোষ বিভাজন", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch3", "Chapter 3", "Cell Chemistry", "কোষ রসায়ন", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch4", "Chapter 4", "Microorganisms", "অণুজীব", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch5", "Chapter 5", "Algae and Fungi", "শৈবাল ও ছত্রাক", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch6", "Chapter 6", "Bryophyta and Pteridophyta", "ব্রায়োফাইটা ও টেরিডোফাইটা", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch7", "Chapter 7", "Gymnosperms and Angiosperms", "নগ্নবীজী ও আবৃতবীজী উদ্ভিদ", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch8", "Chapter 8", "Tissue and Tissue Systems", "টিস্যু ও টিস্যুতন্ত্র", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch9", "Chapter 9", "Plant Physiology", "উদ্ভিদ শারীরতত্ত্ব", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch10", "Chapter 10", "Plant Reproduction", "উদ্ভিদ প্রজনন", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch11", "Chapter 11", "Biotechnology", "জীবপ্রযুক্তি", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
+        createChapter("bio1_11_ch12", "Chapter 12", "Environment, Distribution and Conservation of Organisms", "জীবের পরিবেশ, বিস্তার ও সংরক্ষণ", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper")
       ]
     });
 
@@ -292,9 +351,18 @@ export const class11Subjects = (group: string): Subject[] => {
       banglaName: "জীববিজ্ঞান ২য় পত্র",
       color: "from-green-500 to-emerald-600",
       chapters: [
-        createChapter("bio2_11_ch1", "Chapter 1", "Animal Diversity & Classification", "প্রাণীর বিভিন্নতা ও শ্রেণীবিন্যাস", "Non-chordates (Phylum Porifera to Echinodermata) and Chordata classification.", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
-        createChapter("bio2_11_ch2", "Chapter 2", "Animal Physiology: Digestion", "প্রাণীর শরীরবৃত্ত: পরিপাক", "Digestive system of human, enzyme actions, and absorption of carbohydrates/proteins/fats.", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
-        createChapter("bio2_11_ch3", "Chapter 4", "Human Circulation", "রক্ত সঞ্চালন", "Cardiac cycle, ECG, pacemaker, double circulation, and standard coronary block treatments.", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper")
+        createChapter("bio2_11_ch1", "Chapter 1", "Animal Diversity and Classification", "প্রাণীর বিভিন্নতা ও শ্রেণীবিন্যাস", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch2", "Chapter 2", "Introduction to Animals", "প্রাণীর পরিচিতি", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch3", "Chapter 3", "Human Physiology: Digestion and Absorption", "মানব শারীরতত্ত্ব: পরিপাক ও শোষণ", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch4", "Chapter 4", "Human Physiology: Blood and Circulation", "মানব শারীরতত্ত্ব: রক্ত ও সংবহন", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch5", "Chapter 5", "Human Physiology: Respiration", "মানব শারীরতত্ত্ব: শ্বসন ও শ্বাসক্রিয়া", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch6", "Chapter 6", "Human Physiology: Excretion", "মানব শারীরতত্ত্ব: বর্জ্য ও নিষ্কাশন", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch7", "Chapter 7", "Human Physiology: Locomotion", "মানব শারীরতত্ত্ব: চলন ও অঙ্গচালনা", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch8", "Chapter 8", "Human Physiology: Coordination and Control", "মানব শারীরতত্ত্ব: সমন্বয় ও নিয়ন্ত্রণ", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch9", "Chapter 9", "Continuity of Human Life", "মানব জীবনের ধারাবাহিকতা", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch10", "Chapter 10", "Defense of the Human Body", "মানবদেহের প্রতিরক্ষা", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch11", "Chapter 11", "Genetics and Evolution", "জিনতত্ত্ব ও বিবর্তন", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
+        createChapter("bio2_11_ch12", "Chapter 12", "Animal Behaviour", "প্রাণীর আচরণ", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper")
       ]
     });
 

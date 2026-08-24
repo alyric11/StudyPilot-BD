@@ -15,14 +15,15 @@ import { class12Subjects } from "./class12";
 
 export interface Chapter {
   id: string;
-  chapterNumber: string;       // e.g. "Chapter 1", "১ম অধ্যায়"
-  name: string;                // English Title
-  banglaName: string;          // Bangla Title
-  shortDescription: string;    // Brief summary of chapters
-  class: string;               // Class level
-  group: string;               // Stream group
-  subject: string;             // Subject name
-  nctbBookName: string;        // Official Board Book Name
+  chapterNumber: string;
+  name: string;
+  banglaName: string;
+  shortDescription: string;
+  class: string;
+  group: string;
+  subject: string;
+  nctbBookName: string;
+  section?: string;
 }
 
 export interface Subject {

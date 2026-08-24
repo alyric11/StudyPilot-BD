@@ -8,8 +8,9 @@
  * 3. Persistence: Automatically reads and writes state data to the browser's 'localStorage' for seamless offline use.
  */
 
-import React, { useState, useEffect } from "react";
-import { UserProfile, StudentProgress, Homework, DiaryEntry, ChapterProgress } from "./types";
+import { useState, useEffect } from "react";
+import { ChapterProgress } from "./types";
+import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
 import { AnimatePresence, motion } from "motion/react";
 
@@ -41,7 +42,6 @@ import {
 
 export default function App() {
   // Authentication & Profile state
-  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   // Navigation Section (MVP includes only these 4 views)
   const [activeSection, setActiveSection] = useState<'dashboard' | 'planner' | 'homework' | 'diary'>('dashboard');
@@ -58,9 +58,6 @@ export default function App() {
   } | null>(null);
 
   // Core Persistent State Arrays
-  const [studentProgress, setStudentProgress] = useState<StudentProgress>({});
-  const [homeworks, setHomeworks] = useState<Homework[]>([]);
-  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [streakCount, setStreakCount] = useState(5); // Default study streak
 
@@ -75,6 +72,22 @@ export default function App() {
     setToast({ message, type });
   };
 
+  const {
+    profile,
+    studentProgress,
+    homeworks,
+    diaryEntries,
+    loaded,
+    handleSaveProfile,
+    handleUpdateChapterProgress,
+    handleAddHomework,
+    handleToggleHomework,
+    handleDeleteHomework,
+    handleAddDiaryEntry,
+    handleDeleteDiaryEntry,
+    resetStudentData
+  } = useStudentData(showToast);
+
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => {
@@ -84,229 +97,6 @@ export default function App() {
     }
   }, [toast]);
 
-  // App loading lifecycle state
-  const [loaded, setLoaded] = useState(false);
-
-  // Load initial data from browser's LocalStorage on mount - isolated safely
-  useEffect(() => {
-    // 1. Load Profile Safely
-    try {
-      const savedProfile = localStorage.getItem("sp_profile");
-      if (savedProfile) {
-        const parsed = JSON.parse(savedProfile);
-        if (parsed && typeof parsed === "object" && parsed.name && parsed.email && parsed.classLevel) {
-          setProfile(parsed);
-        } else {
-          console.warn("Invalid profile format in storage, resetting.");
-          localStorage.removeItem("sp_profile");
-        }
-      }
-    } catch (err) {
-      console.error("Failed to parse student profile from local storage:", err);
-      localStorage.removeItem("sp_profile");
-    }
-
-    // 2. Load Progress Safely
-    try {
-      const savedProgress = localStorage.getItem("sp_progress");
-      if (savedProgress) {
-        const parsed = JSON.parse(savedProgress);
-        if (parsed && typeof parsed === "object") {
-          setStudentProgress(parsed);
-        } else {
-          console.warn("Corrupted progress data, resetting progress map.");
-          localStorage.removeItem("sp_progress");
-        }
-      }
-    } catch (err) {
-      console.error("Failed to parse student progress from local storage:", err);
-      localStorage.removeItem("sp_progress");
-    }
-
-    // 3. Load Homework Safely
-    try {
-      const savedHomework = localStorage.getItem("sp_homework");
-      if (savedHomework) {
-        const parsed = JSON.parse(savedHomework);
-        if (Array.isArray(parsed)) {
-          setHomeworks(parsed);
-        } else {
-          throw new Error("Homework records are not an array.");
-        }
-      } else {
-        const demoHw: Homework[] = [
-          {
-            id: "hw1",
-            subject: "Physics 1st Paper",
-            chapter: "Vector",
-            task: "Solve previous 5 years' board exam Creative Questions (CQs) of Dhaka and Rajshahi Board.",
-            deadline: new Date(Date.now() + 86400000 * 2).toISOString().split("T")[0], // 2 days from now
-            priority: "high",
-            completed: false,
-            notes: "Focus heavily on the river-boat navigation and vector multiplication sums."
-          },
-          {
-            id: "hw2",
-            subject: "Chemistry 1st Paper",
-            chapter: "Qualitative Chemistry",
-            task: "Revise electronic configuration principles and exceptions (Cr, Cu).",
-            deadline: new Date(Date.now() + 86400000 * 4).toISOString().split("T")[0],
-            priority: "medium",
-            completed: true
-          }
-        ];
-        setHomeworks(demoHw);
-        localStorage.setItem("sp_homework", JSON.stringify(demoHw));
-      }
-    } catch (err) {
-      console.error("Failed to parse homework data from local storage:", err);
-      localStorage.removeItem("sp_homework");
-    }
-
-    // 4. Load Diary Safely
-    try {
-      const savedDiary = localStorage.getItem("sp_diary");
-      if (savedDiary) {
-        const parsed = JSON.parse(savedDiary);
-        if (Array.isArray(parsed)) {
-          setDiaryEntries(parsed);
-        } else {
-          throw new Error("Diary entries are not an array.");
-        }
-      } else {
-        const demoDiary: DiaryEntry[] = [
-          {
-            id: "diary1",
-            title: "Vector Dot & Cross Product Rules",
-            content: "Dot Product (A.B) = AB cos(θ). Cross Product (A x B) = AB sin(θ) η.\nRemember: If two vectors are perpendicular, their dot product is zero! Extremely common trick in board questions.",
-            category: "formula",
-            subject: "Physics 1st Paper",
-            chapter: "Vector",
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: "diary2",
-            title: "Cr & Cu Electronic Configuration",
-            content: "Chromium (Z=24): [Ar] 3d5 4s1 instead of 3d4 4s2.\nCopper (Z=29): [Ar] 3d10 4s1 instead of 3d9 4s2.\nReason: Half-filled (d5) and fully-filled (d10) orbitals possess extra stability due to symmetry and exchange energy.",
-            category: "notes",
-            subject: "Chemistry 1st Paper",
-            chapter: "Qualitative Chemistry",
-            createdAt: new Date(Date.now() - 86400000).toISOString()
-          }
-        ];
-        setDiaryEntries(demoDiary);
-        localStorage.setItem("sp_diary", JSON.stringify(demoDiary));
-      }
-    } catch (err) {
-      console.error("Failed to parse diary entries from local storage:", err);
-      localStorage.removeItem("sp_diary");
-    }
-
-    setLoaded(true);
-  }, []);
-
-  // Save student profile and bootstrap initial curriculum checklist
-  const handleSaveProfile = (newProfile: UserProfile) => {
-    setProfile(newProfile);
-    localStorage.setItem("sp_profile", JSON.stringify(newProfile));
-
-    // Seeds default progress checklists for newly unlocked subjects
-    const classConfig = NCTB_CURRICULUM[newProfile.classLevel];
-    if (classConfig) {
-      const activeGroup = newProfile.group && classConfig.subjects[newProfile.group] ? newProfile.group : "None";
-      const subjectList = classConfig.subjects[activeGroup] || [];
-
-      const initialProg: StudentProgress = {};
-      subjectList.forEach((sub) => {
-        initialProg[sub.id] = {};
-        sub.chapters.forEach((ch) => {
-          initialProg[sub.id][ch.id] = {
-            readTextbook: false,
-            watchedLectures: false,
-            solvedExercises: false,
-            solvedBoardQuestions: false,
-            madeNotes: false,
-            revisionCompleted: false
-          };
-        });
-      });
-
-      setStudentProgress(initialProg);
-      localStorage.setItem("sp_progress", JSON.stringify(initialProg));
-    }
-    showToast(`Profile configured! Welcome to StudyPilot BD, ${newProfile.name}!`, "success");
-  };
-
-  // Update textbook chapter progress checklist
-  const handleUpdateChapterProgress = (subjectId: string, chapterId: string, progress: ChapterProgress) => {
-    const updated = {
-      ...studentProgress,
-      [subjectId]: {
-        ...(studentProgress[subjectId] || {}),
-        [chapterId]: progress
-      }
-    };
-    setStudentProgress(updated);
-    localStorage.setItem("sp_progress", JSON.stringify(updated));
-  };
-
-  // Add a new Homework task
-  const handleAddHomework = (newHw: Omit<Homework, "id" | "completed">) => {
-    const hw: Homework = {
-      ...newHw,
-      id: `hw_${Date.now()}`,
-      completed: false
-    };
-    const updated = [hw, ...homeworks];
-    setHomeworks(updated);
-    localStorage.setItem("sp_homework", JSON.stringify(updated));
-    showToast("New assignment successfully added!", "success");
-  };
-
-  // Toggle Homework completion
-  const handleToggleHomework = (id: string) => {
-    const homework = homeworks.find(h => h.id === id);
-    const updated = homeworks.map((h) => (h.id === id ? { ...h, completed: !h.completed } : h));
-    setHomeworks(updated);
-    localStorage.setItem("sp_homework", JSON.stringify(updated));
-
-    if (homework) {
-      if (!homework.completed) {
-        showToast("Assignment marked as completed! Keep it up!", "success");
-      } else {
-        showToast("Assignment marked as active.", "info");
-      }
-    }
-  };
-
-  // Delete Homework task
-  const handleDeleteHomework = (id: string) => {
-    const updated = homeworks.filter((h) => h.id !== id);
-    setHomeworks(updated);
-    localStorage.setItem("sp_homework", JSON.stringify(updated));
-    showToast("Assignment deleted from your board.", "info");
-  };
-
-  // Add dynamic formula/diary entry
-  const handleAddDiaryEntry = (newEntry: Omit<DiaryEntry, "id" | "createdAt">) => {
-    const entry: DiaryEntry = {
-      ...newEntry,
-      id: `diary_${Date.now()}`,
-      createdAt: new Date().toISOString()
-    };
-    const updated = [entry, ...diaryEntries];
-    setDiaryEntries(updated);
-    localStorage.setItem("sp_diary", JSON.stringify(updated));
-    showToast("New entry logged in your Study Diary!", "success");
-  };
-
-  // Delete diary/formula log
-  const handleDeleteDiaryEntry = (id: string) => {
-    const updated = diaryEntries.filter((d) => d.id !== id);
-    setDiaryEntries(updated);
-    localStorage.setItem("sp_diary", JSON.stringify(updated));
-    showToast("Diary entry deleted successfully.", "info");
-  };
 
   // Reset local app data and log out - using state overlay modal instead of alert
   const handleLogOut = () => {
@@ -314,13 +104,10 @@ export default function App() {
   };
 
   const handleConfirmLogOut = () => {
-    localStorage.clear();
-    setProfile(null);
-    setStudentProgress({});
-    setHomeworks([]);
-    setDiaryEntries([]);
-    setActiveSection('dashboard');
+    resetStudentData();
+    setActiveSection("dashboard");
     setSelectedChapter(null);
+    setSelectedSubjectPaper(null);
     setShowLogoutConfirm(false);
     showToast("Account reset. Successfully logged out!", "info");
   };
