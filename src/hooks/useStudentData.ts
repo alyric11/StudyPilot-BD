@@ -16,6 +16,7 @@ export default function useStudentData(showToast: (
     const [studentProgress, setStudentProgress] = useState<StudentProgress>({});
     const [homeworks, setHomeworks] = useState<Homework[]>([]);
     const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
+    const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
@@ -163,6 +164,30 @@ export default function useStudentData(showToast: (
             localStorage.removeItem("sp_diary");
         }
 
+        // Load student's selected optional subjects
+        try {
+            const savedSubjects = localStorage.getItem("sp_selected_subjects");
+
+            if (savedSubjects) {
+                const parsed = JSON.parse(savedSubjects);
+
+                if (Array.isArray(parsed)) {
+                    setSelectedSubjectIds(parsed);
+                } else {
+                    console.warn(
+                        "Invalid selected subjects data, resetting."
+                    );
+                    localStorage.removeItem("sp_selected_subjects");
+                }
+            }
+        } catch (err) {
+            console.error(
+                "Failed to parse selected subjects from local storage:",
+                err
+            );
+            localStorage.removeItem("sp_selected_subjects");
+        }
+
         setLoaded(true);
     }, []);
 
@@ -297,12 +322,27 @@ export default function useStudentData(showToast: (
         showToast("Diary entry deleted successfully.", "info");
     };
 
+    // Toggle a selectable subject on/off
+    const toggleSubjectSelection = (subjectId: string) => {
+        const updated = selectedSubjectIds.includes(subjectId)
+            ? selectedSubjectIds.filter((id) => id !== subjectId)
+            : [...selectedSubjectIds, subjectId];
+
+        setSelectedSubjectIds(updated);
+
+        localStorage.setItem(
+            "sp_selected_subjects",
+            JSON.stringify(updated)
+        );
+    };
+
     const resetStudentData = () => {
         localStorage.clear();
         setProfile(null);
         setStudentProgress({});
         setHomeworks([]);
         setDiaryEntries([]);
+        setSelectedSubjectIds([]);
     };
 
     return {
@@ -310,6 +350,7 @@ export default function useStudentData(showToast: (
         studentProgress,
         homeworks,
         diaryEntries,
+        selectedSubjectIds,
         loaded,
         handleSaveProfile,
         handleUpdateChapterProgress,
@@ -318,6 +359,7 @@ export default function useStudentData(showToast: (
         handleDeleteHomework,
         handleAddDiaryEntry,
         handleDeleteDiaryEntry,
+        toggleSubjectSelection,
         resetStudentData
     };
 }

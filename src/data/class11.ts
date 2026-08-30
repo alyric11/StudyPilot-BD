@@ -1,7 +1,6 @@
 import { Subject, Chapter } from "./curriculum";
 
 // Helper to construct Chapter objects consistently
-
 function createChapter(
   id: string,
   chapterNumber: string,
@@ -30,12 +29,46 @@ function createChapter(
 
 const CLASS_NAME = "Class 11";
 
+const GROUPS = {
+  SCIENCE: "Science",
+  BUSINESS: "Business Studies",
+  HUMANITIES: "Humanities"
+} as const;
+
+type AcademicGroup = (typeof GROUPS)[keyof typeof GROUPS];
+
 export const class11Subjects = (group: string): Subject[] => {
-  const isScience = group === "Science";
-  const isBusiness = group === "Business Studies";
-  const isHumanities = group === "Humanities";
+  const isScience = group === GROUPS.SCIENCE;
+  const isBusiness = group === GROUPS.BUSINESS;
+  const isHumanities = group === GROUPS.HUMANITIES;
 
   const subjectsList: Subject[] = [];
+
+  // Common Subjects
+  // Bangla, English and ICT are added for every group.
+
+  // Mandatory Subjects
+  // Mandatory subjects are added only to their respective group.
+
+  // Selectable Subjects
+  // Selectable subjects are filtered later using their eligibleGroups.
+  // A subject may therefore be available to:
+  // - one group
+  // - two groups
+  // - all three groups
+
+  const addSelectableSubject = (
+    subject: Subject,
+    eligibleGroups: AcademicGroup[]
+  ) => {
+    if (eligibleGroups.includes(group as AcademicGroup)) {
+      subjectsList.push({
+        ...subject,
+        category: "selectable",
+        eligibleGroups
+      });
+    }
+  };
 
   // Compulsory Subjects
   // Bangla 1st Paper
@@ -44,6 +77,7 @@ export const class11Subjects = (group: string): Subject[] => {
     name: "Bangla 1st Paper",
     banglaName: "বাংলা ১ম পত্র",
     color: "from-emerald-500 to-emerald-600",
+    category: "common",
     chapters: [
       createChapter("b1_11_ch1", "Chapter 1", "Chapter 1", "বাঙ্গালার নব্য লেখকদিগের প্রতি নিবেদন", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
       createChapter("b1_11_ch2", "Chapter 2", "Chapter 2", "অপরিচিতা", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
@@ -80,6 +114,7 @@ export const class11Subjects = (group: string): Subject[] => {
     name: "Bangla 2nd Paper",
     banglaName: "বাংলা ২য় পত্র",
     color: "from-emerald-500 to-emerald-600",
+    category: "common",
     chapters: [
       createChapter("b2_11_q1", "Question 1", "Rules of Bangla Pronunciation", "বাংলা উচ্চারণের নিয়ম", "বাংলা উচ্চারণের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
       createChapter("b2_11_q2", "Question 2", "Rules of Bangla Spelling", "বাংলা বানানের নিয়ম", "বাংলা বানানের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
@@ -103,6 +138,7 @@ export const class11Subjects = (group: string): Subject[] => {
     name: "English 1st Paper",
     banglaName: "English 1st Paper",
     color: "from-blue-500 to-indigo-600",
+    category: "common",
     chapters: [
       createChapter("e1_11_u1_l1", "Lesson 1", "The Parrot's Tale", "The Parrot's Tale", "Unit One: Education and Life", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit One: Education and Life"),
       createChapter("e1_11_u1_l2", "Lesson 2", "Education and Technology", "Education and Technology", "", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit One: Education and Life"),
@@ -172,6 +208,7 @@ export const class11Subjects = (group: string): Subject[] => {
     name: "English 2nd Paper",
     banglaName: "English 2nd Paper",
     color: "from-blue-500 to-indigo-600",
+    category: "common",
     chapters: [
       createChapter("e2_11_q1", "Question 1", "Article", "Article", "Grammar — Article.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
       createChapter("e2_11_q2", "Question 2", "Prepositions", "Prepositions", "Grammar — Prepositions.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
@@ -199,6 +236,7 @@ export const class11Subjects = (group: string): Subject[] => {
     name: "ICT",
     banglaName: "তথ্য ও যোগাযোগ প্রযুক্তি",
     color: "from-purple-500 to-violet-600",
+    category: "common",
     chapters: [
       createChapter("ict_11_ch1", "Chapter 1", "Information and Communication Technology: World and Bangladesh Perspective", "তথ্য ও যোগাযোগ প্রযুক্তি: বিশ্ব ও বাংলাদেশ প্রেক্ষিত", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
       createChapter("ict_11_ch2", "Chapter 2", "Communication Systems and Networking", "কমিউনিকেশন সিস্টেমস ও নেটওয়ার্কিং", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
@@ -209,7 +247,7 @@ export const class11Subjects = (group: string): Subject[] => {
     ]
   });
 
-  // Group-Specific Subjects
+  // Group-Specific Mandatory Subjects
   if (isScience) {
     // Physics 1st Paper
     subjectsList.push({
@@ -217,6 +255,8 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Physics 1st Paper",
       banglaName: "পদার্থবিজ্ঞান ১ম পত্র",
       color: "from-cyan-500 to-blue-600",
+      category: "mandatory",
+      eligibleGroups: ["Science"],
       chapters: [
         createChapter("p1_11_ch1", "Chapter 1", "Physical World and Measurement", "ভৌতজগৎ ও পরিমাপ", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
         createChapter("p1_11_ch2", "Chapter 2", "Vector", "ভেক্টর", "", CLASS_NAME, "Science", "Physics 1st Paper", "NCTB Physics First Paper (HSC)"),
@@ -237,6 +277,8 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Physics 2nd Paper",
       banglaName: "পদার্থবিজ্ঞান ২য় পত্র",
       color: "from-cyan-500 to-blue-600",
+      category: "mandatory",
+      eligibleGroups: ["Science"],
       chapters: [
         createChapter("p2_11_ch1", "Chapter 1", "Thermodynamics", "তাপগতিবিদ্যা", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
         createChapter("p2_11_ch2", "Chapter 2", "Static Electricity", "স্থির তড়িৎ", "", CLASS_NAME, "Science", "Physics 2nd Paper", "NCTB Physics Second Paper (HSC)"),
@@ -258,6 +300,8 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Chemistry 1st Paper",
       banglaName: "রসায়ন ১ম পত্র",
       color: "from-pink-500 to-rose-600",
+      category: "mandatory",
+      eligibleGroups: ["Science"],
       chapters: [
         createChapter("c1_11_ch1", "Chapter 1", "Safe Laboratory Use", "ল্যাবরেটরির নিরাপদ ব্যবহার", "", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
         createChapter("c1_11_ch2", "Chapter 2", "Qualitative Chemistry", "গুণগত রসায়ন", "", CLASS_NAME, "Science", "Chemistry 1st Paper", "NCTB Chemistry First Paper (HSC)"),
@@ -273,6 +317,8 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Chemistry 2nd Paper",
       banglaName: "রসায়ন ২য় পত্র",
       color: "from-pink-500 to-rose-600",
+      category: "mandatory",
+      eligibleGroups: ["Science"],
       chapters: [
         createChapter("c2_11_ch1", "Chapter 1", "Environmental Chemistry", "পরিবেশ রসায়ন", "", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
         createChapter("c2_11_ch2", "Chapter 2", "Organic Chemistry", "জৈব রসায়ন", "", CLASS_NAME, "Science", "Chemistry 2nd Paper", "NCTB Chemistry Second Paper (HSC)"),
@@ -282,52 +328,14 @@ export const class11Subjects = (group: string): Subject[] => {
       ]
     });
 
-    // Higher Math 1st Paper
-    subjectsList.push({
-      id: "math1",
-      name: "Higher Math 1st Paper",
-      banglaName: "উচ্চতর গণিত ১ম পত্র",
-      color: "from-amber-500 to-orange-600",
-      chapters: [
-        createChapter("hm1_11_ch1", "Chapter 1", "Matrix and Determinants", "ম্যাট্রিক্স ও নির্ণায়ক", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch2", "Chapter 2", "Vector", "ভেক্টর", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch3", "Chapter 3", "Straight Line", "সরলরেখা", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch4", "Chapter 4", "Circle", "বৃত্ত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch5", "Chapter 5", "Permutation and Combination", "বিন্যাস ও সমাবেশ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch6", "Chapter 6", "Trigonometric Ratios", "ত্রিকোণমিতিক অনুপাত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch7", "Chapter 7", "Trigonometric Ratios of Compound Angles", "সংযুক্ত কোণের ত্রিকোণমিতিক অনুপাত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch8", "Chapter 8", "Functions and Graphs of Functions", "ফাংশন ও ফাংশনের লেখচিত্র", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch9", "Chapter 9", "Differentiation", "অন্তরীকরণ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
-        createChapter("hm1_11_ch10", "Chapter 10", "Integration", "যোগজীকরণ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper")
-      ]
-    });
-
-    // Higher Math 2nd Paper
-    subjectsList.push({
-      id: "math2",
-      name: "Higher Math 2nd Paper",
-      banglaName: "উচ্চতর গণিত ২য় পত্র",
-      color: "from-amber-500 to-orange-600",
-      chapters: [
-        createChapter("hm2_11_ch1", "Chapter 1", "Real Numbers and Inequalities", "বাস্তব সংখ্যা ও অসমতা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch2", "Chapter 2", "Linear Programming", "যোগাশ্রয়ী প্রোগ্রাম", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch3", "Chapter 3", "Complex Numbers", "জটিল সংখ্যা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch4", "Chapter 4", "Polynomials and Polynomial Equations", "বহুপদী ও বহুপদী সমীকরণ", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch5", "Chapter 5", "Binomial Expansion", "দ্বিপদী বিস্তৃতি", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch6", "Chapter 6", "Conics", "কণিক", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch7", "Chapter 7", "Inverse Trigonometric Functions and Trigonometric Equations", "বিপরীত ত্রিকোণমিতিক ফাংশন ও ত্রিকোণমিতিক সমীকরণ", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch8", "Chapter 8", "Statics", "স্থিতিবিদ্যা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch9", "Chapter 9", "Motion of Particles in a Plane", "সমতলে বস্তুকণার গতি", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
-        createChapter("hm2_11_ch10", "Chapter 10", "Measures of Dispersion and Probability", "বিস্তার পরিমাপ ও সম্ভাবনা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper")
-      ]
-    });
-
     // Biology 1st Paper (Botany)
     subjectsList.push({
       id: "biology1",
       name: "Biology 1st Paper",
       banglaName: "জীববিজ্ঞান ১ম পত্র",
       color: "from-green-500 to-emerald-600",
+      category: "selectable",
+      eligibleGroups: ["Science"],
       chapters: [
         createChapter("bio1_11_ch1", "Chapter 1", "Cell and its Structure", "কোষ ও এর গঠন", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
         createChapter("bio1_11_ch2", "Chapter 2", "Cell Division", "কোষ বিভাজন", "", CLASS_NAME, "Science", "Biology 1st Paper", "NCTB Biology First Paper"),
@@ -350,6 +358,8 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Biology 2nd Paper",
       banglaName: "জীববিজ্ঞান ২য় পত্র",
       color: "from-green-500 to-emerald-600",
+      category: "selectable",
+      eligibleGroups: ["Science"],
       chapters: [
         createChapter("bio2_11_ch1", "Chapter 1", "Animal Diversity and Classification", "প্রাণীর বিভিন্নতা ও শ্রেণীবিন্যাস", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
         createChapter("bio2_11_ch2", "Chapter 2", "Introduction to Animals", "প্রাণীর পরিচিতি", "", CLASS_NAME, "Science", "Biology 2nd Paper", "NCTB Biology Second Paper"),
@@ -366,6 +376,28 @@ export const class11Subjects = (group: string): Subject[] => {
       ]
     });
 
+    // Soil Science 1st Paper
+    subjectsList.push({
+      id: "soil_science1",
+      name: "Soil Science 1st Paper",
+      banglaName: "মৃত্তিকাবিজ্ঞান ১ম পত্র",
+      color: "from-amber-500 to-orange-600",
+      category: "selectable",
+      eligibleGroups: ["Science"],
+      chapters: []
+    });
+
+    // Soil Science 2nd Paper
+    subjectsList.push({
+      id: "soil_science2",
+      name: "Soil Science 2nd Paper",
+      banglaName: "মৃত্তিকাবিজ্ঞান ২য় পত্র",
+      color: "from-amber-500 to-orange-600",
+      category: "selectable",
+      eligibleGroups: ["Science"],
+      chapters: []
+    });
+
   }
 
   if (isBusiness) {
@@ -375,10 +407,19 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Accounting 1st Paper",
       banglaName: "হিসাববিজ্ঞান ১ম পত্র",
       color: "from-indigo-500 to-violet-600",
+      category: "mandatory",
+      eligibleGroups: ["Business Studies"],
       chapters: [
-        createChapter("acc1_11_ch1", "Chapter 1", "Accounting Process", "হিসাববিজ্ঞান পরিচিতি", "Basic definitions, transactions, dual aspects, accounting equation, and history.", CLASS_NAME, "Business Studies", "Accounting 1st Paper", "NCTB HSC Accounting First Paper"),
-        createChapter("acc1_11_ch2", "Chapter 2", "Ledgers & Books of Accounts", "হিসাবের বইসমূহ", "Cash books, single/double/triple-column cash books, petty cash, and bank reconciliation statements.", CLASS_NAME, "Business Studies", "Accounting 1st Paper", "NCTB HSC Accounting First Paper"),
-        createChapter("acc1_11_ch3", "Chapter 4", "Work Sheet", "কার্যপত্র", "Adjusting entries, prepaying assets, accrued liabilities, and preparing a standard worksheet.", CLASS_NAME, "Business Studies", "Accounting 1st Paper", "NCTB HSC Accounting First Paper")
+        createChapter("acc1_11_ch1", "Chapter 1", "Introduction to Accounting", "হিসাববিজ্ঞান পরিচিতি", "Introduction to accounting concepts, objectives, users of accounting information, transactions, accounting equation, and double-entry principles.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch2", "Chapter 2", "Books of Accounts", "হিসাবের বইসমূহ", "Primary books of accounts, journal, ledger, cash book, and the recording process of business transactions.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch3", "Chapter 3", "Bank Reconciliation Statement", "ব্যাংক সমন্বয় বিবরণী", "Preparation and understanding of bank reconciliation statements and the causes of differences between cash book and bank statement.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch4", "Chapter 4", "Trial Balance", "রেওয়ামিল", "Preparation of trial balance, classification of accounts, and checking the arithmetical accuracy of accounting records.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch5", "Chapter 5", "Principles of Accounting", "হিসাববিজ্ঞানের নীতিমালা", "Fundamental accounting principles, concepts, conventions, and their application in preparing reliable accounting information.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch6", "Chapter 6", "Accounting for Receivables", "প্রাপ্য হিসাবসমূহের হিসাবরক্ষণ", "Accounting treatment of receivables, bad debts, doubtful debts, and related adjustments.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch7", "Chapter 7", "Worksheet", "কার্যপত্র", "Preparation and use of accounting worksheets for organizing adjustments and preparing financial statements.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch8", "Chapter 8", "Accounting for Tangible and Intangible Assets", "দৃশ্যমান ও অদৃশ্যমান সম্পদের হিসাবরক্ষণ", "Accounting treatment of tangible and intangible assets, depreciation, amortization, and related adjustments.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch9", "Chapter 9", "Financial Statements", "আর্থিক বিবরণী", "Preparation and presentation of financial statements and understanding the financial position and performance of a business.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper"),
+        createChapter("acc1_11_ch10", "Chapter 10", "Single Entry System", "একতরফা দাখিলা পদ্ধতি", "Understanding the single entry system and determining profit or loss and financial position from incomplete accounting records.", CLASS_NAME, group, "Accounting 1st Paper", "NCTB Class 11 Accounting 1st Paper")
       ]
     });
 
@@ -388,34 +429,19 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Accounting 2nd Paper",
       banglaName: "হিসাববিজ্ঞান ২য় পত্র",
       color: "from-indigo-500 to-violet-600",
+      category: "mandatory",
+      eligibleGroups: ["Business Studies"],
       chapters: [
-        createChapter("acc2_11_ch1", "Chapter 2", "Partnership Accounting", "অংশীদারি কারবারের হিসাব", "Profit-loss appropriation accounts, capital accounts of partners, and goodwill valuation.", CLASS_NAME, "Business Studies", "Accounting 2nd Paper", "NCTB HSC Accounting Second Paper"),
-        createChapter("acc2_11_ch2", "Chapter 4", "Joint Stock Company Capital", "যৌথ মূলধনী কোম্পানির মূলধন", "Issuing shares, premium, discount, journal entries, and statement of financial position.", CLASS_NAME, "Business Studies", "Accounting 2nd Paper", "NCTB HSC Accounting Second Paper"),
-        createChapter("acc2_11_ch3", "Chapter 5", "Financial Statement Analysis", "আর্থিক বিবরণী বিশ্লেষণ", "Ratio analysis, liquid ratios, profitability ratios, and working capital ratios.", CLASS_NAME, "Business Studies", "Accounting 2nd Paper", "NCTB HSC Accounting Second Paper")
-      ]
-    });
-
-    // Finance, Banking & Insurance 1st Paper
-    subjectsList.push({
-      id: "finance1",
-      name: "Finance 1st Paper",
-      banglaName: "ফিন্যান্স ও ব্যাংকিং ১ম পত্র",
-      color: "from-amber-500 to-yellow-600",
-      chapters: [
-        createChapter("fin1_11_ch1", "Chapter 1", "Introduction to Finance", "অর্থায়নের সূচনা", "Goals of finance, profit maximization vs wealth maximization, and financial principles.", CLASS_NAME, "Business Studies", "Finance 1st Paper", "NCTB HSC Finance First Paper"),
-        createChapter("fin1_11_ch2", "Chapter 3", "Time Value of Money", "অর্থের সময়মূল্য", "Compounding, discounting, annuity calculations, and amortization schedule.", CLASS_NAME, "Business Studies", "Finance 1st Paper", "NCTB HSC Finance First Paper")
-      ]
-    });
-
-    // Finance, Banking & Insurance 2nd Paper
-    subjectsList.push({
-      id: "finance2",
-      name: "Finance 2nd Paper",
-      banglaName: "ফিন্যান্স ও ব্যাংকিং ২য় পত্র",
-      color: "from-amber-500 to-yellow-600",
-      chapters: [
-        createChapter("fin2_11_ch1", "Chapter 1", "Introduction to Banking", "ব্যাংক ব্যবস্থার প্রাথমিক ধারণা", "Definitions, origin, classification of banks, and banking structures in Bangladesh.", CLASS_NAME, "Business Studies", "Finance 2nd Paper", "NCTB HSC Finance Second Paper"),
-        createChapter("fin2_11_ch2", "Chapter 2", "Central Banking", "কেন্দ্রীয় ব্যাংক", "Bangladesh Bank, currency control, credit regulation, and clearinghouse operations.", CLASS_NAME, "Business Studies", "Finance 2nd Paper", "NCTB HSC Finance Second Paper")
+        createChapter("acc2_11_ch1", "Chapter 1", "Accounting for Non-Profit Organizations", "অব্যবসায়ী প্রতিষ্ঠানের হিসাব", "Accounting procedures and financial statements of non-profit organizations.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch2", "Chapter 2", "Accounting for Partnership Businesses", "অংশীদারি ব্যবসায়ের হিসাব", "Accounting for partnership formation, profit distribution, capital, interest, and changes among partners.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch3", "Chapter 3", "Cash Flow Statement", "নগদ প্রবাহ বিবরণী", "Preparation and analysis of cash flow statements and classification of cash flows.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch4", "Chapter 4", "Capital of Joint Stock Companies", "যৌথমূলধনী কোম্পানির মূলধন", "Accounting for share capital, issue of shares, and related transactions of joint stock companies.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch5", "Chapter 5", "Financial Statements of Joint Stock Companies", "যৌথমূলধনী কোম্পানির আর্থিক বিবরণী", "Preparation and presentation of financial statements of joint stock companies.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch6", "Chapter 6", "Financial Statement Analysis", "আর্থিক বিবরণী বিশ্লেষণ", "Analysis of financial statements using accounting ratios and related measures.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch7", "Chapter 7", "Production Cost Accounting", "উৎপাদন ব্যয় হিসাব", "Accounting for production costs and preparation and analysis of production cost statements.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch8", "Chapter 8", "Inventory Accounting Methods", "মজুদ পণ্যের হিসাবরক্ষণ পদ্ধতি", "Accounting methods for inventory and calculation of inventory costs.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch9", "Chapter 9", "Costs and Classification of Costs", "ব্যয় ও ব্যয়ের শ্রেণিবিভাগ", "Concepts of cost and classification of costs according to different business purposes.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper"),
+        createChapter("acc2_11_ch10", "Chapter 10", "Introduction to Management Accounting", "ব্যবস্থাপনা হিসাববিজ্ঞান পরিচিতি", "Basic concepts, objectives, and applications of management accounting.", CLASS_NAME, group, "Accounting 2nd Paper", "NCTB Class 11-12 Accounting 2nd Paper")
       ]
     });
 
@@ -425,9 +451,21 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Business Org 1st Paper",
       banglaName: "ব্যবসায় সংগঠন ও ব্যবস্থাপনা ১ম পত্র",
       color: "from-sky-500 to-cyan-600",
+      category: "mandatory",
+      eligibleGroups: ["Business Studies"],
       chapters: [
-        createChapter("bo1_11_ch1", "Chapter 1", "Basic Concepts of Business", "ব্যবসায়ের মৌলিক ধারণা", "Definitions, industry, commerce, direct service, and economic significance.", CLASS_NAME, "Business Studies", "Business Org 1st Paper", "NCTB HSC Business Organization Book"),
-        createChapter("bo1_11_ch2", "Chapter 2", "Sole Proprietorship Business", "একমালিকানা ব্যবসায়", "Definition, advantages, limitations, and scope of sole proprietorship in Bangladesh.", CLASS_NAME, "Business Studies", "Business Org 1st Paper", "NCTB HSC Business Organization Book")
+        createChapter("bom1_11_ch1", "Chapter 1", "Fundamental Concepts of Business", "ব্যবসায়ের মৌলিক ধারণা", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch2", "Chapter 2", "Business Environment", "ব্যবসায় পরিবেশ", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch3", "Chapter 3", "Sole Proprietorship Business", "একমালিকানা ব্যবসায়", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch4", "Chapter 4", "Partnership Business", "অংশীদারি ব্যবসায়", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch5", "Chapter 5", "Joint Stock Business", "যৌথমূলধনী ব্যবসায়", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch6", "Chapter 6", "Cooperative Society", "সমবায় সমিতি", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch7", "Chapter 7", "State-Owned Business", "রাষ্ট্রীয় ব্যবসায়", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch8", "Chapter 8", "Legal Aspects of Business", "ব্যবসায়ের আইনগত দিক", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch9", "Chapter 9", "Auxiliary Services to Business", "ব্যবসায়ে সহায়ক সেবা", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch10", "Chapter 10", "Business Entrepreneurship", "ব্যবসায় উদ্যোগ", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch11", "Chapter 11", "Use of Information and Communication Technology in Business", "ব্যবসায়ে তথ্য ও যোগাযোগ প্রযুক্তির ব্যবহার", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper"),
+        createChapter("bom1_11_ch12", "Chapter 12", "Business Ethics and Social Responsibility", "ব্যবসায়ে নৈতিকতা ও সামাজিক দায়বদ্ধতা", "", CLASS_NAME, group, "Business Organization & Management 1st Paper", "NCTB Business Organization & Management First Paper")
       ]
     });
 
@@ -437,36 +475,225 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Business Org 2nd Paper",
       banglaName: "ব্যবসায় সংগঠন ও ব্যবস্থাপনা ২য় পত্র",
       color: "from-sky-500 to-cyan-600",
+      category: "mandatory",
+      eligibleGroups: ["Business Studies"],
       chapters: [
-        createChapter("bo2_11_ch1", "Chapter 1", "Management Concepts", "ব্যবস্থাপনার ধারণা", "Principles of management, functions (Planning, Organizing, Staffing, Directing, Controlling).", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
-        createChapter("bo2_11_ch2", "Chapter 2", "Planning & Decision Making", "পরিকল্পনা প্রণয়ন ও সিদ্ধান্ত গ্রহণ", "Types of plans, steps in plan design, and standard corporate decision models.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper")
+        createChapter("bo2_11_ch1", "Chapter 1", "Management Concepts", "ব্যবস্থাপনার ধারণা", "Concept, characteristics, importance, functions, levels, management cycle, and universality of management.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch2", "Chapter 2", "Principles of Management", "ব্যবস্থাপনা নীতি", "Concept and principles of management, contributions of Taylor and Fayol, and qualities and roles of an ideal manager.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch3", "Chapter 3", "Planning & Decision Making", "পরিকল্পনা প্রণয়ন ও সিদ্ধান্ত গ্রহণ", "Concept, importance and process of planning, types of plans, and the decision-making process.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch4", "Chapter 4", "Organizing", "সংগঠিতকরণ", "Concept, importance, principles and process of organizing, organizational structure, authority, responsibility, and delegation.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch5", "Chapter 5", "Staffing", "কর্মীসংস্থান", "Concept, importance and process of staffing, recruitment, selection, promotion, training, and employee development.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch6", "Chapter 6", "Leadership", "নেতৃত্ব", "Concept, importance, types and theories of leadership, qualities of an ideal leader, and leadership functions.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch7", "Chapter 7", "Motivation", "প্রেষণা", "Concept, characteristics, importance, techniques and major theories of employee motivation.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch8", "Chapter 8", "Communication", "যোগাযোগ", "Concept, process, importance, types, barriers, and use of information and communication technology in business communication.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch9", "Chapter 9", "Coordination", "সমন্বয়সাধন", "Concept, characteristics, types, principles, importance, and methods of achieving effective coordination.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper"),
+        createChapter("bo2_11_ch10", "Chapter 10", "Controlling", "নিয়ন্ত্রণ", "Concept, characteristics, importance, principles, steps, techniques, and types of control in business organizations.", CLASS_NAME, "Business Studies", "Business Org 2nd Paper", "NCTB HSC Management Second Paper")
       ]
+    });
+
+    // Finance, Banking & Insurance 1st Paper
+    subjectsList.push({
+      id: "finance1",
+      name: "Finance 1st Paper",
+      banglaName: "ফিন্যান্স ও ব্যাংকিং ১ম পত্র",
+      color: "from-amber-500 to-yellow-600",
+      category: "selectable",
+      eligibleGroups: ["Business Studies"],
+
+
+      chapters: [
+        createChapter("fin1_11_ch1", "Chapter 1", "Introduction to Finance", "অর্থায়নের সূচনা", "The concept, evolution, nature, functions, principles, and objectives of finance.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper"),
+        createChapter("fin1_11_ch2", "Chapter 2", "Legal Aspects of Financial Markets", "আর্থিক বাজারের আইনগত দিকসমূহ", "Legal and regulatory aspects related to financial markets and financial transactions.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper"),
+        createChapter("fin1_11_ch3", "Chapter 3", "Time Value of Money", "অর্থের সময় মূল্য", "The time value of money, present value, future value, and related financial calculations.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper"),
+        createChapter("fin1_11_ch4", "Chapter 4", "Financial Analysis", "আর্থিক বিশ্লেষণ", "Analysis of financial information and financial statements for decision-making.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper"),
+        createChapter("fin1_11_ch5", "Chapter 5", "Short and Medium-Term Financing", "স্বল্প ও মধ্যমেয়াদি অর্থায়ন", "Sources, methods, and costs of short-term and medium-term business financing.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper"),
+        createChapter("fin1_11_ch6", "Chapter 6", "Long-Term Financing", "দীর্ঘমেয়াদি অর্থায়ন", "Long-term sources of finance and methods of raising long-term business funds.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper"),
+        createChapter("fin1_11_ch7", "Chapter 7", "Cost of Capital", "মূলধন ব্যয়", "Concept, components, and calculation of the cost of different sources of capital.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper"),
+        createChapter("fin1_11_ch8", "Chapter 8", "Capital Budgeting and Investment Decisions", "মূলধন বাজেটিং ও বিনিয়োগ সিদ্ধান্ত", "Capital budgeting techniques and financial evaluation of investment decisions.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper"),
+        createChapter("fin1_11_ch9", "Chapter 9", "Risk and Rate of Return", "ঝুঁকি এবং মুনাফার হার", "Relationship between financial risk, investment risk, and expected rate of return.", CLASS_NAME, group, "Finance, Banking & Insurance 1st Paper", "NCTB Finance, Banking & Insurance First Paper")
+      ]
+    });
+
+    // Finance, Banking & Insurance 2nd Paper
+    subjectsList.push({
+      id: "finance2",
+      name: "Finance 2nd Paper",
+      banglaName: "ফিন্যান্স ও ব্যাংকিং ২য় পত্র",
+      color: "from-amber-500 to-yellow-600",
+      category: "selectable",
+      eligibleGroups: ["Business Studies"],
+      chapters: [
+        createChapter("fbi2_11_ch1", "Chapter 1", "Primary Concept of Banking", "ব্যাংক ব্যবস্থার প্রাথমিক ধারণা", "Concept, functions, history, and basic structure of the banking system.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch2", "Chapter 2", "Central Bank", "কেন্দ্রীয় ব্যাংক", "Concept, functions, organization, and monetary responsibilities of a central bank.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch3", "Chapter 3", "Commercial Bank", "বাণিজ্যিক ব্যাংক", "Concept, functions, services, and operations of commercial banks.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch4", "Chapter 4", "Bank Accounts", "ব্যাংক হিসাব", "Types of bank accounts, account opening, deposits, and related banking procedures.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch5", "Chapter 5", "Negotiable Instruments", "হস্তান্তরযোগ্য ঋণের দলিল", "Concept and characteristics of negotiable instruments used in banking and finance.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch6", "Chapter 6", "Cheque, Bill of Exchange & Promissory Note", "চেক, বিনিময় বিল ও প্রতিশ্রুতিপত্র", "Features, parties, types, and uses of cheques, bills of exchange, and promissory notes.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch7", "Chapter 7", "Sources and Uses of Bank Funds", "ব্যাংক তহবিলের উৎস ও ব্যবহার", "Sources of bank funds and their major uses in banking operations.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch8", "Chapter 8", "Foreign Exchange and Foreign Currency", "বৈদেশিক বিনিময় ও বৈদেশিক মুদ্রা", "Foreign exchange, foreign currency, exchange rates, and related banking activities.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch9", "Chapter 9", "Electronic and Modern Banking", "ইলেকট্রনিক ও আধুনিক ব্যাংকিং", "Electronic banking services, digital banking, and modern banking technologies.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch10", "Chapter 10", "Basic Concept of Insurance", "বিমা সম্পর্কে মৌলিক ধারণা", "Concept, principles, importance, and basic classifications of insurance.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch11", "Chapter 11", "Life Insurance", "জীবন বিমা", "Concept, characteristics, types, and principles of life insurance.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch12", "Chapter 12", "Marine Insurance", "নৌ-বিমা", "Concept, characteristics, risks, and coverage associated with marine insurance.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch13", "Chapter 13", "Fire Insurance", "অগ্নি বিমা", "Concept, principles, risks, and coverage associated with fire insurance.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper"),
+        createChapter("fbi2_11_ch14", "Chapter 14", "Miscellaneous Insurance", "বিবিধ বিমা", "Different forms and applications of insurance other than life, marine, and fire insurance.", CLASS_NAME, "Business Studies", "Finance, Banking & Insurance 2nd Paper", "NCTB Finance, Banking & Insurance 2nd Paper")
+      ]
+    });
+
+    // Production Management & Marketing 1st Paper
+    subjectsList.push({
+      id: "production_marketing1",
+      name: "Production Management & Marketing 1st Paper",
+      banglaName: "উৎপাদন ব্যবস্থাপনা ও বিপণন ১ম পত্র",
+      color: "from-violet-500 to-purple-600",
+      category: "selectable",
+      eligibleGroups: ["Business Studies"],
+      chapters: []
+    });
+
+    // Production Management & Marketing 2nd Paper
+    subjectsList.push({
+      id: "production_marketing2",
+      name: "Production Management & Marketing 2nd Paper",
+      banglaName: "উৎপাদন ব্যবস্থাপনা ও বিপণন ২য় পত্র",
+      color: "from-violet-500 to-purple-600",
+      category: "selectable",
+      eligibleGroups: ["Business Studies"],
+      chapters: []
+    });
+
+    // Tourism & Hospitality 1st Paper
+    subjectsList.push({
+      id: "tourism_hospitality1",
+      name: "Tourism & Hospitality 1st Paper",
+      banglaName: "ট্যুরিজম অ্যান্ড হসপিটালিটি ১ম পত্র",
+      color: "from-teal-500 to-cyan-600",
+      category: "selectable",
+      eligibleGroups: ["Business Studies"],
+      chapters: []
+    });
+
+    // Tourism & Hospitality 2nd Paper
+    subjectsList.push({
+      id: "tourism_hospitality2",
+      name: "Tourism & Hospitality 2nd Paper",
+      banglaName: "ট্যুরিজম অ্যান্ড হসপিটালিটি ২য় পত্র",
+      color: "from-teal-500 to-cyan-600",
+      category: "selectable",
+      eligibleGroups: ["Business Studies"],
+      chapters: []
     });
   }
 
   if (isHumanities) {
-    // Civics & Good Governance 1st Paper
-    subjectsList.push({
-      id: "civics1",
-      name: "Civics & Good Governance 1st Paper",
-      banglaName: "পৌরনীতি ও সুশাসন ১ম পত্র",
-      color: "from-fuchsia-500 to-pink-600",
-      chapters: [
-        createChapter("civ1_11_ch1", "Chapter 1", "Civics & Good Governance Intro", "পৌরনীতি ও সুশাসন পরিচিতি", "Definitions, relationship with other social sciences, and benefits of studying good governance.", CLASS_NAME, "Humanities", "Civics 1st Paper", "NCTB HSC Civics First Paper"),
-        createChapter("civ1_11_ch2", "Chapter 2", "Values, Law, Liberty & Equality", "মূল্যবোধ, আইন, স্বাধীনতা ও সাম্য", "Defining civic values, sources of law, liberty classifications, and socio-economic equality.", CLASS_NAME, "Humanities", "Civics 1st Paper", "NCTB HSC Civics First Paper")
-      ]
-    });
-
     // History 1st Paper
     subjectsList.push({
       id: "history1",
       name: "History 1st Paper",
       banglaName: "ইতিহাস ১ম পত্র",
       color: "from-orange-500 to-red-600",
-      chapters: [
-        createChapter("his1_11_ch1", "Chapter 1", "Arrival of Europeans in Bengal", "ইউরোপীয়দের বাংলায় আগমন", "The Portuguese, Dutch, French, and British traders, and setting up East India company.", CLASS_NAME, "Humanities", "History 1st Paper", "NCTB HSC History First Paper"),
-        createChapter("his1_11_ch2", "Chapter 2", "Battle of Palashi and Buxar", "পলাশী ও বক্সারের যুদ্ধ", "Decline of Nawab Sirajuddaula, Battle of Palashi, and establish of British rule.", CLASS_NAME, "Humanities", "History 1st Paper", "NCTB HSC History First Paper")
-      ]
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // History 2nd Paper
+    subjectsList.push({
+      id: "history2",
+      name: "History 2nd Paper",
+      banglaName: "ইতিহাস ২য় পত্র",
+      color: "from-orange-500 to-red-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Islamic History & Culture 1st Paper
+    subjectsList.push({
+      id: "islamic_history1",
+      name: "Islamic History & Culture 1st Paper",
+      banglaName: "ইসলামের ইতিহাস ও সংস্কৃতি ১ম পত্র",
+      color: "from-emerald-500 to-green-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Islamic History & Culture 2nd Paper
+    subjectsList.push({
+      id: "islamic_history2",
+      name: "Islamic History & Culture 2nd Paper",
+      banglaName: "ইসলামের ইতিহাস ও সংস্কৃতি ২য় পত্র",
+      color: "from-emerald-500 to-green-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Civics & Good Governance 1st Paper
+    subjectsList.push({
+      id: "civics1",
+      name: "Civics & Good Governance 1st Paper",
+      banglaName: "পৌরনীতি ও সুশাসন ১ম পত্র",
+      color: "from-fuchsia-500 to-pink-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Civics & Good Governance 2nd Paper
+    subjectsList.push({
+      id: "civics2",
+      name: "Civics & Good Governance 2nd Paper",
+      banglaName: "পৌরনীতি ও সুশাসন ২য় পত্র",
+      color: "from-fuchsia-500 to-pink-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Sociology 1st Paper
+    subjectsList.push({
+      id: "sociology1",
+      name: "Sociology 1st Paper",
+      banglaName: "সমাজবিজ্ঞান ১ম পত্র",
+      color: "from-indigo-500 to-blue-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Sociology 2nd Paper
+    subjectsList.push({
+      id: "sociology2",
+      name: "Sociology 2nd Paper",
+      banglaName: "সমাজবিজ্ঞান ২য় পত্র",
+      color: "from-indigo-500 to-blue-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Social Work 1st Paper
+    subjectsList.push({
+      id: "social_work1",
+      name: "Social Work 1st Paper",
+      banglaName: "সমাজকর্ম ১ম পত্র",
+      color: "from-rose-500 to-pink-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Social Work 2nd Paper
+    subjectsList.push({
+      id: "social_work2",
+      name: "Social Work 2nd Paper",
+      banglaName: "সমাজকর্ম ২য় পত্র",
+      color: "from-rose-500 to-pink-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
     });
 
     // Logic 1st Paper
@@ -475,11 +702,229 @@ export const class11Subjects = (group: string): Subject[] => {
       name: "Logic 1st Paper",
       banglaName: "যুক্তিবিদ্যা ১ম পত্র",
       color: "from-violet-500 to-indigo-600",
-      chapters: [
-        createChapter("log1_11_ch1", "Chapter 1", "Introduction to Logic", "যুক্তিবিদ্যা পরিচিতি", "Definition, historical development (Aristotle, Mill, Copi), and scientific nature of logic.", CLASS_NAME, "Humanities", "Logic 1st Paper", "NCTB HSC Logic First Paper"),
-        createChapter("log1_11_ch2", "Chapter 2", "Terms and Propositions", "যুক্তির উপাদান", "Difference between terms and words, logical propositions, and simple vs compound terms.", CLASS_NAME, "Humanities", "Logic 1st Paper", "NCTB HSC Logic First Paper")
-      ]
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
     });
+
+    // Logic 2nd Paper
+    subjectsList.push({
+      id: "logic2",
+      name: "Logic 2nd Paper",
+      banglaName: "যুক্তিবিদ্যা ২য় পত্র",
+      color: "from-violet-500 to-indigo-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Islamic Studies 1st Paper
+    subjectsList.push({
+      id: "islamic_studies1",
+      name: "Islamic Studies 1st Paper",
+      banglaName: "ইসলাম শিক্ষা ১ম পত্র",
+      color: "from-lime-500 to-green-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+    // Islamic Studies 2nd Paper
+    subjectsList.push({
+      id: "islamic_studies2",
+      name: "Islamic Studies 2nd Paper",
+      banglaName: "ইসলাম শিক্ষা ২য় পত্র",
+      color: "from-lime-500 to-green-600",
+      category: "selectable",
+      eligibleGroups: ["Humanities"],
+      chapters: []
+    });
+
+
+    // Subjects common to Science and Humanities groups
+    if (isScience || isHumanities) {
+      // Higher Math 1st Paper
+      subjectsList.push({
+        id: "math1",
+        name: "Higher Math 1st Paper",
+        banglaName: "উচ্চতর গণিত ১ম পত্র",
+        color: "from-amber-500 to-orange-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Humanities"],
+        chapters: [
+          createChapter("hm1_11_ch1", "Chapter 1", "Matrix and Determinants", "ম্যাট্রিক্স ও নির্ণায়ক", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch2", "Chapter 2", "Vector", "ভেক্টর", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch3", "Chapter 3", "Straight Line", "সরলরেখা", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch4", "Chapter 4", "Circle", "বৃত্ত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch5", "Chapter 5", "Permutation and Combination", "বিন্যাস ও সমাবেশ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch6", "Chapter 6", "Trigonometric Ratios", "ত্রিকোণমিতিক অনুপাত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch7", "Chapter 7", "Trigonometric Ratios of Compound Angles", "সংযুক্ত কোণের ত্রিকোণমিতিক অনুপাত", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch8", "Chapter 8", "Functions and Graphs of Functions", "ফাংশন ও ফাংশনের লেখচিত্র", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch9", "Chapter 9", "Differentiation", "অন্তরীকরণ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper"),
+          createChapter("hm1_11_ch10", "Chapter 10", "Integration", "যোগজীকরণ", "", CLASS_NAME, "Science", "Higher Math 1st Paper", "NCTB Higher Math First Paper")
+        ]
+      });
+
+      // Higher Math 2nd Paper
+      subjectsList.push({
+        id: "math2",
+        name: "Higher Math 2nd Paper",
+        banglaName: "উচ্চতর গণিত ২য় পত্র",
+        color: "from-amber-500 to-orange-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Humanities"],
+        chapters: [
+          createChapter("hm2_11_ch1", "Chapter 1", "Real Numbers and Inequalities", "বাস্তব সংখ্যা ও অসমতা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch2", "Chapter 2", "Linear Programming", "যোগাশ্রয়ী প্রোগ্রাম", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch3", "Chapter 3", "Complex Numbers", "জটিল সংখ্যা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch4", "Chapter 4", "Polynomials and Polynomial Equations", "বহুপদী ও বহুপদী সমীকরণ", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch5", "Chapter 5", "Binomial Expansion", "দ্বিপদী বিস্তৃতি", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch6", "Chapter 6", "Conics", "কণিক", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch7", "Chapter 7", "Inverse Trigonometric Functions and Trigonometric Equations", "বিপরীত ত্রিকোণমিতিক ফাংশন ও ত্রিকোণমিতিক সমীকরণ", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch8", "Chapter 8", "Statics", "স্থিতিবিদ্যা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch9", "Chapter 9", "Motion of Particles in a Plane", "সমতলে বস্তুকণার গতি", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper"),
+          createChapter("hm2_11_ch10", "Chapter 10", "Measures of Dispersion and Probability", "বিস্তার পরিমাপ ও সম্ভাবনা", "", CLASS_NAME, "Science", "Higher Math 2nd Paper", "NCTB Higher Math Second Paper")
+        ]
+      });
+
+      // Psychology 1st Paper
+      subjectsList.push({
+        id: "psychology1",
+        name: "Psychology 1st Paper",
+        banglaName: "মনোবিজ্ঞান ১ম পত্র",
+        color: "from-pink-500 to-rose-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Humanities"],
+        chapters: []
+      });
+
+      // Psychology 2nd Paper
+      subjectsList.push({
+        id: "psychology2",
+        name: "Psychology 2nd Paper",
+        banglaName: "মনোবিজ্ঞান ২য় পত্র",
+        color: "from-pink-500 to-rose-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Humanities"],
+        chapters: []
+      });
+    }
+
+    // Subjects common to Business Studies and Humanities groups 
+    if (isBusiness || isHumanities) {
+      // Economics 1st Paper
+      subjectsList.push({
+        id: "economics1",
+        name: "Economics 1st Paper",
+        banglaName: "অর্থনীতি ১ম পত্র",
+        color: "from-blue-500 to-indigo-600",
+        category: "selectable",
+        eligibleGroups: ["Business Studies", "Humanities"],
+        chapters: []
+      });
+
+      // Economics 2nd Paper
+      subjectsList.push({
+        id: "economics2",
+        name: "Economics 2nd Paper",
+        banglaName: "অর্থনীতি ২য় পত্র",
+        color: "from-blue-500 to-indigo-600",
+        category: "selectable",
+        eligibleGroups: ["Business Studies", "Humanities"],
+        chapters: []
+      });
+
+      // Home Science 1st Paper
+      subjectsList.push({
+        id: "home_science1",
+        name: "Home Science 1st Paper",
+        banglaName: "গার্হস্থ্য বিজ্ঞান ১ম পত্র",
+        color: "from-rose-500 to-pink-600",
+        category: "selectable",
+        eligibleGroups: ["Business Studies", "Humanities"],
+        chapters: []
+      });
+
+      // Home Science 2nd Paper
+      subjectsList.push({
+        id: "home_science2",
+        name: "Home Science 2nd Paper",
+        banglaName: "গার্হস্থ্য বিজ্ঞান ২য় পত্র",
+        color: "from-rose-500 to-pink-600",
+        category: "selectable",
+        eligibleGroups: ["Business Studies", "Humanities"],
+        chapters: []
+      });
+    }
+
+    // Subjects selectable by all three groups
+    if (isScience || isBusiness || isHumanities) {
+      // Agriculture Studies 1st Paper
+      subjectsList.push({
+        id: "agriculture1",
+        name: "Agriculture Studies 1st Paper",
+        banglaName: "কৃষিশিক্ষা ১ম পত্র",
+        color: "from-green-500 to-emerald-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Business Studies", "Humanities"],
+        chapters: []
+      });
+
+      // Agriculture Studies 2nd Paper
+      subjectsList.push({
+        id: "agriculture2",
+        name: "Agriculture Studies 2nd Paper",
+        banglaName: "কৃষিশিক্ষা ২য় পত্র",
+        color: "from-green-500 to-emerald-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Business Studies", "Humanities"],
+        chapters: []
+      });
+
+      // Geography 1st Paper
+      subjectsList.push({
+        id: "geography1",
+        name: "Geography 1st Paper",
+        banglaName: "ভূগোল ১ম পত্র",
+        color: "from-teal-500 to-cyan-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Business Studies", "Humanities"],
+        chapters: []
+      });
+
+      // Geography 2nd Paper
+      subjectsList.push({
+        id: "geography2",
+        name: "Geography 2nd Paper",
+        banglaName: "ভূগোল ২য় পত্র",
+        color: "from-teal-500 to-cyan-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Business Studies", "Humanities"],
+        chapters: []
+      });
+
+      // Statistics 1st Paper
+      subjectsList.push({
+        id: "statistics1",
+        name: "Statistics 1st Paper",
+        banglaName: "পরিসংখ্যান ১ম পত্র",
+        color: "from-indigo-500 to-violet-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Business Studies", "Humanities"],
+        chapters: []
+      });
+
+      // Statistics 2nd Paper
+      subjectsList.push({
+        id: "statistics2",
+        name: "Statistics 2nd Paper",
+        banglaName: "পরিসংখ্যান ২য় পত্র",
+        color: "from-indigo-500 to-violet-600",
+        category: "selectable",
+        eligibleGroups: ["Science", "Business Studies", "Humanities"],
+        chapters: []
+      });
+    }
   }
 
   return subjectsList;
