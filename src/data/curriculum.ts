@@ -26,12 +26,31 @@ export interface Chapter {
   section?: string;
 }
 
+export type SubjectCategory = "common" | "mandatory" | "selectable";
+
+export type AcademicGroup =
+  | "Science"
+  | "Business Studies"
+  | "Humanities";
+
 export interface Subject {
   id: string;
   name: string;
   banglaName: string;
   chapters: Chapter[];
   color: string; // Tailwind color class for cards/tags
+  category?: SubjectCategory;
+  eligibleGroups?: AcademicGroup[];
+}
+
+export interface SubjectGroup {
+  mandatory: Subject[];
+  selectable: Subject[];
+}
+
+export interface Class11Curriculum {
+  commonSubjects: Subject[];
+  groups: Record<AcademicGroup, SubjectGroup>;
 }
 
 export const NCTB_BOARDS = [
