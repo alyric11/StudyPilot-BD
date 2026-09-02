@@ -739,8 +739,7 @@ export const class11Subjects = (group: string): Subject[] => {
       eligibleGroups: ["Humanities"],
       chapters: []
     });
-
-
+  }
     // Subjects common to Science and Humanities groups
     if (isScience || isHumanities) {
       // Higher Math 1st Paper
@@ -925,7 +924,6 @@ export const class11Subjects = (group: string): Subject[] => {
         chapters: []
       });
     }
-  }
-
+  
   return subjectsList;
 };
