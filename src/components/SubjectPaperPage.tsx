@@ -19,12 +19,12 @@ export default function SubjectPaperPage({
 
   const sections = hasSections
     ? Array.from(
-      new Set(
-        subject.chapters
-          .map((chapter) => chapter.section)
-          .filter((section): section is string => Boolean(section))
+        new Set(
+          subject.chapters
+            .map((chapter) => chapter.section)
+            .filter((section): section is string => Boolean(section))
+        )
       )
-    )
     : ["Chapters"];
 
   const getChaptersForSection = (section: string) => {
