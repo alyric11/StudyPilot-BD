@@ -87,6 +87,7 @@ export default function App() {
     handleAddDiaryEntry,
     handleDeleteDiaryEntry,
     toggleSubjectSelection,
+    toggleSubjectGroupSelection,
     resetStudentData
   } = useStudentData(showToast);
 
@@ -231,6 +232,29 @@ export default function App() {
     return allSubjects.filter(
       (subject) => subject.category === "selectable"
     );
+  };
+
+  const getSelectableSubjectGroups = () => {
+    const subjects = getAvailableSelectableSubjects();
+
+    const groups = new Map<string, typeof subjects>();
+
+    subjects.forEach((subject) => {
+      const baseId = subject.id.replace(/1$/, "").replace(/2$/, "");
+
+      if (!groups.has(baseId)) {
+        groups.set(baseId, []);
+      }
+
+      groups.get(baseId)!.push(subject);
+    });
+
+    return Array.from(groups.entries()).map(([id, papers]) => ({
+      id,
+      name: papers[0].name.replace(/1st Paper|2nd Paper/g, "").trim(),
+      banglaName: papers[0].banglaName.replace(/১ম পত্র|২য় পত্র/g, "").trim(),
+      papers
+    }));
   };
 
   const commonSubjects = activeSubjects.filter(
@@ -583,8 +607,8 @@ export default function App() {
                               </div>
                             );
                           })}
-                          </div>
-                       
+                        </div>
+
                         {/* Group Subjects */}
                         {(compulsorySubjects.length > 0 || optionalSubjects.length > 0) && (
                           <div className="space-y-4">
@@ -681,11 +705,11 @@ export default function App() {
                           </div>
                         )}
                       </div>
-                      
+
 
                       {/* Selectable Subjects */}
-                      {getAvailableSelectableSubjects().length > 0 && (
-                        <div className="bg-slate-50/60 rounded-xl border border-slate-200/70 p-4 space-y-3">
+                      {getSelectableSubjectGroups().length > 0 && (
+                        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-xs space-y-5">
                           <div>
                             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display">
                               Selectable Subjects
@@ -696,14 +720,19 @@ export default function App() {
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {getAvailableSelectableSubjects().map((sub) => {
-                              const isSelected = selectedSubjectIds.includes(sub.id);
+                            {getSelectableSubjectGroups().map((group) => {
+                              const isSelected = group.papers.some((paper) =>
+                                selectedSubjectIds.includes(paper.id)
+                              );
 
                               return (
                                 <button
-                                  key={sub.id}
+                                  key={group.id}
                                   type="button"
-                                  onClick={() => toggleSubjectSelection(sub.id)}
+                                  onClick={() =>
+                                    toggleSubjectGroupSelection(group.papers.map((paper) => paper.id))
+                                  }
+
                                   className={`flex items-center justify-between gap-3 p-3 rounded-lg border text-left transition-all ${isSelected
                                     ? "bg-indigo-50 border-indigo-300 text-indigo-700"
                                     : "bg-white border-slate-200 text-slate-600 hover:border-indigo-200"
@@ -711,10 +740,10 @@ export default function App() {
                                 >
                                   <div className="min-w-0">
                                     <div className="text-xs font-bold truncate">
-                                      {sub.banglaName}
+                                      {group.banglaName}
                                     </div>
                                     <div className="text-[10px] text-slate-400 truncate">
-                                      {sub.name}
+                                      {group.name}
                                     </div>
                                   </div>
 

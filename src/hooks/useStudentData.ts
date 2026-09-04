@@ -336,6 +336,26 @@ export default function useStudentData(showToast: (
         );
     };
 
+    const toggleSubjectGroupSelection = (subjectIds: string[]) => {
+        const anySelected = subjectIds.some((id) =>
+            selectedSubjectIds.includes(id)
+        );
+
+        const updated = anySelected
+            ? selectedSubjectIds.filter((id) => !subjectIds.includes(id))
+            : [
+                ...selectedSubjectIds,
+                ...subjectIds.filter((id) => !selectedSubjectIds.includes(id))
+            ];
+
+        setSelectedSubjectIds(updated);
+
+        localStorage.setItem(
+            "sp_selected_subjects",
+            JSON.stringify(updated)
+        );
+    };
+
     const resetStudentData = () => {
         localStorage.clear();
         setProfile(null);
@@ -360,6 +380,7 @@ export default function useStudentData(showToast: (
         handleAddDiaryEntry,
         handleDeleteDiaryEntry,
         toggleSubjectSelection,
+        toggleSubjectGroupSelection,
         resetStudentData
     };
 }
