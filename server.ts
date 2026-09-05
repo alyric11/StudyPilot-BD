@@ -580,7 +580,8 @@ app.get("/api/video-lessons", async (req, res) => {
     subject,
     chapterBanglaName || "",
     chapterName,
-    "Bangladesh NCTB"
+    "Bangladesh NCTB",
+    "lecture tutorial"
   ]
     .filter(Boolean)
     .join(" ");
@@ -590,7 +591,7 @@ app.get("/api/video-lessons", async (req, res) => {
       part: "snippet",
       q: query,
       type: "video",
-      maxResults: "10",
+      maxResults: "3",
       key: youtubeApiKey
     });
 
@@ -609,7 +610,91 @@ app.get("/api/video-lessons", async (req, res) => {
 
     const data = await response.json();
 
-    res.json(data.items || []);
+    const filteredItems = (data.items || []).filter((item: any) => {
+      const title = item.snippet?.title?.toLowerCase() || "";
+
+      if (classLevel === "11") {
+        return !(
+          title.includes("class 9") ||
+          title.includes("class 10") ||
+          title.includes("ssc")
+        );
+      }
+
+      if (classLevel === "12") {
+        return !(
+          title.includes("class 9") ||
+          title.includes("class 10") ||
+          title.includes("ssc")
+        );
+      }
+
+      return true;
+    });
+
+    const videoIds = filteredItems
+      .map((item: any) => item.id?.videoId)
+      .filter(Boolean);
+
+    if (videoIds.length === 0) {
+      return res.json([]);
+    }
+
+    const detailsParams = new URLSearchParams({
+      part: "contentDetails,statistics",
+      id: videoIds.join(","),
+      key: youtubeApiKey
+    });
+
+    const detailsResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`
+    );
+
+    if (!detailsResponse.ok) {
+      const errorText = await detailsResponse.text();
+      console.error("YouTube video details error:", errorText);
+
+      return res.status(detailsResponse.status).json({
+        error: "Failed to retrieve video details."
+      });
+    }
+
+    const detailsData = await detailsResponse.json();
+
+    const videosWithDetails = filteredItems
+      .map((item: any) => {
+        const details = detailsData.items?.find(
+          (detail: any) => detail.id === item.id.videoId
+        );
+
+        return {
+          ...item,
+          viewCount: details?.statistics?.viewCount || "0",
+          duration: details?.contentDetails?.duration || null
+        };
+      })
+      .filter((video: any) => {
+        if (!video.duration) return false;
+        if (Number(video.viewCount) < 10000) return false;
+
+        const match = video.duration.match(
+          /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
+        );
+
+        if (!match) return false;
+
+        const hours = Number(match[1] || 0);
+        const minutes = Number(match[2] || 0);
+        const seconds = Number(match[3] || 0);
+
+        const totalSeconds =
+          hours * 3600 + minutes * 60 + seconds;
+
+        return totalSeconds >= 300;
+      });
+
+    res.json(videosWithDetails.slice(0, 3));
+
   } catch (error) {
     console.error("YouTube search error:", error);
 
