@@ -533,7 +533,7 @@ export default function App() {
                             {activeSubjects.length} Subjects
                           </span>
                         </div>
-                        <hr></hr>
+                        
                         {/* Common Subjects */}
                         <div>
                           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display">
