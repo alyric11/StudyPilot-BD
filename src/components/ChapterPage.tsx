@@ -100,7 +100,7 @@ export default function ChapterPage({
         revision: "40 min"
       },
       studyStrategySteps: [
-        { step: "Step 1: Read NCTB textbook", description: "Highlight primary formulas, core definitions, and board-question triggers." },
+        { step: "Step 1: Read the Textbook", description: "Highlight primary formulas, core definitions, and board-question triggers." },
         { step: "Step 2: Watch animated video lectures", description: "Clear visual blocks and understand experimental setups." },
         { step: "Step 3: Solve textbook exercises", description: "Test your immediate conceptual clarity with end-of-chapter exercises." },
         { step: "Step 4: Solve Board Exam CQs", description: "Practice previous 5 years' board exam questions (Dhaka, Rajshahi, Chittagong, etc.)" },
@@ -287,72 +287,94 @@ export default function ChapterPage({
 
   return (
     <div className="space-y-6" id="chapter-page-root">
-      {/* Back Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm" id="chapter-page-header">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={onBack}
-            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-lg transition-all cursor-pointer shrink-0"
-            title="Go Back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="min-w-0">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{subjectName}</div>
-            <h1 className="text-lg md:text-2xl font-display font-bold text-slate-800 break-words leading-tight">
-              {chapterBanglaName} <span className="text-slate-400 font-normal block sm:inline">| {chapterName}</span>
-            </h1>
-          </div>
-        </div>
+      {/* Chapter Header */}
+      <div className="space-y-3" id="chapter-page-header">
 
-        {/* Progress Badge */}
-        <div className="flex items-center gap-3 bg-slate-50 py-1.5 px-3 rounded-xl border border-slate-200/60 shadow-xs shrink-0 self-start md:self-auto">
-          <span className="text-xs text-slate-500 font-medium">Chapter Mastery:</span>
-          <div className="w-20 sm:w-24 bg-slate-100 h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-indigo-600 h-full transition-all duration-500"
-              style={{ width: `${percentProgress()}%` }}
-            />
-          </div>
-          <span className="text-xs font-bold text-indigo-600">{percentProgress()}%</span>
-        </div>
-      </div>
+        {/* Title Box */}
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-4">
 
-      {/* Chapter Official NCTB Metadata */}
-      {activeChapterObj && (
-        <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 flex flex-col md:flex-row items-start gap-4 shadow-2xs" id="chapter-metadata-banner">
-          <div className="p-3 bg-indigo-50 text-indigo-700 rounded-lg shrink-0 flex flex-col items-center justify-center min-w-[75px] border border-indigo-100/30">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-500">Official</span>
-            <span className="text-xs font-extrabold whitespace-nowrap">{activeChapterObj.chapterNumber || "Chapter"}</span>
-          </div>
-          <div className="space-y-1.5 flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold px-2 py-0.5 bg-slate-200/70 text-slate-700 rounded-md border border-slate-300/20">
-                📚 {activeChapterObj.nctbBookName}
-              </span>
-              <span className="text-xs font-medium px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md border border-indigo-200/10">
-                Class: {activeChapterObj.class}
-              </span>
-              <span className="text-xs font-medium px-2 py-0.5 bg-violet-50 text-violet-700 rounded-md border border-violet-200/10">
-                Group: {activeChapterObj.group}
-              </span>
+            <button
+              onClick={onBack}
+              className="p-3 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all cursor-pointer shrink-0 border border-slate-200"
+              title="Go Back"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+
+            <div className="hidden sm:block w-px h-16 bg-slate-200 shrink-0" />
+
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold uppercase tracking-wider">
+                {activeChapterObj?.chapterNumber}
+              </div>
+
+              <h1 className="mt-2 text-xl md:text-3xl font-display font-bold text-slate-800 break-words leading-tight">
+                {chapterBanglaName}
+                <span className="text-slate-400 font-normal block sm:inline">
+                  {" | "}
+                  {chapterName}
+                </span>
+              </h1>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed font-sans pt-0.5 break-words">
-              {activeChapterObj.shortDescription}
-            </p>
+
           </div>
         </div>
-      )}
+
+        {/* Metadata Box */}
+        {activeChapterObj && (
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+
+              {/* Chapter Metadata */}
+              <div className="flex flex-wrap items-center gap-2">
+
+                <span className="text-xs font-semibold px-2.5 py-1 bg-slate-200/70 text-slate-700 rounded-md border border-slate-300/20">
+                  📚 {activeChapterObj.nctbBookName}
+                </span>
+
+                <span className="text-xs font-medium px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md border border-indigo-200/10">
+                  {activeChapterObj.class}
+                </span>
+
+                <span className="text-xs font-medium px-2.5 py-1 bg-violet-50 text-violet-700 rounded-md border border-violet-200/10">
+                  Group: {activeChapterObj.group}
+                </span>
+
+              </div>
+
+              {/* Chapter Mastery */}
+              <div className="flex items-center gap-3 shrink-0 px-2.5 py-1 bg-slate-100/80 rounded-lg border border-slate-200">
+                <span className="text-xs text-slate-600 font-medium">
+                  Chapter Mastery:
+                </span>
+
+                <div className="w-20 sm:w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-indigo-600 h-full transition-all duration-500"
+                    style={{ width: `${percentProgress()}%` }}
+                  />
+                </div>
+
+                <span className="text-xs font-bold text-indigo-600 w-8 text-right">
+                  {percentProgress()}%
+                </span>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+      </div>
 
       {/* Primary Navigation Tabs */}
       <div className="flex border border-slate-250 bg-slate-50 p-1 rounded-xl" id="chapter-tab-bar">
         <button
           onClick={() => setActiveTab('guide')}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-            activeTab === 'guide'
-              ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm"
-              : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
-          }`}
+          className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === 'guide'
+            ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm"
+            : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
+            }`}
         >
           <Compass className="w-4 h-4 shrink-0" />
           <span className="hidden sm:inline">Intelligent Chapter Guide</span>
@@ -360,11 +382,10 @@ export default function ChapterPage({
         </button>
         <button
           onClick={() => setActiveTab('tutor')}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-            activeTab === 'tutor'
-              ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm"
-              : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
-          }`}
+          className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === 'tutor'
+            ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm"
+            : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
+            }`}
         >
           <MessageSquare className="w-4 h-4 shrink-0" />
           <span className="hidden sm:inline">AI Co-Pilot Tutor</span>
@@ -416,82 +437,40 @@ export default function ChapterPage({
                   </div>
                 </div>
 
-                {/* Exam Priority & Prerequisites */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Exam Priority */}
-                  <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm space-y-3">
-                    <div className="flex items-center gap-2 text-rose-500 font-semibold font-display text-sm">
-                      <AlertTriangle className="w-4 h-4" />
-                      Exam Importance Priority
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs uppercase font-bold px-2.5 py-0.5 rounded-full border ${
-                        guideData.examImportance.priority === 'high'
-                          ? "bg-rose-50 text-rose-600 border-rose-100"
-                          : guideData.examImportance.priority === 'medium'
-                          ? "bg-amber-50 text-amber-600 border-amber-100"
-                          : "bg-blue-50 text-blue-600 border-blue-100"
-                      }`}>
-                        {guideData.examImportance.priority} Priority
-                      </span>
-                    </div>
-                    <p className="text-slate-500 text-xs leading-relaxed">{guideData.examImportance.reason}</p>
-                  </div>
-
-                  {/* Prerequisites */}
-                  <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm space-y-3">
-                    <div className="flex items-center gap-2 text-violet-500 font-semibold font-display text-sm">
-                      <BookOpen className="w-4 h-4" />
-                      Prerequisite Knowledge
-                    </div>
-                    <ul className="space-y-1.5">
-                      {guideData.prerequisites.map((pre, idx) => (
-                        <li key={idx} className="text-xs text-slate-600 flex items-start gap-2">
-                          <span className="text-violet-400 mt-0.5">•</span>
-                          {pre}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Common Mistakes */}
-                <div className="bg-white rounded-xl border border-rose-100 p-5 shadow-sm space-y-3">
-                  <div className="flex items-center gap-2 text-rose-600 font-semibold font-display text-sm">
-                    <AlertTriangle className="w-4.5 h-4.5" />
-                    Board Exam Pitfalls (Common Mistakes)
-                  </div>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {guideData.commonMistakes.map((mistake, idx) => (
-                      <li key={idx} className="bg-rose-50/50 p-2.5 rounded-lg text-xs text-slate-600 border border-rose-100/50 flex items-start gap-2">
-                        <span className="text-rose-500 font-bold">⚠️</span>
-                        {mistake}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
                 {/* AI Study Strategy */}
                 <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
-                  <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">AI Directed Flight Plan</h3>
+                  <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">
+                    Study Plan
+                  </h3>
+
                   <div className="space-y-4 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
                     {guideData.studyStrategySteps.map((step, idx) => (
-                      <div key={idx} className="flex gap-4 relative">
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          // Destination for this study step will be added here.
+                        }}
+                        className="w-full flex items-center gap-4 relative text-left cursor-pointer rounded-lg p-1 -m-1 hover:bg-slate-50 transition-colors"
+                      >
                         <div className="w-6.5 h-6.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center text-xs font-bold shrink-0">
                           {idx + 1}
                         </div>
+
                         <div>
-                          <h4 className="text-xs font-bold text-slate-700">{step.step}</h4>
-                          <p className="text-slate-500 text-xs mt-0.5">{step.description}</p>
+                          <h4 className="text-xs font-bold text-slate-700">
+                            {step.step.replace(/^Step \d+:\s*/, "")}
+                          </h4>
+
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Resource Finder */}
                 <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
-                  <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">AI Recommended Resource Finder</h3>
+                  <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">Recommended Resources</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {guideData.recommendedResources.map((res, idx) => (
                       <a
@@ -501,9 +480,8 @@ export default function ChapterPage({
                         rel="noreferrer"
                         className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 flex items-start gap-3 transition-all cursor-pointer group"
                       >
-                        <div className={`p-2.5 rounded-lg ${
-                          res.type === 'video' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'
-                        }`}>
+                        <div className={`p-2.5 rounded-lg ${res.type === 'video' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'
+                          }`}>
                           {res.type === 'video' ? <Play className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                         </div>
                         <div className="space-y-1">
@@ -559,18 +537,16 @@ export default function ChapterPage({
                   <button
                     key={item.key}
                     onClick={() => handleChecklistToggle(item.key as keyof ChapterProgress)}
-                    className={`w-full p-3 rounded-lg border text-left transition-all flex items-center justify-between cursor-pointer group ${
-                      chapterProgress[item.key as keyof ChapterProgress]
-                        ? "bg-indigo-50/30 border-indigo-100 text-slate-700"
-                        : "bg-slate-50/50 border-slate-200 text-slate-500 hover:border-indigo-300"
-                    }`}
+                    className={`w-full p-3 rounded-lg border text-left transition-all flex items-center justify-between cursor-pointer group ${chapterProgress[item.key as keyof ChapterProgress]
+                      ? "bg-indigo-50/30 border-indigo-100 text-slate-700"
+                      : "bg-slate-50/50 border-slate-200 text-slate-500 hover:border-indigo-300"
+                      }`}
                   >
                     <span className="text-xs font-medium">{item.label}</span>
-                    <CheckCircle className={`w-4 h-4 transition-colors ${
-                      chapterProgress[item.key as keyof ChapterProgress]
-                        ? "text-indigo-500 fill-indigo-100"
-                        : "text-slate-300 group-hover:text-indigo-400"
-                    }`} />
+                    <CheckCircle className={`w-4 h-4 transition-colors ${chapterProgress[item.key as keyof ChapterProgress]
+                      ? "text-indigo-500 fill-indigo-100"
+                      : "text-slate-300 group-hover:text-indigo-400"
+                      }`} />
                   </button>
                 ))}
               </div>
@@ -661,11 +637,10 @@ export default function ChapterPage({
                   key={idx}
                   className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${
-                    msg.sender === 'student'
-                      ? "bg-indigo-600 text-white rounded-br-none shadow-xs"
-                      : "bg-slate-50 text-slate-800 border border-slate-150 rounded-bl-none shadow-xs"
-                  }`}>
+                  <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${msg.sender === 'student'
+                    ? "bg-indigo-600 text-white rounded-br-none shadow-xs"
+                    : "bg-slate-50 text-slate-800 border border-slate-150 rounded-bl-none shadow-xs"
+                    }`}>
                     {msg.sender === 'ai' ? (
                       <div className="whitespace-pre-wrap leading-relaxed prose prose-sm text-slate-700">
                         {/* Custom visual parsing of bullet highlights */}
@@ -682,9 +657,8 @@ export default function ChapterPage({
                     ) : (
                       <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                     )}
-                    <span className={`block text-[10px] mt-2 ${
-                      msg.sender === 'student' ? 'text-indigo-100 text-right' : 'text-slate-400'
-                    }`}>
+                    <span className={`block text-[10px] mt-2 ${msg.sender === 'student' ? 'text-indigo-100 text-right' : 'text-slate-400'
+                      }`}>
                       {msg.timestamp}
                     </span>
                   </div>

@@ -116,19 +116,19 @@ export const class11Subjects = (group: string): Subject[] => {
     color: "from-emerald-500 to-emerald-600",
     category: "common",
     chapters: [
-      createChapter("b2_11_q1", "Question 1", "Rules of Bangla Pronunciation", "বাংলা উচ্চারণের নিয়ম", "বাংলা উচ্চারণের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
-      createChapter("b2_11_q2", "Question 2", "Rules of Bangla Spelling", "বাংলা বানানের নিয়ম", "বাংলা বানানের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
-      createChapter("b2_11_q3", "Question 3", "Grammatical Word Classes", "বাংলা ভাষার ব্যাকরণিক শব্দশ্রেণি", "বাংলা ভাষার ব্যাকরণিক শব্দশ্রেণি।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
-      createChapter("b2_11_q4", "Question 4", "Prefixes, Suffixes and Samasa", "উপসর্গ, প্রত্যয় ও সমাস", "উপসর্গ, প্রত্যয় ও সমাস।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
-      createChapter("b2_11_q5", "Question 5", "Syntax and Sentence Structure", "বাক্যতত্ত্ব / বাক্য প্রকরণ", "বাক্যতত্ত্ব / বাক্য প্রকরণ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
-      createChapter("b2_11_q6", "Question 6", "Correct and Incorrect Usage", "বাংলা ভাষার অপপ্রয়োগ ও শুদ্ধ প্রয়োগ", "বাংলা ভাষার অপপ্রয়োগ ও শুদ্ধ প্রয়োগ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q1", "ব্যাকরণ ১", "Rules of Bangla Pronunciation", "বাংলা উচ্চারণের নিয়ম", "বাংলা উচ্চারণের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q2", "ব্যাকরণ ২", "Rules of Bangla Spelling", "বাংলা বানানের নিয়ম", "বাংলা বানানের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q3", "ব্যাকরণ ৩", "Grammatical Word Classes", "বাংলা ভাষার ব্যাকরণিক শব্দশ্রেণি", "বাংলা ভাষার ব্যাকরণিক শব্দশ্রেণি।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q4", "ব্যাকরণ ৪", "Prefixes, Suffixes and Samasa", "উপসর্গ, প্রত্যয় ও সমাস", "উপসর্গ, প্রত্যয় ও সমাস।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q5", "ব্যাকরণ ৫", "Syntax and Sentence Structure", "বাক্যতত্ত্ব / বাক্য প্রকরণ", "বাক্যতত্ত্ব / বাক্য প্রকরণ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
+      createChapter("b2_11_q6", "ব্যাকরণ ৬", "Correct and Incorrect Usage", "বাংলা ভাষার অপপ্রয়োগ ও শুদ্ধ প্রয়োগ", "বাংলা ভাষার অপপ্রয়োগ ও শুদ্ধ প্রয়োগ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
 
-      createChapter("b2_11_q7", "Question 7", "Technical Terms / English to Bangla Translation", "পারিভাষিক শব্দ / ইংরেজি থেকে বাংলা অনুবাদ", "পারিভাষিক শব্দ / ইংরেজি থেকে বাংলা অনুবাদ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
-      createChapter("b2_11_q8", "Question 8", "Diary / Experience Description / Speech / Report", "দিনলিপি / অভিজ্ঞতা বর্ণনা অথবা ভাষণ / প্রতিবেদন", "দিনলিপি / অভিজ্ঞতা বর্ণনা অথবা ভাষণ / প্রতিবেদন।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
-      createChapter("b2_11_q9", "Question 9", "Email / Letter / Application", "বৈদ্যুতিন চিঠি (ই-মেইল) / পত্র / আবেদনপত্র", "বৈদ্যুতিন চিঠি (ই-মেইল) / পত্র / আবেদনপত্র।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
-      createChapter("b2_11_q10", "Question 10", "Summary / Main Idea / Summary / Expansion of Ideas", "সারাংশ / সারমর্ম / সারসংক্ষেপ অথবা ভাবসম্প্রসারণ", "সারাংশ / সারমর্ম / সারসংক্ষেপ অথবা ভাবসম্প্রসারণ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
-      createChapter("b2_11_q11", "Question 11", "Dialogue / Short Story", "সংলাপ অথবা ক্ষুদে গল্প", "সংলাপ অথবা ক্ষুদে গল্প।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
-      createChapter("b2_11_q12", "Question 12", "Essay Writing", "প্রবন্ধ রচনা", "প্রবন্ধ রচনা।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি")
+      createChapter("b2_11_q7", "নির্মিতি ৭", "Technical Terms / English to Bangla Translation", "পারিভাষিক শব্দ / ইংরেজি থেকে বাংলা অনুবাদ", "পারিভাষিক শব্দ / ইংরেজি থেকে বাংলা অনুবাদ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q8", "নির্মিতি ৮", "Diary / Experience Description / Speech / Report", "দিনলিপি / অভিজ্ঞতা বর্ণনা অথবা ভাষণ / প্রতিবেদন", "দিনলিপি / অভিজ্ঞতা বর্ণনা অথবা ভাষণ / প্রতিবেদন।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q9", "নির্মিতি ৯", "Email / Letter / Application", "বৈদ্যুতিন চিঠি (ই-মেইল) / পত্র / আবেদনপত্র", "বৈদ্যুতিন চিঠি (ই-মেইল) / পত্র / আবেদনপত্র।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q10", "নির্মিতি ১০", "Summary / Main Idea / Summary / Expansion of Ideas", "সারাংশ / সারমর্ম / সারসংক্ষেপ অথবা ভাবসম্প্রসারণ", "সারাংশ / সারমর্ম / সারসংক্ষেপ অথবা ভাবসম্প্রসারণ।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q11", "নির্মিতি ১১", "Dialogue / Short Story", "সংলাপ অথবা ক্ষুদে গল্প", "সংলাপ অথবা ক্ষুদে গল্প।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি"),
+      createChapter("b2_11_q12", "নির্মিতি ১২", "Essay Writing", "প্রবন্ধ রচনা", "প্রবন্ধ রচনা।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "নির্মিতি")
     ]
   });
 
