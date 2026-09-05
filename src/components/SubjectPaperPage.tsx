@@ -16,15 +16,16 @@ export default function SubjectPaperPage({
   onSelectChapter
 }: SubjectPaperPageProps) {
   const hasSections = subject.chapters.some((chapter) => chapter.section);
+  const subjectClass = subject.chapters[0]?.class ?? "";
 
   const sections = hasSections
     ? Array.from(
-        new Set(
-          subject.chapters
-            .map((chapter) => chapter.section)
-            .filter((section): section is string => Boolean(section))
-        )
+      new Set(
+        subject.chapters
+          .map((chapter) => chapter.section)
+          .filter((section): section is string => Boolean(section))
       )
+    )
     : ["Chapters"];
 
   const getChaptersForSection = (section: string) => {
@@ -39,34 +40,41 @@ export default function SubjectPaperPage({
 
   return (
     <div className="space-y-5">
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Subjects
-      </button>
-
-      {/* Subject header */}
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-5">
+      {/* Subject Header */}
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs p-5 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">
-              NCTB Subject / Paper
-            </p>
 
-            <h1 className="text-xl font-display font-bold text-slate-800 mt-1">
-              {subject.banglaName}
-            </h1>
+          {/* Back button + Subject title */}
+          <div className="flex items-center gap-4 min-w-0 flex-1">
 
-            <p className="text-xs text-slate-400 font-semibold mt-1">
-              {subject.name}
-            </p>
+            <button
+              onClick={onBack}
+              className="p-3 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all cursor-pointer shrink-0"
+              title="Go Back"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+
+            <div className="hidden sm:block w-px h-16 bg-slate-200 shrink-0" />
+
+            <div className="min-w-0">
+              <div className="inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold uppercase tracking-wider">
+                {subjectClass}
+              </div>
+
+              <h1 className="text-xl md:text-3xl font-display font-bold text-slate-800 break-words leading-tight mt-1">
+                {subject.banglaName}
+                <span className="text-slate-400 font-normal block sm:inline">
+                  {" | "}
+                  {subject.name}
+                </span>
+              </h1>
+            </div>
+
           </div>
 
           {/* Progress */}
-          <div className="w-full sm:w-48">
+          <div className="w-full sm:w-48 shrink-0">
             <div className="flex justify-between text-[11px] mb-1.5">
               <span className="font-semibold text-slate-500">
                 Progress
@@ -84,6 +92,7 @@ export default function SubjectPaperPage({
               />
             </div>
           </div>
+
         </div>
       </div>
 
