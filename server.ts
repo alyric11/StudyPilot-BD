@@ -29,6 +29,7 @@ const PORT = 3000;
 
 // Lazy initialization of GoogleGenAI SDK to avoid crashing if API key is not set.
 let aiClient: GoogleGenAI | null = null;
+const youtubeApiKey = process.env.YOUTUBE_API_KEY;
 function getAI() {
   if (!aiClient) {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -555,6 +556,66 @@ app.post("/api/generate-study-plan", async (req, res) => {
   } catch (error: any) {
     console.error("Gemini API planner error:", error);
     res.status(500).json({ error: "Failed to generate personalized study plan", details: error.message });
+  }
+});
+
+// API: Search YouTube video lessons
+app.get("/api/video-lessons", async (req, res) => {
+  const { classLevel, subject, chapterBanglaName, chapterName } = req.query;
+
+  if (!subject || !chapterName) {
+    return res.status(400).json({
+      error: "Subject and chapter are required parameters."
+    });
+  }
+
+  if (!youtubeApiKey) {
+    return res.status(500).json({
+      error: "YouTube API key is not configured."
+    });
+  }
+
+  const query = [
+    `Class ${classLevel || ""}`,
+    subject,
+    chapterBanglaName || "",
+    chapterName,
+    "Bangladesh NCTB"
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  try {
+    const params = new URLSearchParams({
+      part: "snippet",
+      q: query,
+      type: "video",
+      maxResults: "10",
+      key: youtubeApiKey
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?${params.toString()}`
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("YouTube API error:", errorText);
+
+      return res.status(response.status).json({
+        error: "Failed to search YouTube."
+      });
+    }
+
+    const data = await response.json();
+
+    res.json(data.items || []);
+  } catch (error) {
+    console.error("YouTube search error:", error);
+
+    res.status(500).json({
+      error: "Failed to search YouTube."
+    });
   }
 });
 
