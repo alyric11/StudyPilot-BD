@@ -23,6 +23,7 @@ interface ChapterPageProps {
   chapterProgress: ChapterProgress;
   onUpdateProgress: (progress: ChapterProgress) => void;
   onBack: () => void;
+  onWatchVideoLessons: () => void;
 }
 
 interface ChatMessage {
@@ -40,7 +41,8 @@ export default function ChapterPage({
   profile,
   chapterProgress,
   onUpdateProgress,
-  onBack
+  onBack,
+  onWatchVideoLessons,
 }: ChapterPageProps) {
   const [activeTab, setActiveTab] = useState<'guide' | 'tutor'>('guide');
   const [guideData, setGuideData] = useState<ChapterOverviewData | null>(null);
@@ -100,8 +102,8 @@ export default function ChapterPage({
         revision: "40 min"
       },
       studyStrategySteps: [
-        { step: "Step 1: Read the Textbook", description: "Highlight primary formulas, core definitions, and board-question triggers." },
-        { step: "Step 2: Watch animated video lectures", description: "Clear visual blocks and understand experimental setups." },
+        { step: "Step 1: Read NCTB textbook", description: "Highlight primary formulas, core definitions, and board-question triggers." },
+        { step: "Step 2: Watch video lectures", description: "Clear visual blocks and understand experimental setups." },
         { step: "Step 3: Solve textbook exercises", description: "Test your immediate conceptual clarity with end-of-chapter exercises." },
         { step: "Step 4: Solve Board Exam CQs", description: "Practice previous 5 years' board exam questions (Dhaka, Rajshahi, Chittagong, etc.)" },
         { step: "Step 5: Test yourself with a mock quiz", description: "Answer standard MCQ or short questions under a strict timer." }
@@ -449,7 +451,9 @@ export default function ChapterPage({
                         key={idx}
                         type="button"
                         onClick={() => {
-                          // Destination for this study step will be added here.
+                          if (idx === 1) {
+                            onWatchVideoLessons();
+                          }
                         }}
                         className="w-full flex items-center gap-4 relative text-left cursor-pointer rounded-lg p-1 -m-1 hover:bg-slate-50 transition-colors"
                       >
@@ -459,7 +463,9 @@ export default function ChapterPage({
 
                         <div>
                           <h4 className="text-xs font-bold text-slate-700">
-                            {step.step.replace(/^Step \d+:\s*/, "")}
+                            {step.step
+                              .replace(/^Step \d+:\s*/, "")
+                              .replace("Watch animated video lectures", "Watch video lectures")}
                           </h4>
 
                         </div>

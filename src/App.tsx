@@ -13,6 +13,7 @@ import { ChapterProgress } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
 import { AnimatePresence, motion } from "motion/react";
+import VideoLessonsPage from "./components/VideoLessonsPage";
 
 // Component Imports
 import ProfileSetup from "./components/ProfileSetup";
@@ -48,6 +49,7 @@ export default function App() {
 
   // Currently studied textbook chapter
   const [selectedSubjectPaper, setSelectedSubjectPaper] = useState<string | null>(null);
+  const [showVideoLessons, setShowVideoLessons] = useState(false);
 
   const [selectedChapter, setSelectedChapter] = useState<{
     subjectId: string;
@@ -426,7 +428,13 @@ export default function App() {
 
         {/* Study Workstation */}
         <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full overflow-x-hidden" id="dynamic-flight-window">
-          {selectedChapter ? (
+          {showVideoLessons ? (
+            <VideoLessonsPage
+              chapter={selectedChapter!}
+              classLevel={profile.classLevel}
+              onBack={() => setShowVideoLessons(false)}
+            />
+          ) : selectedChapter ? (
             /* Active chapter page study hub */
             <ChapterPage
               subjectId={selectedChapter.subjectId}
@@ -450,6 +458,7 @@ export default function App() {
                 handleUpdateChapterProgress(selectedChapter.subjectId, selectedChapter.chapterId, prog)
               }
               onBack={() => setSelectedChapter(null)}
+              onWatchVideoLessons={() => setShowVideoLessons(true)}
             />
           ) : selectedSubjectPaper ? (
             <SubjectPaperPage
@@ -486,7 +495,6 @@ export default function App() {
                         {profile.name.charAt(0)}
                       </div>
                       <div className="space-y-0.5 min-w-0">
-                        <span className="text-xs text-indigo-600 font-bold uppercase tracking-wider block font-display">Student Cockpit</span>
                         <h1 className="text-xl md:text-2xl font-display font-bold text-slate-800 tracking-tight break-words">{profile.name}</h1>
                         <p className="text-xs text-slate-500 font-medium break-words leading-relaxed">
                           {profile.school} <span className="text-indigo-400 font-bold hidden sm:inline">•</span><span className="sm:hidden block my-0.5"></span> {profile.classLevel} ({profile.group || "None"}) <span className="text-indigo-400 font-bold hidden sm:inline">•</span><span className="sm:hidden block my-0.5"></span> {profile.board} Board
@@ -525,7 +533,7 @@ export default function App() {
                             {activeSubjects.length} Subjects
                           </span>
                         </div>
-
+                        <hr></hr>
                         {/* Common Subjects */}
                         <div>
                           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display">
@@ -608,7 +616,7 @@ export default function App() {
                             );
                           })}
                         </div>
-
+                        <hr style={{ marginTop: "35px", marginBottom: "35px" }}></hr>
                         {/* Group Subjects */}
                         {(compulsorySubjects.length > 0 || optionalSubjects.length > 0) && (
                           <div className="space-y-4">
