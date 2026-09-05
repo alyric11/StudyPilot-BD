@@ -26,6 +26,8 @@ interface VideoResult {
       };
     };
   };
+  viewCount: string;
+  duration: string | null;
 }
 
 export default function VideoLessonsPage({
@@ -69,6 +71,23 @@ export default function VideoLessonsPage({
     fetchVideos();
   }, [chapter]);
 
+  const formatDuration = (duration: string | null) => {
+    if (!duration) return "";
+
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+
+    if (!match) return "";
+
+    const hours = Number(match[1] || 0);
+    const minutes = Number(match[2] || 0);
+    const seconds = Number(match[3] || 0);
+
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  };
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -158,6 +177,11 @@ export default function VideoLessonsPage({
                     <p className="text-xs text-slate-500 mt-1">
                       {video.snippet.channelTitle}
                     </p>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-2">
+                      <span>{Number(video.viewCount).toLocaleString()} views</span>
+                      {video.duration && <span>{formatDuration(video.duration)}</span>}
+                    </div>
 
                     <a
                       href={`https://www.youtube.com/watch?v=${video.id.videoId}`}
