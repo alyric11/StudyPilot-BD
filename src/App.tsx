@@ -29,7 +29,6 @@ import {
   Clock,
   ClipboardList,
   Feather,
-  Flame,
   ChevronRight,
   LogOut,
   Sparkles,
@@ -61,7 +60,6 @@ export default function App() {
 
   // Core Persistent State Arrays
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [streakCount, setStreakCount] = useState(5); // Default study streak
 
   // In-app Notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
@@ -341,10 +339,7 @@ export default function App() {
 
         {/* Right Header Status info */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-800 px-3 py-1.5 rounded-full border border-amber-200/50" title="Active Streak">
-            <Flame className="w-4 h-4 fill-amber-500 stroke-amber-600 animate-pulse" />
-            <span className="text-xs font-bold">{streakCount} Day Streak</span>
-          </div>
+          
 
           <div className="flex items-center gap-2.5 border-l border-slate-200 pl-4">
             <img

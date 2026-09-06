@@ -201,7 +201,8 @@ export default function ChapterPage({
           queryType,
           subject: subjectName,
           chapter: chapterName,
-          classLevel: profile.classLevel
+          classLevel: profile.classLevel,
+          history: messages
         })
       });
 
@@ -253,7 +254,8 @@ export default function ChapterPage({
           message: studentText,
           subject: subjectName,
           chapter: chapterName,
-          classLevel: profile.classLevel
+          classLevel: profile.classLevel,
+          history: messages
         })
       });
 
@@ -629,7 +631,7 @@ export default function ChapterPage({
           </div>
 
           {/* Chat Pane */}
-          <div className="md:col-span-3 flex flex-col h-[500px] md:h-full bg-white">
+          <div className="md:col-span-3 flex flex-col min-h-0 h-[500px] md:h-full bg-white">
             {/* Header */}
             <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
               <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full animate-pulse" />
@@ -637,7 +639,7 @@ export default function ChapterPage({
             </div>
 
             {/* Logs */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}

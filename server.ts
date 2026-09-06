@@ -389,6 +389,12 @@ app.post("/api/tutor-chat", async (req, res) => {
     const ai = getAI();
     const chat = ai.chats.create({
       model: "gemini-3.5-flash",
+      history: Array.isArray(history)
+        ? history.slice(-10).map((msg) => ({
+          role: msg.sender === "student" ? "user" : "model",
+          parts: [{ text: msg.text }]
+        }))
+        : [],
       config: {
         systemInstruction: `You are StudyPilot AI, an elite academic personal tutor and educational coach for Bangladeshi school & college students following the NCTB curriculum (Classes IX-XII, SSC, and HSC).
         - Your main goal is to help students learn their textbook chapters inside out, understand theories deeply, and excel in board exams.
