@@ -10,8 +10,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { ChapterOverviewData, ChapterProgress, UserProfile } from "../types";
-import { BookOpen, AlertTriangle, Play, CheckCircle, Send, Sparkles, Clock, Compass, FileText, ChevronRight, MessageSquare, ArrowLeft } from "lucide-react";
+import { BookOpen, AlertTriangle, Play, CheckCircle, Send, Sparkles, Compass, FileText, ChevronRight, MessageSquare, ArrowLeft, ExternalLink, GraduationCap } from "lucide-react";
 import { NCTB_CURRICULUM } from "../data/curriculum";
+import { STUDY_RESOURCES } from '../data/resources';
 
 interface ChapterPageProps {
   subjectId: string;
@@ -48,6 +49,7 @@ export default function ChapterPage({
   const [guideData, setGuideData] = useState<ChapterOverviewData | null>(null);
   const [loadingGuide, setLoadingGuide] = useState(false);
   const [apiWarning, setApiWarning] = useState<string | null>(null);
+  const [showChapterOverview, setShowChapterOverview] = useState(false);
 
   // Retrieve complete chapter object from curriculum reference
   const activeChapterObj = (() => {
@@ -134,40 +136,6 @@ export default function ChapterPage({
     };
   };
 
-  // Fetch chapter guide
-  useEffect(() => {
-    const fetchGuide = async () => {
-      setLoadingGuide(true);
-      setApiWarning(null);
-      try {
-        const response = await fetch("/api/generate-chapter-guide", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            subject: subjectName,
-            chapter: chapterName,
-            classLevel: profile.classLevel,
-            group: profile.group
-          })
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setGuideData(data);
-        } else {
-          throw new Error("Failed to load custom guide");
-        }
-      } catch (err) {
-        console.warn("Could not fetch real guide, using cached fallback", err);
-        const offlineGuide = getLocalFallbackGuide(subjectName, chapterName);
-        setGuideData(offlineGuide);
-        setApiWarning("Unable to contact AI co-pilot. Showing offline curriculum study guide instead!");
-      } finally {
-        setLoadingGuide(false);
-      }
-    };
-    fetchGuide();
-  }, [subjectName, chapterName, profile]);
-
   // Scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -206,15 +174,20 @@ export default function ChapterPage({
         })
       });
 
+      if (!res.ok) {
+        throw new Error(`Tutor request failed: ${res.status}`);
+      }
+
       const data = await res.json();
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: data.text || "I'm having trouble retrieving details right now. Let's try again shortly!",
+          text: data.text || "Lyritalk is temporarily unavailable. Please try again shortly.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
+
     } catch (err) {
       console.error(err);
       setMessages((prev) => [
@@ -259,12 +232,17 @@ export default function ChapterPage({
         })
       });
 
+      if (!res.ok) {
+        throw new Error(`Tutor request failed: ${res.status}`);
+      }
+
       const data = await res.json();
+
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: data.text,
+          text: data.text || "Lyritalk is temporarily unavailable. Please try again shortly.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -400,124 +378,124 @@ export default function ChapterPage({
       {/* Tab: Intelligent Chapter Guide */}
       {activeTab === 'guide' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main content - Column 1 & 2 */}
           <div className="lg:col-span-2 space-y-6">
-            {apiWarning && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-amber-800 text-xs flex items-start gap-2.5 shadow-xs animate-fade-in">
-                <span className="text-base">⚠️</span>
-                <div>
-                  <p className="font-bold">Offline Study Guide Active</p>
-                  <p className="text-amber-700 mt-0.5">{apiWarning}</p>
-                </div>
-              </div>
-            )}
 
-            {loadingGuide ? (
-              <div className="bg-white rounded-xl border border-slate-200/60 p-12 text-center shadow-sm space-y-4">
-                <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                <h3 className="text-slate-700 font-semibold font-display">Pilot AI is Plotting Chapter Metrics...</h3>
-                <p className="text-slate-400 text-sm max-w-sm mx-auto">
-                  Parsing past NCTB Board Exams, estimated timings, resource rankings, and mapping a step-by-step master flight strategy.
+            {/* Intelligent Chapter Guide / Chapter Overview */}
+            {!showChapterOverview ? (
+              <button
+                type="button"
+                onClick={() => setShowChapterOverview(true)}
+                className="w-full bg-white rounded-xl border border-slate-200/60 p-8 shadow-sm text-left hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-3 text-indigo-600 font-display font-bold">
+                  <Sparkles className="w-5 h-5" />
+                  Intelligent Chapter Guide
+                </div>
+
+                <p className="mt-3 text-slate-600 text-sm">
+                  Get a quick AI-generated overview of this chapter.
+                </p>
+
+                <p className="mt-2 text-xs text-slate-400">
+                  Click to generate
+                </p>
+              </button>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200/60 p-8 shadow-sm text-center">
+                <h3 className="text-slate-700 font-semibold">
+                  Chapter Overview
+                </h3>
+                <p className="mt-2 text-sm text-slate-400">
+                  Overview generation will be connected in the next step.
                 </p>
               </div>
-            ) : guideData ? (
-              <>
-                {/* Introduction & Details */}
-                <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2.5 text-indigo-600 font-display font-bold">
-                    <Sparkles className="w-5 h-5 text-indigo-500" />
-                    Chapter Overview
-                  </div>
-                  <p className="text-slate-600 text-sm leading-relaxed">{guideData.introduction}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Why It Matters</h4>
-                      <p className="text-slate-600 text-xs leading-relaxed">{guideData.whyItMatters}</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
-                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Real-Life Applications</h4>
-                      <p className="text-slate-600 text-xs leading-relaxed">{guideData.realLifeApplications}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* AI Study Strategy */}
-                <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
-                  <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">
-                    Study Plan
-                  </h3>
-
-                  <div className="space-y-4 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-                    {guideData.studyStrategySteps.map((step, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          if (idx === 1) {
-                            onWatchVideoLessons();
-                          }
-                        }}
-                        className="w-full flex items-center gap-4 relative text-left cursor-pointer rounded-lg p-1 -m-1 hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="w-6.5 h-6.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center text-xs font-bold shrink-0">
-                          {idx + 1}
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-700">
-                            {step.step
-                              .replace(/^Step \d+:\s*/, "")
-                              .replace("Watch animated video lectures", "Watch video lectures")}
-                          </h4>
-
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Resource Finder */}
-                <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
-                  <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">Recommended Resources</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {guideData.recommendedResources.map((res, idx) => (
-                      <a
-                        key={idx}
-                        href={res.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 flex items-start gap-3 transition-all cursor-pointer group"
-                      >
-                        <div className={`p-2.5 rounded-lg ${res.type === 'video' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'
-                          }`}>
-                          {res.type === 'video' ? <Play className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50/60 px-1.5 py-0.5 rounded border border-indigo-100/40">
-                              {res.qualityRating}
-                            </span>
-                            <span className="text-[10px] font-medium text-slate-400">
-                              {res.source}
-                            </span>
-                          </div>
-                          <h4 className="text-xs font-semibold text-slate-700 group-hover:text-emerald-600 transition-colors">
-                            {res.title}
-                          </h4>
-                          <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                            Click to open external link <ChevronRight className="w-3 h-3" />
-                          </span>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-100 p-8 text-center text-slate-500">
-                Failed to assemble guide. Ask your AI Tutor directly by switching tabs above!
-              </div>
             )}
+
+            {/* Study Plan */}
+            <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">
+                Study Plan
+              </h3>
+
+              <div className="space-y-4 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+                {[
+                  "Read NCTB textbook",
+                  "Watch video lectures",
+                  "Solve textbook exercises",
+                  "Solve board questions",
+                  "Test yourself"
+                ].map((step, idx) => (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => {
+                      if (idx === 1) {
+                        onWatchVideoLessons();
+                      }
+                    }}
+                    disabled={idx !== 1}
+                    className={`w-full flex items-center gap-4 relative text-left rounded-lg p-1 -m-1 ${idx === 1
+                      ? "cursor-pointer hover:bg-slate-50"
+                      : "cursor-default"
+                      } transition-colors`}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center text-xs font-bold shrink-0">
+                      {idx + 1}
+                    </div>
+
+                    <h4 className="text-xs font-bold text-slate-700">
+                      {step}
+                    </h4>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Recommended Resources */}
+            <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider mb-4">
+                Recommended Resources
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {STUDY_RESOURCES.map((resource) => (
+                  <a
+                    key={resource.name}
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-3.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white hover:border-indigo-200 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                        {resource.logoUrl ? (
+                          <img
+                            src={resource.logoUrl}
+                            alt={`${resource.name} logo`}
+                            className="w-8 h-8 object-contain"
+                          />
+                        ) : (
+                          <BookOpen className="w-5 h-5 text-indigo-500" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
+                          {resource.name}
+                        </h4>
+
+                        <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">
+                          {resource.description}
+                        </p>
+                      </div>
+
+                      <ExternalLink className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-indigo-500 transition-colors" />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+
           </div>
 
           {/* Checklist Sidebar - Column 3 */}
@@ -560,33 +538,6 @@ export default function ChapterPage({
               </div>
             </div>
 
-            {/* Estimated Study Time */}
-            {guideData && (
-              <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-indigo-500" />
-                  Estimated Timings
-                </h3>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    <span className="block text-[10px] text-slate-400 uppercase font-semibold">Reading Book</span>
-                    <span className="text-xs font-bold text-slate-700">{guideData.estimatedTime.readingTextbook}</span>
-                  </div>
-                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    <span className="block text-[10px] text-slate-400 uppercase font-semibold">Lectures</span>
-                    <span className="text-xs font-bold text-slate-700">{guideData.estimatedTime.watchingLectures}</span>
-                  </div>
-                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    <span className="block text-[10px] text-slate-400 uppercase font-semibold">Practice CQs</span>
-                    <span className="text-xs font-bold text-slate-700">{guideData.estimatedTime.practice}</span>
-                  </div>
-                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    <span className="block text-[10px] text-slate-400 uppercase font-semibold">Revision</span>
-                    <span className="text-xs font-bold text-slate-700">{guideData.estimatedTime.revision}</span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
