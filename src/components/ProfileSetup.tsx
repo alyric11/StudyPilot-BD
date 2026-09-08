@@ -265,7 +265,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="class-select">NCTB Class Level</label>
             <div className="relative">
-              <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-black" />
               <select
                 id="class-select"
                 value={classLevel}
@@ -273,7 +273,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                   handleClassChange(e);
                   setClassLevelTouched(true);
                 }}
-                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || classLevelTouched ? "text-slate-800" : "text-slate-400"} font-medium cursor-pointer`}
+                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || classLevelTouched ? "text-slate-800" : "text-black"} font-medium cursor-pointer`}
               >
                 {Object.keys(NCTB_CURRICULUM).map((cl) => (
                   <option key={cl} value={cl}>
@@ -287,7 +287,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="group-select">Academic Group</label>
             <div className="relative">
-              <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <User className="absolute left-3 top-3 h-4 w-4 text-black" />
               <select
                 id="group-select"
                 value={group}
@@ -296,7 +296,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                   setGroupTouched(true);
                 }}
                 disabled={availableGroups.length === 1 && availableGroups[0] === "None"}
-                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || groupTouched ? "text-slate-800" : "text-slate-400"} font-medium cursor-pointer disabled:opacity-50`}
+                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || groupTouched ? "text-slate-800" : "text-black"} font-medium cursor-pointer disabled:opacity-50`}
               >
                 {availableGroups.map((grp: string) => (
                   <option key={grp} value={grp}>
@@ -313,7 +313,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="board-select">Education Board</label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <MapPin className="absolute left-3 top-3 h-4 w-4 text-black" />
               <select
                 id="board-select"
                 value={board}
@@ -321,7 +321,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                   setBoard(e.target.value);
                   setBoardTouched(true);
                 }}
-                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || boardTouched ? "text-slate-800" : "text-slate-400"} font-medium cursor-pointer`}
+                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || boardTouched ? "text-slate-800" : "text-black"} font-medium cursor-pointer`}
               >
                 {NCTB_BOARDS.map((bd) => (
                   <option key={bd} value={bd}>
@@ -335,7 +335,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="year-input">Exam Year (SSC/HSC)</label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Calendar className="absolute left-3 top-3 h-4 w-4 text-black" />
               <input
                 id="year-input"
                 type="number"
@@ -345,7 +345,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
                   setExamYear(e.target.value);
                   setExamYearTouched(true);
                 }}
-                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-all ${demoImported || examYearTouched ? "text-slate-800" : "text-slate-400"} font-medium`}
+                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-all ${demoImported || examYearTouched ? "text-slate-800" : "text-black"} font-medium`}
                 required
               />
             </div>
