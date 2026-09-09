@@ -74,30 +74,11 @@ export interface StudyPlanResponse {
   motivationQuote: string; // Aligned with the NCTB class level and group
 }
 
-// Dynamic NCTB textbook study guide content
 export interface ChapterOverviewData {
   introduction: string;
-  whyItMatters: string;
-  realLifeApplications: string;
-  examImportance: {
-    priority: 'high' | 'medium' | 'low';
-    reason: string;
-  };
-  learningObjectives: string[];
-  prerequisites: string[];
-  commonMistakes: string[];
-  estimatedTime: {
-    readingTextbook: string;
-    watchingLectures: string;
-    practice: string;
-    revision: string;
-  };
-  studyStrategySteps: Array<{ step: string; description: string }>;
-  recommendedResources: Array<{
-    title: string;
-    source: string; // e.g., "10 Minute School", "Khan Academy Bangla"
-    url: string;
-    type: 'video' | 'pdf' | 'simulation' | 'textbook';
-    qualityRating: string; // e.g. "Highly Recommended"
+
+  importantTopics: Array<{
+    topic: string;
+    description: string;
   }>;
 }

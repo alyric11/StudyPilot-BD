@@ -3,9 +3,8 @@
  * 
  * Purpose:
  * Renders the study canvas for any selected textbook chapter. It combines:
- * 1. AI Study Guide: Dynamically fetched via backend Gemini APIs, laying out learning objectives, exam weights, and mistake lists.
- * 2. Active AI Tutor Chat: Interactive chat box styled in Bangla/English (Banglish) to answer student doubts and explain concepts.
- * 3. Syllabus Checklists: An interactive checklist (textbooks, lectures, notes, CQs) to track active completion.
+ * 1. Active AI Tutor Chat: Interactive chat box styled in Bangla/English (Banglish) to answer student doubts and explain concepts.
+ * 2. Syllabus Checklists: An interactive checklist (textbooks, lectures, notes, CQs) to track active completion.
  */
 
 import React, { useState, useEffect, useRef } from "react";
@@ -65,7 +64,7 @@ export default function ChapterPage({
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'ai',
-      text: `আসসালামু আলাইকুম, ${profile.name}! I am your StudyPilot academic assistant for **${subjectName}: ${chapterBanglaName} (${chapterName})**. Ask me anything about this chapter, or click one of the quick study prompts below!`,
+      text: `Hi, ${profile.name}! I am your StudyPilot academic assistant for **${subjectName}: ${chapterBanglaName} (${chapterName})**. Ask me anything about this chapter, or click one of the quick study prompts below!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -73,75 +72,45 @@ export default function ChapterPage({
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const getLocalFallbackGuide = (subject: string, chapter: string): ChapterOverviewData => {
-    return {
-      introduction: `This guide outlines the core topics for ${subject} chapter "${chapter}". It covers essential theorems, definitions, and equations from the National Curriculum and Textbook Board (NCTB) syllabus, optimized for Bangladeshi students preparing for final evaluations.`,
-      whyItMatters: "Mastering this chapter is highly critical because it introduces foundational concepts tested across multiple board question blocks.",
-      realLifeApplications: "Provides the base logic for scientific experiments, computational applications, and advanced studies.",
-      examImportance: {
-        priority: "high",
-        reason: "This chapter accounts for approximately 15-20% of marks in creative questions (CQ) and multiple-choice questions (MCQ) in final board examinations."
-      },
-      learningObjectives: [
-        "Explain key terms, variables, definitions, and physical/logical units.",
-        "Derive major mathematical proofs and equations correctly.",
-        "Apply correct formulas to complete syllabus exercise questions.",
-        "Avoid common terminal-exam pitfalls and board questions errors."
-      ],
-      prerequisites: [
-        "Knowledge of previous chapters and fundamental mathematical formulas.",
-        "Familiarity with standard NCTB course vocabulary."
-      ],
-      commonMistakes: [
-        "Mixing up similar formulas or misapplying physical units under pressure.",
-        "Omitting detailed steps in Gha/Umo creative CQ question blocks.",
-        "Reading questions too quickly and missing small trick constraints in stems."
-      ],
-      estimatedTime: {
-        readingTextbook: "45 min",
-        watchingLectures: "60 min",
-        practice: "120 min",
-        revision: "40 min"
-      },
-      studyStrategySteps: [
-        { step: "Step 1: Read NCTB textbook", description: "Highlight primary formulas, core definitions, and board-question triggers." },
-        { step: "Step 2: Watch video lectures", description: "Clear visual blocks and understand experimental setups." },
-        { step: "Step 3: Solve textbook exercises", description: "Test your immediate conceptual clarity with end-of-chapter exercises." },
-        { step: "Step 4: Solve Board Exam CQs", description: "Practice previous 5 years' board exam questions (Dhaka, Rajshahi, Chittagong, etc.)" },
-        { step: "Step 5: Test yourself with a mock quiz", description: "Answer standard MCQ or short questions under a strict timer." }
-      ],
-      recommendedResources: [
-        {
-          title: "Complete Video Lecture and Practice - 10 Minute School",
-          source: "10 Minute School",
-          url: "https://10minuteschool.com",
-          type: "video",
-          qualityRating: "Highly Recommended"
-        },
-        {
-          title: "Interactive Practice Exercises - Khan Academy Bangla",
-          source: "Khan Academy Bangla",
-          url: "https://bangla.khanacademy.org",
-          type: "simulation",
-          qualityRating: "Highly Recommended"
-        },
-        {
-          title: "NCTB Board Book Digital PDF Version",
-          source: "NCTB Bangladesh",
-          url: "http://nctb.gov.bd",
-          type: "pdf",
-          qualityRating: "Official Resource"
-        }
-      ]
-    };
-  };
-
   // Scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   // Handle checklist checkbox toggling
+  const generateChapterGuide = async () => {
+    setShowChapterOverview(true);
+    setLoadingGuide(true);
+    setApiWarning(null);
+
+    try {
+      const res = await fetch("/api/generate-chapter-guide", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subject: subjectName,
+          chapter: chapterName,
+          classLevel: profile.classLevel,
+          group: profile.group,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Guide request failed: ${res.status}`);
+      }
+
+      const data: ChapterOverviewData = await res.json();
+      setGuideData(data);
+    } catch (error) {
+      console.error(error);
+      setApiWarning("Chapter guide could not be generated right now.");
+    } finally {
+      setLoadingGuide(false);
+    }
+  };
+
   const handleChecklistToggle = (key: keyof ChapterProgress) => {
     const updated = {
       ...chapterProgress,
@@ -384,7 +353,7 @@ export default function ChapterPage({
             {!showChapterOverview ? (
               <button
                 type="button"
-                onClick={() => setShowChapterOverview(true)}
+                onClick={generateChapterGuide}
                 className="w-full bg-white rounded-xl border border-slate-200/60 p-8 shadow-sm text-left hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-3 text-indigo-600 font-display font-bold">
@@ -405,9 +374,47 @@ export default function ChapterPage({
                 <h3 className="text-slate-700 font-semibold">
                   Chapter Overview
                 </h3>
-                <p className="mt-2 text-sm text-slate-400">
-                  Overview generation will be connected in the next step.
-                </p>
+                {loadingGuide ? (
+                  <p className="text-lg text-slate-400">
+                    Generating your chapter overview...
+                  </p>
+                ) : apiWarning ? (
+                  <p className="text-lg text-red-500">
+                    {apiWarning}
+                  </p>
+                ) : guideData ? (
+                  <div className="text-left space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                        Chapter Overview
+                      </h3>
+                      <p className="text-slate-700 leading-relaxed text-justify">
+                        {guideData.introduction}
+                      </p>
+                    </div>
+
+                    {guideData.importantTopics.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900 mb-3">
+                          Important Topics
+                        </h3>
+
+                        <div className="space-y-4">
+                          {guideData.importantTopics.map((item, index) => (
+                            <div key={index}>
+                              <p className="font-semibold text-slate-900">
+                                {index + 1}. {item.topic}
+                              </p>
+                              <p className="text-slate-600 mt-1 leading-relaxed text-justify">
+                                {item.description}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
             )}
 
