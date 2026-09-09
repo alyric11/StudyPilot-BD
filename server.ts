@@ -217,23 +217,66 @@ app.post("/api/generate-chapter-guide", async (req, res) => {
   const { subject, chapter, classLevel, group } = req.body;
 
   if (!subject || !chapter) {
-    return res.status(400).json({ error: "Subject and chapter are required parameters." });
+    return res.status(400).json({
+      error: "Subject and chapter are required parameters."
+    });
   }
 
+  // No Gemini API key: return a simple fallback response.
+  // This keeps the application usable during local development.
   if (!hasRealAPIKey()) {
-    console.log("Using cached fallback guide for", subject, chapter);
-    const mockGuide = { ...fallbackChapterGuides.default };
-    mockGuide.introduction = `Welcome to your customized StudyPilot guide for ${subject}, Chapter: ${chapter} (Class ${classLevel || "9-10"}). This page is loaded with NCTB curriculum specifics.`;
-    return res.json(mockGuide);
+    console.log("Using fallback guide for", subject, chapter);
+
+    return res.json({
+      introduction: `এই অধ্যায়টি ${subject} বিষয়ের "${chapter}" অধ্যায়। এখানে অধ্যায়টির মূল ধারণা ও গুরুত্বপূর্ণ বিষয়গুলো সংক্ষেপে তুলে ধরা হবে।`,
+      importantTopics: []
+    });
   }
 
   try {
     const ai = getAI();
-    const prompt = `Generate a comprehensive NCTB-aligned study page for Class ${classLevel || "9-10"}, Subject: ${subject}, Chapter: ${chapter}.
-    Group: ${group || "Science"}.
-    Ensure the data is structured to help a Bangladeshi student prepare for school & Board Exams (SSC/HSC).
-    Be realistic, name actual YouTube channels or resources like '10 Minute School', 'Shikho', 'Khan Academy Bangla', 'Onnorokom Web School', and provide genuine links or educational website structures where possible.
-    Respond strictly in JSON matching the specified schema format. Keep explanations very practical, using a friendly, highly professional tone. You can use some standard Bangla terms (using English alphabet or Bangla script where suitable) e.g., 'Creative Question (CQ)', 'Srijonshil (সৃজনশীল)'.`;
+
+    const prompt = `
+You are an academic content assistant for StudyPilot BD.
+
+StudyPilot BD is designed for Bangladeshi students following the
+Bangladesh National Curriculum and Textbook Board (NCTB) curriculum.
+
+Prepare a concise study overview for the following chapter:
+
+Class: ${classLevel || "Not specified"}
+Group: ${group || "Not specified"}
+Subject: ${subject}
+Chapter: ${chapter}
+
+IMPORTANT RULES:
+
+1. Write the main chapter overview in correct standard Bangladeshi Bengali.
+2. The overview must be no more than 100 Bengali words.
+3. Use English only for academic, scientific, mathematical, or technical
+   terms when English makes the concept clearer.
+   Example: বেগ (Velocity), ত্বরণ (Acceleration).
+4. Identify the important topics that genuinely belong to this chapter.
+5. Give every important topic a short and clear description.
+6. Do NOT invent NCTB chapters, topics, syllabus content, examination
+   statistics, or textbook information.
+7. Do NOT generate:
+   - exam importance
+   - learning objectives
+   - prerequisites
+   - common mistakes
+   - estimated study time
+   - real-life applications
+   - recommended resources
+8. Do not use Banglish as the main language.
+9. Keep the writing academically accurate, concise, and suitable for
+   Bangladeshi SSC/HSC students.
+10. Return JSON only, following the supplied response schema.
+
+If you do not have enough reliable information to identify specific
+important topics, return an empty importantTopics array rather than
+inventing topics.
+`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
@@ -243,90 +286,55 @@ app.post("/api/generate-chapter-guide", async (req, res) => {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            introduction: { type: Type.STRING, description: "A highly specific, friendly overview introduction of the chapter." },
-            whyItMatters: { type: Type.STRING, description: "Brief explanation of why this is important to study." },
-            realLifeApplications: { type: Type.STRING, description: "Real-life examples of how this is applied in Bangladesh or worldwide." },
-            examImportance: {
-              type: Type.OBJECT,
-              properties: {
-                priority: { type: Type.STRING, description: "high, medium, or low" },
-                reason: { type: Type.STRING, description: "Reason why board exams focus on this, percentage weight, typical number of CQs/MCQs." }
-              },
-              required: ["priority", "reason"]
+            introduction: {
+              type: Type.STRING,
+              description:
+                "A concise chapter overview written mainly in correct standard Bangladeshi Bengali. Maximum 100 words."
             },
-            learningObjectives: {
+
+            importantTopics: {
               type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: "What the student will learn (3-5 objectives)."
-            },
-            prerequisites: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: "Prior knowledge or textbook chapters needed."
-            },
-            commonMistakes: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: "Specific mistakes Bangladeshi students make in SSC/HSC board papers (e.g., unit errors, formula mix-ups)."
-            },
-            estimatedTime: {
-              type: Type.OBJECT,
-              properties: {
-                readingTextbook: { type: Type.STRING, description: "e.g., 45 minutes" },
-                watchingLectures: { type: Type.STRING, description: "e.g., 70 minutes" },
-                practice: { type: Type.STRING, description: "e.g., 2 hours" },
-                revision: { type: Type.STRING, description: "e.g., 40 minutes" }
-              },
-              required: ["readingTextbook", "watchingLectures", "practice", "revision"]
-            },
-            studyStrategySteps: {
-              type: Type.ARRAY,
+              description:
+                "Important topics that genuinely belong to this NCTB chapter.",
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  step: { type: Type.STRING },
-                  description: { type: Type.STRING }
+                  topic: {
+                    type: Type.STRING,
+                    description:
+                      "The name of an important topic from the chapter."
+                  },
+                  description: {
+                    type: Type.STRING,
+                    description:
+                      "A short, clear explanation of the topic in standard Bangladeshi Bengali, using English academic terms when useful."
+                  }
                 },
-                required: ["step", "description"]
-              },
-              description: "5 step strategy from textbook reading to past board papers and quiz."
-            },
-            recommendedResources: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  source: { type: Type.STRING, description: "e.g., 10 Minute School, Shikho, YouTube, Khan Academy Bangla" },
-                  url: { type: Type.STRING },
-                  type: { type: Type.STRING, description: "video, pdf, simulation, or textbook" },
-                  qualityRating: { type: Type.STRING, description: "Highly Recommended, Featured, official" }
-                },
-                required: ["title", "source", "url", "type", "qualityRating"]
+                required: ["topic", "description"]
               }
             }
           },
-          required: [
-            "introduction",
-            "whyItMatters",
-            "realLifeApplications",
-            "examImportance",
-            "learningObjectives",
-            "prerequisites",
-            "commonMistakes",
-            "estimatedTime",
-            "studyStrategySteps",
-            "recommendedResources"
-          ]
+          required: ["introduction", "importantTopics"]
         }
       }
     });
 
-    const data = JSON.parse(response.text?.trim() || "{}");
-    res.json(data);
-  } catch (error: any) {
-    console.error("Gemini API guide error:", error);
-    res.status(500).json({ error: "Failed to generate chapter study guide", details: error.message });
+    const text = response.text;
+
+    if (!text) {
+      throw new Error("Gemini returned an empty chapter guide.");
+    }
+
+    const guideData = JSON.parse(text);
+
+    return res.json(guideData);
+
+  } catch (error) {
+    console.error("Chapter guide generation failed:", error);
+
+    return res.status(500).json({
+      error: "Unable to generate the chapter guide at this time."
+    });
   }
 });
 

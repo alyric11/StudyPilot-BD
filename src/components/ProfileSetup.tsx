@@ -130,8 +130,8 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
   };
 
   const triggerGoogleLogin = () => {
-    setName("Jesica Jerin");
-    setEmail("jesica123@gmail.com");
+    setName("Jessica Jerin");
+    setEmail("jessica123@gmail.com");
     setSchool("Dhaka City College");
     setBoard("Dhaka");
     setClassLevel("Class 11");
@@ -170,7 +170,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
             id="google-signin-btn"
           >
 
-            Import Demo Profile (Jesica Jerin)
+            Import Demo Profile (Jessica Jerin)
           </button>
         </div>
 
