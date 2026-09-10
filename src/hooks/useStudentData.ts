@@ -4,22 +4,28 @@ import {
     StudentProgress,
     Homework,
     DiaryEntry,
-    ChapterProgress
+    ChapterProgress,
+    RoutineBlock
 } from "../types";
 import { NCTB_CURRICULUM } from "../data/curriculum";
 
-export default function useStudentData(showToast: (
-    message: string,
-    type?: "success" | "error" | "info" | "warning"
-) => void) {
+export default function useStudentData(
+    showToast: (
+        message: string,
+        type?: "success" | "error" | "info" | "warning"
+    ) => void
+) {
     const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [studentProgress, setStudentProgress] = useState<StudentProgress>({});
+    const [studentProgress, setStudentProgress] =
+        useState<StudentProgress>({});
     const [homeworks, setHomeworks] = useState<Homework[]>([]);
+    const [routineBlocks, setRoutineBlocks] = useState<RoutineBlock[]>([]);
     const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
     const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
+        // Load student profile
         try {
             const savedProfile = localStorage.getItem("sp_profile");
 
@@ -35,7 +41,9 @@ export default function useStudentData(showToast: (
                 ) {
                     setProfile(parsed);
                 } else {
-                    console.warn("Invalid profile format in storage, resetting.");
+                    console.warn(
+                        "Invalid profile format in storage, resetting."
+                    );
                     localStorage.removeItem("sp_profile");
                 }
             }
@@ -47,6 +55,7 @@ export default function useStudentData(showToast: (
             localStorage.removeItem("sp_profile");
         }
 
+        // Load student progress
         try {
             const savedProgress = localStorage.getItem("sp_progress");
 
@@ -56,7 +65,9 @@ export default function useStudentData(showToast: (
                 if (parsed && typeof parsed === "object") {
                     setStudentProgress(parsed);
                 } else {
-                    console.warn("Corrupted progress data, resetting progress map.");
+                    console.warn(
+                        "Corrupted progress data, resetting progress map."
+                    );
                     localStorage.removeItem("sp_progress");
                 }
             }
@@ -68,6 +79,7 @@ export default function useStudentData(showToast: (
             localStorage.removeItem("sp_progress");
         }
 
+        // Load homework
         try {
             const savedHomework = localStorage.getItem("sp_homework");
 
@@ -108,7 +120,10 @@ export default function useStudentData(showToast: (
                 ];
 
                 setHomeworks(demoHw);
-                localStorage.setItem("sp_homework", JSON.stringify(demoHw));
+                localStorage.setItem(
+                    "sp_homework",
+                    JSON.stringify(demoHw)
+                );
             }
         } catch (err) {
             console.error(
@@ -118,6 +133,31 @@ export default function useStudentData(showToast: (
             localStorage.removeItem("sp_homework");
         }
 
+        // Load weekly routine
+        try {
+            const savedRoutine = localStorage.getItem("sp_routine");
+
+            if (savedRoutine) {
+                const parsed = JSON.parse(savedRoutine);
+
+                if (Array.isArray(parsed)) {
+                    setRoutineBlocks(parsed);
+                } else {
+                    console.warn(
+                        "Invalid routine data, resetting routine."
+                    );
+                    localStorage.removeItem("sp_routine");
+                }
+            }
+        } catch (err) {
+            console.error(
+                "Failed to parse routine data from local storage:",
+                err
+            );
+            localStorage.removeItem("sp_routine");
+        }
+
+        // Load study diary
         try {
             const savedDiary = localStorage.getItem("sp_diary");
 
@@ -149,12 +189,17 @@ export default function useStudentData(showToast: (
                         category: "notes",
                         subject: "Chemistry 1st Paper",
                         chapter: "Qualitative Chemistry",
-                        createdAt: new Date(Date.now() - 86400000).toISOString()
+                        createdAt: new Date(
+                            Date.now() - 86400000
+                        ).toISOString()
                     }
                 ];
 
                 setDiaryEntries(demoDiary);
-                localStorage.setItem("sp_diary", JSON.stringify(demoDiary));
+                localStorage.setItem(
+                    "sp_diary",
+                    JSON.stringify(demoDiary)
+                );
             }
         } catch (err) {
             console.error(
@@ -166,7 +211,9 @@ export default function useStudentData(showToast: (
 
         // Load student's selected optional subjects
         try {
-            const savedSubjects = localStorage.getItem("sp_selected_subjects");
+            const savedSubjects = localStorage.getItem(
+                "sp_selected_subjects"
+            );
 
             if (savedSubjects) {
                 const parsed = JSON.parse(savedSubjects);
@@ -193,17 +240,24 @@ export default function useStudentData(showToast: (
 
     const handleSaveProfile = (newProfile: UserProfile) => {
         setProfile(newProfile);
-        localStorage.setItem("sp_profile", JSON.stringify(newProfile));
+        localStorage.setItem(
+            "sp_profile",
+            JSON.stringify(newProfile)
+        );
 
-        const classConfig = NCTB_CURRICULUM[newProfile.classLevel];
+        const classConfig =
+            NCTB_CURRICULUM[newProfile.classLevel];
 
         if (classConfig) {
             const activeGroup =
-                newProfile.group && classConfig.subjects[newProfile.group]
+                newProfile.group &&
+                classConfig.subjects[newProfile.group]
                     ? newProfile.group
                     : "None";
 
-            const subjectList = classConfig.subjects[activeGroup] || [];
+            const subjectList =
+                classConfig.subjects[activeGroup] || [];
+
             const initialProg: StudentProgress = {};
 
             subjectList.forEach((sub) => {
@@ -222,7 +276,10 @@ export default function useStudentData(showToast: (
             });
 
             setStudentProgress(initialProg);
-            localStorage.setItem("sp_progress", JSON.stringify(initialProg));
+            localStorage.setItem(
+                "sp_progress",
+                JSON.stringify(initialProg)
+            );
         }
 
         showToast(
@@ -245,7 +302,48 @@ export default function useStudentData(showToast: (
         };
 
         setStudentProgress(updated);
-        localStorage.setItem("sp_progress", JSON.stringify(updated));
+        localStorage.setItem(
+            "sp_progress",
+            JSON.stringify(updated)
+        );
+    };
+
+    // Add weekly routine block
+    const handleAddRoutineBlock = (
+        newBlock: Omit<RoutineBlock, "id">
+    ) => {
+        const block: RoutineBlock = {
+            ...newBlock,
+            id: `routine_${Date.now()}`
+        };
+
+        const updated = [...routineBlocks, block];
+
+        setRoutineBlocks(updated);
+        localStorage.setItem(
+            "sp_routine",
+            JSON.stringify(updated)
+        );
+
+        showToast(
+            "Routine block added successfully!",
+            "success"
+        );
+    };
+
+    // Delete weekly routine block
+    const handleDeleteRoutineBlock = (id: string) => {
+        const updated = routineBlocks.filter(
+            (block) => block.id !== id
+        );
+
+        setRoutineBlocks(updated);
+        localStorage.setItem(
+            "sp_routine",
+            JSON.stringify(updated)
+        );
+
+        showToast("Routine block deleted.", "info");
     };
 
     const handleAddHomework = (
@@ -260,20 +358,31 @@ export default function useStudentData(showToast: (
         const updated = [hw, ...homeworks];
 
         setHomeworks(updated);
-        localStorage.setItem("sp_homework", JSON.stringify(updated));
+        localStorage.setItem(
+            "sp_homework",
+            JSON.stringify(updated)
+        );
 
-        showToast("New assignment successfully added!", "success");
+        showToast(
+            "New assignment successfully added!",
+            "success"
+        );
     };
 
     const handleToggleHomework = (id: string) => {
         const homework = homeworks.find((h) => h.id === id);
 
         const updated = homeworks.map((h) =>
-            h.id === id ? { ...h, completed: !h.completed } : h
+            h.id === id
+                ? { ...h, completed: !h.completed }
+                : h
         );
 
         setHomeworks(updated);
-        localStorage.setItem("sp_homework", JSON.stringify(updated));
+        localStorage.setItem(
+            "sp_homework",
+            JSON.stringify(updated)
+        );
 
         if (homework) {
             if (!homework.completed) {
@@ -282,18 +391,29 @@ export default function useStudentData(showToast: (
                     "success"
                 );
             } else {
-                showToast("Assignment marked as active.", "info");
+                showToast(
+                    "Assignment marked as active.",
+                    "info"
+                );
             }
         }
     };
 
     const handleDeleteHomework = (id: string) => {
-        const updated = homeworks.filter((h) => h.id !== id);
+        const updated = homeworks.filter(
+            (h) => h.id !== id
+        );
 
         setHomeworks(updated);
-        localStorage.setItem("sp_homework", JSON.stringify(updated));
+        localStorage.setItem(
+            "sp_homework",
+            JSON.stringify(updated)
+        );
 
-        showToast("Assignment deleted from your board.", "info");
+        showToast(
+            "Assignment deleted from your board.",
+            "info"
+        );
     };
 
     const handleAddDiaryEntry = (
@@ -308,24 +428,40 @@ export default function useStudentData(showToast: (
         const updated = [entry, ...diaryEntries];
 
         setDiaryEntries(updated);
-        localStorage.setItem("sp_diary", JSON.stringify(updated));
+        localStorage.setItem(
+            "sp_diary",
+            JSON.stringify(updated)
+        );
 
-        showToast("New entry logged in your Study Diary!", "success");
+        showToast(
+            "New entry logged in your Study Diary!",
+            "success"
+        );
     };
 
     const handleDeleteDiaryEntry = (id: string) => {
-        const updated = diaryEntries.filter((d) => d.id !== id);
+        const updated = diaryEntries.filter(
+            (d) => d.id !== id
+        );
 
         setDiaryEntries(updated);
-        localStorage.setItem("sp_diary", JSON.stringify(updated));
+        localStorage.setItem(
+            "sp_diary",
+            JSON.stringify(updated)
+        );
 
-        showToast("Diary entry deleted successfully.", "info");
+        showToast(
+            "Diary entry deleted successfully.",
+            "info"
+        );
     };
 
     // Toggle a selectable subject on/off
     const toggleSubjectSelection = (subjectId: string) => {
         const updated = selectedSubjectIds.includes(subjectId)
-            ? selectedSubjectIds.filter((id) => id !== subjectId)
+            ? selectedSubjectIds.filter(
+                  (id) => id !== subjectId
+              )
             : [...selectedSubjectIds, subjectId];
 
         setSelectedSubjectIds(updated);
@@ -336,17 +472,24 @@ export default function useStudentData(showToast: (
         );
     };
 
-    const toggleSubjectGroupSelection = (subjectIds: string[]) => {
+    const toggleSubjectGroupSelection = (
+        subjectIds: string[]
+    ) => {
         const anySelected = subjectIds.some((id) =>
             selectedSubjectIds.includes(id)
         );
 
         const updated = anySelected
-            ? selectedSubjectIds.filter((id) => !subjectIds.includes(id))
+            ? selectedSubjectIds.filter(
+                  (id) => !subjectIds.includes(id)
+              )
             : [
-                ...selectedSubjectIds,
-                ...subjectIds.filter((id) => !selectedSubjectIds.includes(id))
-            ];
+                  ...selectedSubjectIds,
+                  ...subjectIds.filter(
+                      (id) =>
+                          !selectedSubjectIds.includes(id)
+                  )
+              ];
 
         setSelectedSubjectIds(updated);
 
@@ -358,9 +501,11 @@ export default function useStudentData(showToast: (
 
     const resetStudentData = () => {
         localStorage.clear();
+
         setProfile(null);
         setStudentProgress({});
         setHomeworks([]);
+        setRoutineBlocks([]);
         setDiaryEntries([]);
         setSelectedSubjectIds([]);
     };
@@ -369,18 +514,27 @@ export default function useStudentData(showToast: (
         profile,
         studentProgress,
         homeworks,
+        routineBlocks,
         diaryEntries,
         selectedSubjectIds,
         loaded,
+
         handleSaveProfile,
         handleUpdateChapterProgress,
+
+        handleAddRoutineBlock,
+        handleDeleteRoutineBlock,
+
         handleAddHomework,
         handleToggleHomework,
         handleDeleteHomework,
+
         handleAddDiaryEntry,
         handleDeleteDiaryEntry,
+
         toggleSubjectSelection,
         toggleSubjectGroupSelection,
+
         resetStudentData
     };
 }

@@ -8,7 +8,7 @@
  * 3. Persistence: Automatically reads and writes state data to the browser's 'localStorage' for seamless offline use.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ChapterProgress } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
@@ -76,10 +76,13 @@ export default function App() {
     profile,
     studentProgress,
     homeworks,
+    routineBlocks,
     diaryEntries,
     selectedSubjectIds,
     loaded,
     handleSaveProfile,
+    handleAddRoutineBlock,
+    handleDeleteRoutineBlock,
     handleUpdateChapterProgress,
     handleAddHomework,
     handleToggleHomework,
@@ -90,6 +93,16 @@ export default function App() {
     toggleSubjectGroupSelection,
     resetStudentData
   } = useStudentData(showToast);
+
+  const todayRoutineBlocks = useMemo(() => {
+    const today = new Date().getDay();
+
+    return [...routineBlocks]
+      .filter((block) => block.dayOfWeek === today)
+      .sort((a, b) =>
+        a.startTime.localeCompare(b.startTime)
+      );
+  }, [routineBlocks]);
 
   useEffect(() => {
     if (toast) {
@@ -339,7 +352,7 @@ export default function App() {
 
         {/* Right Header Status info */}
         <div className="flex items-center gap-4">
-          
+
 
           <div className="flex items-center gap-2.5 border-l border-slate-200 pl-4">
             <img
@@ -514,6 +527,10 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Primary content grid layout */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                  </div>
                   {/* Primary content grid layout */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left & center - Subject Cards */}
@@ -769,18 +786,70 @@ export default function App() {
                     </div>
 
                     {/* Right column - Study tips & guidelines */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 items-start">
+
+                      {/* Today's Tasks */}
+                      <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-xs space-y-4">
+                        <div className="pb-3 border-b border-slate-100">
+                          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">
+                            Today's Tasks
+                          </h2>
+                          
+                        </div>
+
+                        {todayRoutineBlocks.length > 0 ? (
+                          <div className="space-y-2">
+                            {todayRoutineBlocks.map((block) => (
+                              <div
+                                key={block.id}
+                                className="flex items-center gap-3 p-3 bg-slate-50/60 rounded-xl border border-slate-100"
+                              >
+                                <div className="text-xs font-bold text-indigo-600 whitespace-nowrap">
+                                  {block.startTime}–{block.endTime}
+                                </div>
+
+                                <div className="h-4 w-px bg-slate-200" />
+
+                                <div className="text-sm font-semibold text-slate-700 truncate">
+                                  {block.title}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center border border-dashed border-slate-200 rounded-xl">
+                            <p className="text-xs font-semibold text-slate-500">
+                              No routine planned for today.
+                            </p>
+
+                            <button
+                              type="button"
+                              onClick={() => setActiveSection("planner")}
+                              className="mt-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-700"
+                            >
+                              Create routine
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Study Strategy Tips */}
                       <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-xs space-y-4">
                         <div className="flex items-center gap-2 text-slate-800 font-display font-bold text-sm">
                           <Sparkles className="w-4 h-4 text-indigo-500" />
-                          Study Strategy Tips
+                          <span>Study Strategy Tips</span>
                         </div>
+
                         <div className="space-y-3">
                           <div className="p-3 bg-indigo-50/30 border border-indigo-100/50 rounded-xl space-y-1.5">
                             <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100/40 px-1.5 py-0.2 rounded uppercase">
                               NCTB Preparation
                             </span>
-                            <h4 className="text-xs font-bold text-slate-800 font-display">Active Textbook Mapping</h4>
+
+                            <h4 className="text-xs font-bold text-slate-800 font-display">
+                              Active Textbook Mapping
+                            </h4>
+
                             <p className="text-[10px] text-slate-500 leading-relaxed">
                               Always study the textbook first. 80% of board Creative Questions are designed directly from textbook experiments and derivations.
                             </p>
@@ -790,7 +859,11 @@ export default function App() {
                             <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100/40 px-1.5 py-0.2 rounded uppercase">
                               Efficiency
                             </span>
-                            <h4 className="text-xs font-bold text-slate-800 font-display">Formula Revision Logs</h4>
+
+                            <h4 className="text-xs font-bold text-slate-800 font-display">
+                              Formula Revision Logs
+                            </h4>
+
                             <p className="text-[10px] text-slate-500 leading-relaxed">
                               Keep logging equations and definitions in your Personal Notebook tab. Quick reviews help keep concepts fresh for solving board math sums!
                             </p>
@@ -815,7 +888,13 @@ export default function App() {
 
               {/* Study Planner panel */}
               {activeSection === 'planner' && (
-                <StudyPlanner profile={profile} subjects={activeSubjects} />
+                <StudyPlanner
+                  profile={profile}
+                  subjects={activeSubjects}
+                  routineBlocks={routineBlocks}
+                  onAddRoutineBlock={handleAddRoutineBlock}
+                  onDeleteRoutineBlock={handleDeleteRoutineBlock}
+                />
               )}
 
               {/* Homework Manager panel */}
