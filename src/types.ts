@@ -1,6 +1,6 @@
 /**
  * STUDYPILOT BD - TypeScript Type Definitions
- * 
+ *
  * Purpose:
  * This file contains all the core data structures used in StudyPilot BD.
  * Defining clear, simple types helps us build bugs-free code and lets
@@ -46,6 +46,15 @@ export interface Homework {
   priority: 'high' | 'medium' | 'low';
   completed: boolean;
   notes?: string;
+}
+
+// Weekly recurring routine block
+export interface RoutineBlock {
+  id: string;
+  dayOfWeek: number; // 0 = Sunday, 6 = Saturday
+  title: string;
+  startTime: string; // HH:mm
+  endTime: string;   // HH:mm
 }
 
 // Searchable diary, equation or study notebook entry
