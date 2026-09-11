@@ -8,10 +8,13 @@ import {
 
 import {
   Clock,
+  CalendarDays,
   Flame,
   CheckCircle,
   Sparkles,
   Plus,
+  X,
+  BookOpen,
   Trash2,
   AlertTriangle
 } from "lucide-react";
@@ -433,40 +436,43 @@ export default function StudyPlanner({
       {/* ------------------------------------------------------ */}
 
       <section className="space-y-5">
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Clock className="w-6 h-6" />
+        <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+              <CalendarDays className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-display font-bold text-slate-800 tracking-tight">
+                Weekly Routine
+              </h2>
+
+              <p className="text-slate-400 text-xs">
+                Create your own recurring weekly schedule.
+              </p>
+            </div>
           </div>
 
-          <div>
-            <h2 className="text-xl font-display font-bold text-slate-800 tracking-tight">
-              Weekly Routine
-            </h2>
-
-            <p className="text-slate-400 text-xs">
-              Create your own recurring weekly schedule.
-            </p>
-          </div>
-        </div>
-
-        {/* Add Routine */}
-        <div className="flex justify-end">
           <button
             type="button"
             onClick={() => setShowRoutineForm((prev) => !prev)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-all text-sm flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-all text-sm flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
           >
-            <Plus className="w-4 h-4" />
+            {showRoutineForm ? (
+              <X className="w-4 h-4" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
             {showRoutineForm ? "Close" : "Add Routine Block"}
           </button>
         </div>
 
         {showRoutineForm && (
-          <div className="bg-slate-50/50 p-5 rounded-xl border border-slate-200 space-y-4">
+          <div className="bg-indigo-50 p-5 rounded-xl border border-indigo-200 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-slate-700">
-                  Add Routine Block
+                  Add Routine
                 </h3>
 
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -475,23 +481,27 @@ export default function StudyPlanner({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.15fr_1.6fr_1.15fr_1.15fr]">
+
               {/* Day */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+              <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-3">
+                <span className="text-sm font-semibold text-slate-600">
                   Day
-                </label>
+                </span>
+
+                <span className="mx-3 h-5 w-px bg-slate-200" />
+
+                <CalendarDays className="h-4 w-4 shrink-0 text-indigo-500" />
+
+                <span className="mx-3 h-5 w-px bg-slate-200" />
 
                 <select
                   value={routineDay}
                   onChange={(e) => setRoutineDay(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-800 focus:outline-none focus:border-indigo-500"
+                  className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-800 outline-none"
                 >
                   {DAYS.map((day) => (
-                    <option
-                      key={day.value}
-                      value={day.value}
-                    >
+                    <option key={day.value} value={day.value}>
                       {day.label}
                     </option>
                   ))}
@@ -499,43 +509,40 @@ export default function StudyPlanner({
               </div>
 
               {/* Activity */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+              <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-3">
+                <span className="text-sm font-semibold text-slate-600">
                   Activity
-                </label>
+                </span>
+
+                <span className="mx-3 h-5 w-px bg-slate-200" />
+
+                <BookOpen className="h-4 w-4 shrink-0 text-purple-500" />
+
+                <span className="mx-3 h-5 w-px bg-slate-200" />
 
                 <input
                   type="text"
                   value={routineTitle}
                   onChange={(e) => setRoutineTitle(e.target.value)}
                   placeholder="e.g. Chemistry"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-800 focus:outline-none focus:border-indigo-500"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
                 />
               </div>
 
               {/* Start */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                  Start
-                </label>
-
-                <TimePicker
-                  value={routineStart}
-                  onChange={setRoutineStart}
-                />
-              </div>
+              <TimePicker
+                value={routineStart}
+                onChange={setRoutineStart}
+                label="Start"
+              />
 
               {/* End */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                  End
-                </label>
+              <TimePicker
+                value={routineEnd}
+                onChange={setRoutineEnd}
+                label="End"
+              />
 
-                <TimePicker
-                  value={routineEnd}
-                  onChange={setRoutineEnd}
-                />
-              </div>
             </div>
 
             {/* Validation error */}
