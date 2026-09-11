@@ -575,7 +575,7 @@ export default function StudyPlanner({
                   key={day.value}
                   type="button"
                   onClick={() => setMobileRoutineDay(day.value)}
-                  className={`shrink-0 rounded-lg border px-3 py-2 text-left transition ${isSelected
+                  className={`shrink-0 rounded-lg border px-3 py-2 text-center transition ${isSelected
                     ? "border-indigo-500 bg-indigo-50 text-indigo-700"
                     : "border-slate-200 bg-white text-slate-600"
                     }`}
@@ -615,9 +615,9 @@ export default function StudyPlanner({
               return (
                 <div
                   key={day.value}
-                  className={`min-h-[180px] rounded-xl border p-3 ${isToday
-                    ? "border-blue-500 bg-blue-50/50"
-                    : "border-slate-200 bg-white"
+                  className={`min-h-[180px] rounded-xl border p-3 text-center shadow-sm ${isToday
+                    ? "border-indigo-400 bg-indigo-100"
+                    : "border-indigo-200 bg-indigo-50"
                     }`}
                 >
                   {/* Day header */}
@@ -652,7 +652,8 @@ export default function StudyPlanner({
                       dayBlocks.map((block) => (
                         <div
                           key={block.id}
-                          className={`group rounded-lg border p-2.5 shadow-sm transition ${ROUTINE_COLOR_STYLES[block.color as keyof typeof ROUTINE_COLOR_STYLES]?.card ??
+                          onClick={() => setRoutineToDelete(block)}
+                          className={`group cursor-pointer rounded-lg border p-2.5 text-center shadow-sm transition ${ROUTINE_COLOR_STYLES[block.color as keyof typeof ROUTINE_COLOR_STYLES]?.card ??
                             "bg-slate-50 border-slate-200 hover:bg-slate-100"
                             }`}
                         >
@@ -669,14 +670,6 @@ export default function StudyPlanner({
                             {block.title}
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => setRoutineToDelete(block)}
-                            className="mt-2 text-xs text-slate-400 transition hover:text-red-500"
-                            aria-label={`Delete ${block.title}`}
-                          >
-                            Delete
-                          </button>
                         </div>
                       ))
                     ) : (
@@ -728,7 +721,8 @@ export default function StudyPlanner({
                       {selectedDayBlocks.map((block) => (
                         <div
                           key={block.id}
-                          className={`rounded-xl border p-3 ${ROUTINE_COLOR_STYLES[
+                          onClick={() => setRoutineToDelete(block)}
+                          className={`cursor-pointer rounded-xl border p-3 text-center ${ROUTINE_COLOR_STYLES[
                             block.color as keyof typeof ROUTINE_COLOR_STYLES
                           ]?.card ?? "bg-slate-50 border-slate-200"
                             }`}
@@ -746,14 +740,6 @@ export default function StudyPlanner({
                             {block.title}
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => setRoutineToDelete(block)}
-                            className="mt-2 text-xs text-slate-400 hover:text-red-500"
-                            aria-label={`Delete ${block.title}`}
-                          >
-                            Delete
-                          </button>
                         </div>
                       ))}
                     </div>
