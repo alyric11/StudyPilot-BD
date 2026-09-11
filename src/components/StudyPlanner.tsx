@@ -42,6 +42,62 @@ const DAYS = [
   { value: 5, label: "Friday" }
 ];
 
+const ROUTINE_COLORS = [
+  "blue",
+  "purple",
+  "green",
+  "yellow",
+  "orange",
+  "pink",
+  "cyan",
+  "rose",
+  "teal",
+  "violet"
+] as const;
+
+const ROUTINE_COLOR_STYLES = {
+  blue: {
+    card: "bg-blue-50 border-blue-200 hover:bg-blue-100",
+    time: "text-blue-600",
+  },
+  purple: {
+    card: "bg-purple-50 border-purple-200 hover:bg-purple-100",
+    time: "text-purple-600",
+  },
+  green: {
+    card: "bg-green-50 border-green-200 hover:bg-green-100",
+    time: "text-green-600",
+  },
+  yellow: {
+    card: "bg-yellow-50 border-yellow-200 hover:bg-yellow-100",
+    time: "text-yellow-600",
+  },
+  orange: {
+    card: "bg-orange-50 border-orange-200 hover:bg-orange-100",
+    time: "text-orange-600",
+  },
+  pink: {
+    card: "bg-pink-50 border-pink-200 hover:bg-pink-100",
+    time: "text-pink-600",
+  },
+  cyan: {
+    card: "bg-cyan-50 border-cyan-200 hover:bg-cyan-100",
+    time: "text-cyan-600",
+  },
+  rose: {
+    card: "bg-rose-50 border-rose-200 hover:bg-rose-100",
+    time: "text-rose-600",
+  },
+  teal: {
+    card: "bg-teal-50 border-teal-200 hover:bg-teal-100",
+    time: "text-teal-600",
+  },
+  violet: {
+    card: "bg-violet-50 border-violet-200 hover:bg-violet-100",
+    time: "text-violet-600",
+  },
+} as const;
+
 const getWeekDates = () => {
   const today = new Date();
   const todayDay = today.getDay();
@@ -84,6 +140,8 @@ export default function StudyPlanner({
   const [routineStart, setRoutineStart] = useState("17:00");
   const [routineEnd, setRoutineEnd] = useState("18:00");
   const [routineError, setRoutineError] = useState<string | null>(null);
+  const [routineToDelete, setRoutineToDelete] =
+    useState<RoutineBlock | null>(null);
 
   const getDayName = (dayOfWeek: number) => {
     return (
@@ -119,6 +177,27 @@ export default function StudyPlanner({
     }
 
     const dayOfWeek = Number(routineDay);
+
+    const normalizedTitle = title.toLowerCase();
+
+    const existingBlock = routineBlocks.find(
+      (block) => block.title.trim().toLowerCase() === normalizedTitle
+    );
+
+    const usedColors = new Set(
+      routineBlocks
+        .map((block) => block.color)
+        .filter(Boolean)
+    );
+
+    const availableColors = ROUTINE_COLORS.filter(
+      (color) => !usedColors.has(color)
+    );
+
+    const color =
+      existingBlock?.color ??
+      availableColors[Math.floor(Math.random() * availableColors.length)] ??
+      ROUTINE_COLORS[Math.floor(Math.random() * ROUTINE_COLORS.length)];
     const newStart = timeToMinutes(routineStart);
     const newEnd = timeToMinutes(routineEnd);
 
@@ -147,7 +226,8 @@ export default function StudyPlanner({
       dayOfWeek,
       title,
       startTime: routineStart,
-      endTime: routineEnd
+      endTime: routineEnd,
+      color,
     });
 
     setRoutineTitle("");
@@ -572,9 +652,16 @@ export default function StudyPlanner({
                       dayBlocks.map((block) => (
                         <div
                           key={block.id}
-                          className="group rounded-lg border border-indigo-100 bg-indigo-50/50 p-2.5 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50"
+                          className={`group rounded-lg border p-2.5 shadow-sm transition ${ROUTINE_COLOR_STYLES[block.color as keyof typeof ROUTINE_COLOR_STYLES]?.card ??
+                            "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                            }`}
                         >
-                          <div className="text-[10px] font-semibold text-indigo-600">
+                          <div
+                            className={`text-[10px] font-semibold ${ROUTINE_COLOR_STYLES[
+                              block.color as keyof typeof ROUTINE_COLOR_STYLES
+                            ]?.time ?? "text-slate-600"
+                              }`}
+                          >
                             {block.startTime} – {block.endTime}
                           </div>
 
@@ -584,7 +671,7 @@ export default function StudyPlanner({
 
                           <button
                             type="button"
-                            onClick={() => onDeleteRoutineBlock(block.id)}
+                            onClick={() => setRoutineToDelete(block)}
                             className="mt-2 text-xs text-slate-400 transition hover:text-red-500"
                             aria-label={`Delete ${block.title}`}
                           >
@@ -641,9 +728,17 @@ export default function StudyPlanner({
                       {selectedDayBlocks.map((block) => (
                         <div
                           key={block.id}
-                          className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                          className={`rounded-xl border p-3 ${ROUTINE_COLOR_STYLES[
+                            block.color as keyof typeof ROUTINE_COLOR_STYLES
+                          ]?.card ?? "bg-slate-50 border-slate-200"
+                            }`}
                         >
-                          <div className="text-xs font-medium text-slate-500">
+                          <div
+                            className={`text-xs font-medium ${ROUTINE_COLOR_STYLES[
+                              block.color as keyof typeof ROUTINE_COLOR_STYLES
+                            ]?.time ?? "text-slate-500"
+                              }`}
+                          >
                             {block.startTime} – {block.endTime}
                           </div>
 
@@ -653,7 +748,7 @@ export default function StudyPlanner({
 
                           <button
                             type="button"
-                            onClick={() => onDeleteRoutineBlock(block.id)}
+                            onClick={() => setRoutineToDelete(block)}
                             className="mt-2 text-xs text-slate-400 hover:text-red-500"
                             aria-label={`Delete ${block.title}`}
                           >
@@ -921,6 +1016,58 @@ export default function StudyPlanner({
           </div>
         </div>
       </section>
+
+      {routineToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-rose-50 p-2.5 text-rose-600">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-800">
+                  Delete routine?
+                </h3>
+
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold text-slate-700">
+                    {routineToDelete.title}
+                  </span>
+                  ?
+                </p>
+
+                <p className="mt-1 text-[11px] text-slate-400">
+                  {routineToDelete.startTime} – {routineToDelete.endTime}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRoutineToDelete(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteRoutineBlock(routineToDelete.id);
+                  setRoutineToDelete(null);
+                }}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700"
+              >
+                Delete Routine
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 }

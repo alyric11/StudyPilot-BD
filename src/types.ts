@@ -55,6 +55,7 @@ export interface RoutineBlock {
   title: string;
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
+  color?: string;
 }
 
 // Searchable diary, equation or study notebook entry
