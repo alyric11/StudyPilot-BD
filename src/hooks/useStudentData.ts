@@ -3,6 +3,7 @@ import {
     UserProfile,
     StudentProgress,
     Homework,
+    AdditionalSubject,
     DiaryEntry,
     ChapterProgress,
     RoutineBlock
@@ -22,6 +23,7 @@ export default function useStudentData(
     const [routineBlocks, setRoutineBlocks] = useState<RoutineBlock[]>([]);
     const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
     const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+    const [additionalSubjects, setAdditionalSubjects] = useState<AdditionalSubject[]>([]);
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
@@ -207,6 +209,35 @@ export default function useStudentData(
                 err
             );
             localStorage.removeItem("sp_diary");
+        }
+
+        // Load student-created additional subjects
+        try {
+            const savedAdditionalSubjects = localStorage.getItem(
+                "sp_additional_subjects"
+            );
+
+            if (savedAdditionalSubjects) {
+                const parsed = JSON.parse(savedAdditionalSubjects);
+
+                if (Array.isArray(parsed)) {
+                    setAdditionalSubjects(
+                        parsed
+                            .filter(
+                                (subject) =>
+                                    subject &&
+                                    typeof subject.id === "string" &&
+                                    typeof subject.name === "string"
+                            )
+                            .slice(0, 4)
+                    );
+                } else {
+                    localStorage.removeItem("sp_additional_subjects");
+                }
+            }
+        } catch (err) {
+            console.error("Failed to parse additional subjects:", err);
+            localStorage.removeItem("sp_additional_subjects");
         }
 
         // Load student's selected optional subjects
@@ -499,6 +530,65 @@ export default function useStudentData(
         );
     };
 
+    // Add a student-created subject. Maximum 4.
+    const handleAddAdditionalSubject = (name: string) => {
+        const trimmedName = name.trim();
+
+        if (!trimmedName) {
+            showToast("Please enter a subject name.", "warning");
+            return false;
+        }
+
+        if (additionalSubjects.length >= 4) {
+            showToast("You can add up to 4 additional subjects.", "warning");
+            return false;
+        }
+
+        if (
+            additionalSubjects.some(
+                (subject) =>
+                    subject.name.trim().toLowerCase() === trimmedName.toLowerCase()
+            )
+        ) {
+            showToast("That additional subject already exists.", "warning");
+            return false;
+        }
+
+        const subject: AdditionalSubject = {
+            id: `additional_subject_${Date.now()}`,
+            name: trimmedName,
+            active: true,
+            createdAt: new Date().toISOString()
+        };
+
+        const updated = [...additionalSubjects, subject];
+        setAdditionalSubjects(updated);
+        localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
+
+        showToast(`"${trimmedName}" added to Additional Subjects.`, "success");
+        return true;
+    };
+
+    const toggleAdditionalSubject = (id: string) => {
+        const updated = additionalSubjects.map((subject) =>
+            subject.id === id
+                ? { ...subject, active: !subject.active }
+                : subject
+        );
+
+        setAdditionalSubjects(updated);
+        localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
+    };
+
+    const handleDeleteAdditionalSubject = (id: string) => {
+        const updated = additionalSubjects.filter((subject) => subject.id !== id);
+
+        setAdditionalSubjects(updated);
+        localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
+
+        showToast("Additional subject removed.", "info");
+    };
+
     const resetStudentData = () => {
         localStorage.clear();
 
@@ -508,6 +598,7 @@ export default function useStudentData(
         setRoutineBlocks([]);
         setDiaryEntries([]);
         setSelectedSubjectIds([]);
+        setAdditionalSubjects([]);
     };
 
     return {
@@ -534,6 +625,11 @@ export default function useStudentData(
 
         toggleSubjectSelection,
         toggleSubjectGroupSelection,
+
+        additionalSubjects,
+        handleAddAdditionalSubject,
+        toggleAdditionalSubject,
+        handleDeleteAdditionalSubject,
 
         resetStudentData
     };

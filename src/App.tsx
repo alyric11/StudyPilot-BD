@@ -9,6 +9,96 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
+
+const getSubjectCardStyles = (color: string) => {
+  if (color.includes("emerald")) {
+    return {
+      card: "bg-emerald-50/45 border-emerald-100/70 hover:border-emerald-200",
+      progress: "bg-emerald-500",
+      chapter: "bg-emerald-50/40 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border-emerald-100/60",
+      mastery: "text-emerald-600",
+      icon: "bg-emerald-100 text-emerald-600"
+    };
+  }
+
+  if (color.includes("blue")) {
+    return {
+      card: "bg-blue-50/45 border-blue-100/70 hover:border-blue-200",
+      progress: "bg-blue-500",
+      chapter: "bg-blue-50/40 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border-blue-100/60",
+      mastery: "text-blue-600",
+      icon: "bg-blue-100 text-blue-600"
+    };
+  }
+
+  if (color.includes("purple") || color.includes("violet")) {
+    return {
+      card: "bg-purple-50/45 border-purple-100/70 hover:border-purple-200",
+      progress: "bg-purple-500",
+      chapter: "bg-purple-50/40 hover:bg-purple-50 text-slate-600 hover:text-purple-700 border-purple-100/60",
+      mastery: "text-purple-600",
+      icon: "bg-purple-100 text-purple-600"
+    };
+  }
+
+  if (color.includes("cyan")) {
+    return {
+      card: "bg-cyan-50/45 border-cyan-100/70 hover:border-cyan-200",
+      progress: "bg-cyan-500",
+      chapter: "bg-cyan-50/40 hover:bg-cyan-50 text-slate-600 hover:text-cyan-700 border-cyan-100/60",
+      mastery: "text-cyan-600",
+      icon: "bg-cyan-100 text-cyan-600"
+    };
+  }
+
+  if (color.includes("amber") || color.includes("orange")) {
+    return {
+      card: "bg-amber-50/45 border-amber-100/70 hover:border-amber-200",
+      progress: "bg-amber-500",
+      chapter: "bg-amber-50/40 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border-amber-100/60",
+      mastery: "text-amber-600",
+      icon: "bg-amber-100 text-amber-600"
+    };
+  }
+
+  if (color.includes("teal")) {
+    return {
+      card: "bg-teal-50/45 border-teal-100/70 hover:border-teal-200",
+      progress: "bg-teal-500",
+      chapter: "bg-teal-50/40 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border-teal-100/60",
+      mastery: "text-teal-600",
+      icon: "bg-teal-100 text-teal-600"
+    };
+  }
+
+  if (color.includes("fuchsia") || color.includes("pink")) {
+    return {
+      card: "bg-pink-50/45 border-pink-100/70 hover:border-pink-200",
+      progress: "bg-pink-500",
+      chapter: "bg-pink-50/40 hover:bg-pink-50 text-slate-600 hover:text-pink-700 border-pink-100/60",
+      mastery: "text-pink-600",
+      icon: "bg-pink-100 text-pink-600"
+    };
+  }
+
+  if (color.includes("rose")) {
+    return {
+      card: "bg-rose-50/45 border-rose-100/70 hover:border-rose-200",
+      progress: "bg-rose-500",
+      chapter: "bg-rose-50/40 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border-rose-100/60",
+      mastery: "text-rose-600",
+      icon: "bg-rose-100 text-rose-600"
+    };
+  }
+
+  return {
+    card: "bg-slate-50/60 border-slate-200/70 hover:border-slate-300",
+    progress: "bg-slate-500",
+    chapter: "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-700 border-slate-150",
+    mastery: "text-slate-600",
+    icon: "bg-slate-100 text-slate-600"
+  };
+};
 import { ChapterProgress } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
@@ -37,10 +127,37 @@ import {
   BookOpen,
   AlertTriangle,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Sunrise,
+  Sun,
+  Sunset,
+  Moon,
+  CalendarDays,
+  Lightbulb,
+  BarChart3
 } from "lucide-react";
 
+const getTimeGreeting = () => {
+  const hour = new Date().getHours();
+
+  if (hour >= 5 && hour < 12) {
+    return { text: "Good Morning", Icon: Sunrise };
+  }
+
+  if (hour >= 12 && hour < 17) {
+    return { text: "Good Afternoon", Icon: Sun };
+  }
+
+  if (hour >= 17 && hour < 20) {
+    return { text: "Good Evening", Icon: Sunset };
+  }
+
+  return { text: "Good Night", Icon: Moon };
+};
+
 export default function App() {
+  const { text: timeGreeting, Icon: TimeGreetingIcon } = getTimeGreeting();
+
   // Authentication & Profile state
 
   // Navigation Section (MVP includes only these 4 views)
@@ -64,8 +181,19 @@ export default function App() {
   // In-app Notification state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
+  const handleCreateAdditionalSubject = () => {
+    const added = handleAddAdditionalSubject(newAdditionalSubjectName);
+
+    if (added) {
+      setNewAdditionalSubjectName("");
+      setShowAddSubjectModal(false);
+    }
+  };
+
   // Modal Dialog toggle state
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
+  const [newAdditionalSubjectName, setNewAdditionalSubjectName] = useState("");
 
   // Helper to show modern animated toasts
   const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'success') => {
@@ -91,6 +219,10 @@ export default function App() {
     handleDeleteDiaryEntry,
     toggleSubjectSelection,
     toggleSubjectGroupSelection,
+    additionalSubjects,
+    handleAddAdditionalSubject,
+    toggleAdditionalSubject,
+    handleDeleteAdditionalSubject,
     resetStudentData
   } = useStudentData(showToast);
 
@@ -345,7 +477,7 @@ export default function App() {
             </div>
             <div>
               <span className="font-display font-bold text-slate-800 tracking-tight block">StudyPilot BD</span>
-              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block -mt-1">Academic MVP</span>
+              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block -mt-1">Academic MVP</span>
             </div>
           </div>
         </div>
@@ -354,25 +486,25 @@ export default function App() {
         <div className="flex items-center gap-4">
 
 
-          <div className="flex items-center gap-2.5 border-l border-slate-200 pl-4">
+          <div className="flex items-center gap-2.5 border-l border-slate-200/70 pl-4">
             <img
               src={profile.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(profile.name)}`}
               alt="Avatar"
-              className="w-8.5 h-8.5 rounded-full border border-slate-200 bg-white shadow-sm hidden sm:block"
+              className="w-8.5 h-8.5 rounded-full border border-slate-200/70 bg-white shadow-sm hidden sm:block"
             />
             <div className="hidden sm:block text-left">
               <span className="text-xs font-bold text-slate-700 block truncate max-w-[120px]">{profile.name}</span>
-              <span className="text-[9px] text-slate-400 font-bold block">{profile.classLevel}</span>
+              <span className="text-[9px] text-slate-500 font-bold block">{profile.classLevel}</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Structural Body */}
-      <div className="flex-1 flex" id="app-main-pane">
+      <div className="w-full min-w-0" id="app-main-pane">
         {/* Navigation Sidebar Drawer */}
         <aside
-          className={`fixed md:sticky top-[58px] bottom-0 z-40 bg-slate-900 border-r border-slate-800 w-[260px] p-4 shrink-0 shadow-lg md:shadow-none transition-transform duration-300 transform md:transform-none ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          className={`fixed top-[58px] bottom-0 left-0 z-40 bg-slate-900 border-r border-slate-800 w-[260px] p-4 shadow-lg md:shadow-none transition-transform duration-300 transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
             }`}
           id="app-navigation-sidebar"
         >
@@ -399,7 +531,7 @@ export default function App() {
                         }}
                         className={`w-full py-2 px-3 rounded-lg text-left text-xs font-semibold flex items-center gap-3 transition-all cursor-pointer ${isActive
                           ? "bg-slate-800 text-white font-bold border-l-4 border-indigo-500"
-                          : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                          : "text-slate-500 hover:text-white hover:bg-slate-800/50"
                           }`}
                         id={`sidebar-link-${item.id}`}
                       >
@@ -435,7 +567,7 @@ export default function App() {
         )}
 
         {/* Study Workstation */}
-        <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full overflow-x-hidden" id="dynamic-flight-window">
+        <main className={`min-w-0 w-full md:ml-[260px] md:w-[calc(100%-260px)] p-3 sm:p-4 md:p-6 overflow-x-hidden ${activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : ""}`} id="dynamic-flight-window">
           {showVideoLessons ? (
             <VideoLessonsPage
               chapter={selectedChapter!}
@@ -494,15 +626,21 @@ export default function App() {
             <>
               {/* Cockpit - Dashboard view */}
               {activeSection === 'dashboard' && (
-                <div className="space-y-6 text-left" id="cockpit-dashboard-view">
+                <div className="w-full max-w-[1440px] mx-auto px-0 sm:px-1 lg:px-2 space-y-2 text-left" id="cockpit-dashboard-view">
 
                   {/* Onboarding Summary Header card */}
-                  <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/60 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6" id="dashboard-header-block">
+                  <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4" id="dashboard-header-block">
                     <div className="flex items-center gap-4 min-w-0">
-                      <div className="w-14 h-14 rounded-full bg-indigo-50 border border-indigo-100/70 shadow-xs flex items-center justify-center font-display font-bold text-xl text-indigo-600 shrink-0">
-                        {profile.name.charAt(0)}
-                      </div>
-                      <div className="space-y-0.5 min-w-0">
+                      <img
+                        src={profile.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(profile.name)}`}
+                        alt={`${profile.name}'s avatar`}
+                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-slate-200/70 bg-white shadow-xs object-cover shrink-0"
+                      />
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-semibold text-slate-500">{timeGreeting}</span>
+                          <TimeGreetingIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" aria-hidden="true" />
+                        </div>
                         <h1 className="text-xl md:text-2xl font-display font-bold text-slate-800 tracking-tight break-words">{profile.name}</h1>
                         <p className="text-xs text-slate-500 font-medium break-words leading-relaxed">
                           {profile.school} <span className="text-indigo-400 font-bold hidden sm:inline">•</span><span className="sm:hidden block my-0.5"></span> {profile.classLevel} ({profile.group || "None"}) <span className="text-indigo-400 font-bold hidden sm:inline">•</span><span className="sm:hidden block my-0.5"></span> {profile.board} Board
@@ -511,35 +649,42 @@ export default function App() {
                     </div>
 
                     {/* Stats columns */}
-                    <div className="flex gap-4 shrink-0">
-                      <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-150 text-center w-26">
-                        <span className="text-lg font-bold text-slate-800 block">
-                          {homeworks.filter((h) => !h.completed).length}
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans">Todo Tasks</span>
+                    <div className="flex gap-3 sm:gap-4 shrink-0">
+                      <div className="bg-indigo-50/55 p-3.5 rounded-xl border border-indigo-100/60 text-center w-26">
+                        <div className="flex items-center justify-center gap-1.5 text-indigo-500 mb-0.5">
+                          <ClipboardList className="w-3.5 h-3.5" />
+                          <span className="text-lg font-bold text-slate-800">
+                            {homeworks.filter((h) => !h.completed).length}
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider font-sans">Todo Tasks</span>
                       </div>
-                      <div className="bg-slate-50/60 p-3.5 rounded-xl border border-slate-150 text-center w-26">
-                        <span className="text-lg font-bold text-slate-800 block">
-                          {overallCompletion}%
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider font-sans">Syllabus Done</span>
+                      <div className="bg-emerald-50/55 p-3.5 rounded-xl border border-emerald-100/60 text-center w-26">
+                        <div className="flex items-center justify-center gap-1.5 text-emerald-500 mb-0.5">
+                          <BarChart3 className="w-3.5 h-3.5" />
+                          <span className="text-lg font-bold text-slate-800">
+                            {overallCompletion}%
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider font-sans">Syllabus Done</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Primary content grid layout */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                  </div>
-                  {/* Primary content grid layout */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-2.5">
                     {/* Left & center - Subject Cards */}
-                    <div className="lg:col-span-2 space-y-6">
-                      <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-xs space-y-5">
+                    <div className="xl:col-span-2 space-y-2">
+                      <div className="bg-white rounded-2xl border border-slate-200/60 p-5 sm:p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                          <div>
-                            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">NCTB Subjects Navigator</h2>
-                            <p className="text-slate-400 text-xs mt-0.5">Click any subject chapter to access AI study guides and tutor chat.</p>
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0">
+                              <BookOpen className="w-4.5 h-4.5" />
+                            </div>
+                            <div>
+                              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">NCTB Subjects Navigator</h2>
+                              <p className="text-slate-500 text-xs mt-0.5">Select a subject to explore its chapters, study guides and tutor chat.</p>
+                            </div>
                           </div>
                           <span className="text-xs font-bold text-indigo-600 bg-indigo-50/60 px-3 py-1 rounded-lg border border-indigo-100/50">
                             {activeSubjects.length} Subjects
@@ -548,10 +693,10 @@ export default function App() {
                         
                         {/* Common Subjects */}
                         <div>
-                          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display">
+                          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
                             Common Subjects
                           </h3>
-                          <p className="text-[10px] text-slate-400 mt-1">
+                          <p className="text-[10px] text-slate-500 mt-1">
                             Subjects common to all students.
                           </p>
                         </div>
@@ -560,6 +705,7 @@ export default function App() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {activeSubjects.filter((sub) => sub.category === "common").map((sub) => {
                             const mastery = subjectMasteries[sub.id] || 0;
+                            const subjectStyles = getSubjectCardStyles(sub.color);
                             const totalChapters = sub.chapters.length;
                             const completedChapters = sub.chapters.filter(
                               (ch) => studentProgress[sub.id]?.[ch.id]?.revisionCompleted
@@ -573,19 +719,37 @@ export default function App() {
                             return (
                               <div
                                 key={sub.id}
-                                className="p-4 bg-white rounded-xl border border-slate-200/70 hover:border-indigo-300 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                                className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between space-y-3 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${subjectStyles.card}`}
+                                onClick={() => setSelectedSubjectPaper(sub.id)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setSelectedSubjectPaper(sub.id);
+                                  }
+                                }}
                               >
                                 <div className="space-y-2">
-                                  <div className="flex items-center justify-between cursor-pointer"
-                                    onClick={() => setSelectedSubjectPaper(sub.id)}
-                                  >
-                                    <span className="text-xs font-bold text-slate-800 font-display">{sub.banglaName}</span>
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">{sub.name}</span>
-                                  </div>
+                                  <div
+                                      className="flex items-center gap-3 cursor-pointer"
+                                    >
+                                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
+                                        <BookOpen className="w-4 h-4" />
+                                      </div>
+                                      <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                                        <span className="text-xs font-bold text-slate-800 font-display truncate">
+                                          {sub.banglaName}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono shrink-0">
+                                          {sub.name}
+                                        </span>
+                                      </div>
+                                    </div>
                                   <div className="flex items-center gap-1.5 text-xs">
                                     <div className="flex items-center gap-2">
-                                      <span className="font-bold text-indigo-600">{mastery}%</span>
-                                      <span className="text-[10px] font-semibold text-slate-400">
+                                      <span className={`font-bold ${subjectStyles.mastery}`}>{mastery}%</span>
+                                      <span className="text-[10px] font-semibold text-slate-500">
                                         {sectionCount > 0
                                           ? `${completedChapters} / ${sectionCount} Units`
                                           : `${completedChapters} / ${totalChapters} chapters`}
@@ -593,50 +757,27 @@ export default function App() {
                                     </div>
                                     <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                       <div
-                                        className="bg-indigo-600 h-full transition-all duration-500"
+                                        className={`${subjectStyles.progress} h-full transition-all duration-500`}
                                         style={{ width: `${mastery}%` }}
                                       />
                                     </div>
                                   </div>
                                 </div>
 
-                                {/* Chapters within card */}
-                                <div className="space-y-1.5 border-t border-slate-100 pt-3">
-                                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Syllabus Chapters:</span>
-                                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                                    {sub.chapters.slice(0, 3).map((ch) => (
-                                      <button
-                                        key={ch.id}
-                                        onClick={() =>
-                                          setSelectedChapter({
-                                            subjectId: sub.id,
-                                            subjectName: sub.name,
-                                            chapterId: ch.id,
-                                            chapterName: ch.name,
-                                            chapterBanglaName: ch.banglaName
-                                          })
-                                        }
-                                        className="w-full p-2 bg-slate-50/50 hover:bg-indigo-50/40 text-[11px] font-semibold text-slate-600 hover:text-indigo-700 text-left rounded-lg border border-slate-150 flex items-center justify-between gap-2 transition-all cursor-pointer group"
-                                      >
-                                        <span className="truncate">{ch.banglaName}</span>
-                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
+                                
                               </div>
                             );
                           })}
                         </div>
-                        <hr style={{ marginTop: "35px", marginBottom: "35px" }}></hr>
+                        <div className="h-px bg-slate-200/50 my-3" aria-hidden="true" />
                         {/* Group Subjects */}
                         {(compulsorySubjects.length > 0 || optionalSubjects.length > 0) && (
-                          <div className="space-y-4">
+                          <div className="space-y-3">
                             <div>
-                              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display">
+                              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
                                 Group Subjects
                               </h3>
-                              <p className="text-[10px] text-slate-400 mt-1">
+                              <p className="text-[10px] text-slate-500 mt-1">
                                 Mandatory and selected subjects for your group.
                               </p>
                             </div>
@@ -644,6 +785,7 @@ export default function App() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               {[...compulsorySubjects, ...optionalSubjects].map((sub) => {
                                 const mastery = subjectMasteries[sub.id] || 0;
+                                const subjectStyles = getSubjectCardStyles(sub.color);
                                 const totalChapters = sub.chapters.length;
                                 const completedChapters = sub.chapters.filter(
                                   (ch) => studentProgress[sub.id]?.[ch.id]?.revisionCompleted
@@ -658,25 +800,38 @@ export default function App() {
                                 return (
                                   <div
                                     key={sub.id}
-                                    className="p-4 bg-white rounded-xl border border-slate-200/70 hover:border-indigo-300 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                                    className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between space-y-3 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${subjectStyles.card}`}
+                                onClick={() => setSelectedSubjectPaper(sub.id)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setSelectedSubjectPaper(sub.id);
+                                  }
+                                }}
                                   >
                                     <div className="space-y-2">
                                       <div
-                                        className="flex items-center justify-between cursor-pointer"
-                                        onClick={() => setSelectedSubjectPaper(sub.id)}
-                                      >
-                                        <span className="text-xs font-bold text-slate-800 font-display">
+                                      className="flex items-center gap-3 cursor-pointer"
+                                    >
+                                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
+                                        <BookOpen className="w-4 h-4" />
+                                      </div>
+                                      <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                                        <span className="text-xs font-bold text-slate-800 font-display truncate">
                                           {sub.banglaName}
                                         </span>
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono shrink-0">
                                           {sub.name}
                                         </span>
                                       </div>
+                                    </div>
 
                                       <div className="flex items-center gap-1.5 text-xs">
                                         <div className="flex items-center gap-2">
-                                          <span className="font-bold text-indigo-600">{mastery}%</span>
-                                          <span className="text-[10px] font-semibold text-slate-400">
+                                          <span className={`font-bold ${subjectStyles.mastery}`}>{mastery}%</span>
+                                          <span className="text-[10px] font-semibold text-slate-500">
                                             {sectionCount > 0
                                               ? `${completedChapters} / ${sectionCount} Units`
                                               : `${completedChapters} / ${totalChapters} chapters`}
@@ -685,39 +840,14 @@ export default function App() {
 
                                         <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                           <div
-                                            className="bg-indigo-600 h-full transition-all duration-500"
+                                            className={`${subjectStyles.progress} h-full transition-all duration-500`}
                                             style={{ width: `${mastery}%` }}
                                           />
                                         </div>
                                       </div>
                                     </div>
 
-                                    <div className="space-y-1.5 border-t border-slate-100 pt-3">
-                                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
-                                        Syllabus Chapters:
-                                      </span>
-
-                                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                                        {sub.chapters.slice(0, 3).map((ch) => (
-                                          <button
-                                            key={ch.id}
-                                            onClick={() =>
-                                              setSelectedChapter({
-                                                subjectId: sub.id,
-                                                subjectName: sub.name,
-                                                chapterId: ch.id,
-                                                chapterName: ch.name,
-                                                chapterBanglaName: ch.banglaName
-                                              })
-                                            }
-                                            className="w-full p-2 bg-slate-50/50 hover:bg-indigo-50/40 text-[11px] font-semibold text-slate-600 hover:text-indigo-700 text-left rounded-lg border border-slate-150 flex items-center justify-between gap-2 transition-all cursor-pointer group"
-                                          >
-                                            <span className="truncate">{ch.banglaName}</span>
-                                            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
+                                    
                                   </div>
                                 );
                               })}
@@ -726,15 +856,71 @@ export default function App() {
                         )}
                       </div>
 
+                      {/* Additional Subjects */}
+                      {additionalSubjects.length > 0 && (
+                        <div className="bg-white rounded-2xl border border-slate-200/60 p-5 sm:p-6 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
+                                Additional Subjects
+                              </h3>
+                              <p className="text-[10px] text-slate-500 mt-1">
+                                Personal subjects added outside the NCTB curriculum.
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                              {additionalSubjects.length} / 4
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {additionalSubjects.map((subject) => (
+                              <div
+                                key={subject.id}
+                                className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition-colors ${
+                                  subject.active
+                                    ? "bg-indigo-50/50 border-indigo-200"
+                                    : "bg-slate-50 border-slate-200"
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => toggleAdditionalSubject(subject.id)}
+                                  className="min-w-0 flex-1 text-left cursor-pointer"
+                                  aria-pressed={subject.active}
+                                >
+                                  <div className={`text-xs font-bold truncate ${
+                                    subject.active ? "text-indigo-700" : "text-slate-600"
+                                  }`}>
+                                    {subject.name}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5">
+                                    {subject.active ? "Active" : "Inactive"} • Personal subject
+                                  </div>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteAdditionalSubject(subject.id)}
+                                  className="shrink-0 text-[10px] font-bold text-slate-400 hover:text-rose-500 px-1.5 py-1 cursor-pointer"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
 
                       {/* Selectable Subjects */}
                       {getSelectableSubjectGroups().length > 0 && (
-                        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-xs space-y-5">
+                        <div className="bg-white rounded-2xl border border-slate-200/60 p-5 sm:p-6 shadow-sm space-y-5">
                           <div>
-                            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-display">
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
                               Selectable Subjects
                             </h3>
-                            <p className="text-[10px] text-slate-400 mt-1">
+                            <p className="text-[10px] text-slate-500 mt-1">
                               Select the subjects you want to study.
                             </p>
                           </div>
@@ -753,16 +939,17 @@ export default function App() {
                                     toggleSubjectGroupSelection(group.papers.map((paper) => paper.id))
                                   }
 
-                                  className={`flex items-center justify-between gap-3 p-3 rounded-lg border text-left transition-all ${isSelected
-                                    ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                                    : "bg-white border-slate-200 text-slate-600 hover:border-indigo-200"
+                                  className={`flex items-center justify-between gap-3 p-3 rounded-lg border text-left transition-all ${
+                                    isSelected
+                                      ? "bg-indigo-50/70 border-indigo-200 text-indigo-700 shadow-xs"
+                                      : "bg-white border-slate-200/80 text-slate-600 hover:bg-indigo-50/40 hover:border-indigo-100"
                                     }`}
                                 >
                                   <div className="min-w-0">
                                     <div className="text-xs font-bold truncate">
                                       {group.banglaName}
                                     </div>
-                                    <div className="text-[10px] text-slate-400 truncate">
+                                    <div className="text-[10px] text-slate-500 truncate">
                                       {group.name}
                                     </div>
                                   </div>
@@ -781,16 +968,31 @@ export default function App() {
                               );
                             })}
                           </div>
+
+                          <div className="pt-1 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setShowAddSubjectModal(true)}
+                              disabled={additionalSubjects.length >= 4}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50/60 text-indigo-700 text-[11px] font-bold hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <span className="text-base leading-none">+</span>
+                              Add Subject
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
 
                     {/* Right column - Study tips & guidelines */}
-                    <div className="space-y-6 items-start">
+                    <div className="space-y-2 items-start">
 
                       {/* Today's Tasks */}
-                      <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-xs space-y-4">
-                        <div className="pb-3 border-b border-slate-100">
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
+                        <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                          <div className="p-1.5 bg-sky-50 text-sky-600 rounded-lg">
+                            <CalendarDays className="w-4 h-4" />
+                          </div>
                           <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">
                             Today's Tasks
                           </h2>
@@ -802,7 +1004,7 @@ export default function App() {
                             {todayRoutineBlocks.map((block) => (
                               <div
                                 key={block.id}
-                                className="flex items-center gap-3 p-3 bg-slate-50/60 rounded-xl border border-slate-100"
+                                className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-b-0"
                               >
                                 <div className="text-xs font-bold text-indigo-600 whitespace-nowrap">
                                   {block.startTime}–{block.endTime}
@@ -817,7 +1019,7 @@ export default function App() {
                             ))}
                           </div>
                         ) : (
-                          <div className="py-4 text-center border border-dashed border-slate-200 rounded-xl">
+                          <div className="py-4 text-center border border-dashed border-slate-200/70 rounded-xl">
                             <p className="text-xs font-semibold text-slate-500">
                               No routine planned for today.
                             </p>
@@ -834,9 +1036,11 @@ export default function App() {
                       </div>
 
                       {/* Study Strategy Tips */}
-                      <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-xs space-y-4">
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
                         <div className="flex items-center gap-2 text-slate-800 font-display font-bold text-sm">
-                          <Sparkles className="w-4 h-4 text-indigo-500" />
+                          <div className="p-1.5 bg-amber-50 text-amber-500 rounded-lg">
+                            <Lightbulb className="w-4 h-4" />
+                          </div>
                           <span>Study Strategy Tips</span>
                         </div>
 
@@ -872,12 +1076,12 @@ export default function App() {
                       </div>
 
                       {/* Info box about current build */}
-                      <div className="bg-slate-900 text-slate-100 p-6 rounded-2xl border border-slate-800 shadow-md space-y-3 text-left">
+                      <div className="bg-slate-900 text-slate-100 p-6 rounded-2xl border border-slate-800 shadow-sm space-y-3 text-left">
                         <div className="flex items-center gap-2 font-display font-bold text-xs text-indigo-400">
                           <BookOpen className="w-4 h-4" />
                           NCTB Core Companion MVP
                         </div>
-                        <p className="text-[10px] text-slate-400 leading-relaxed">
+                        <p className="text-[10px] text-slate-500 leading-relaxed">
                           This platform is tailored to help students prepare for SSC and HSC exams cleanly. You can check off chapters, generate AI plans, log tasks, and run formula diaries safely offline!
                         </p>
                       </div>
@@ -925,7 +1129,7 @@ export default function App() {
       </div>
 
       {/* Footer bar */}
-      <footer className="bg-white border-t border-slate-100 py-3 text-center text-[10px] text-slate-400 font-mono">
+      <footer className="md:ml-[260px] bg-white border-t border-slate-100 py-3 text-center text-[10px] text-slate-400 font-mono">
         StudyPilot BD • NCTB Core MVP • Ready for Action
       </footer>
 
@@ -957,7 +1161,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => setToast(null)}
-                className="text-slate-400 hover:text-slate-600 transition-colors p-0.5 rounded cursor-pointer"
+                className="text-slate-500 hover:text-slate-600 transition-colors p-0.5 rounded cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -965,6 +1169,75 @@ export default function App() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Add Additional Subject Modal */}
+      <AnimatePresence>
+        {showAddSubjectModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-sm p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setShowAddSubjectModal(false);
+            }}
+          >
+            <motion.div
+              className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl p-5"
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            >
+              <h2 className="text-base font-bold text-slate-800">Add an Additional Subject</h2>
+              <p className="text-[11px] text-slate-500 mt-1 mb-4">
+                This is a personal subject and will not be treated as NCTB curriculum.
+              </p>
+
+              <label
+                className="block text-[11px] font-semibold text-slate-600 mb-1.5"
+                htmlFor="additional-subject-name"
+              >
+                Subject name
+              </label>
+              <input
+                id="additional-subject-name"
+                type="text"
+                value={newAdditionalSubjectName}
+                onChange={(e) => setNewAdditionalSubjectName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateAdditionalSubject();
+                  if (e.key === "Escape") setShowAddSubjectModal(false);
+                }}
+                placeholder="e.g. Robotics"
+                maxLength={60}
+                autoFocus
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+              />
+
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewAdditionalSubjectName("");
+                    setShowAddSubjectModal(false);
+                  }}
+                  className="px-3 py-2 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateAdditionalSubject}
+                  disabled={!newAdditionalSubjectName.trim()}
+                  className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  Add Subject
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Logout & Reset Confirmation Dialog */}
       <AnimatePresence>
@@ -992,7 +1265,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowLogoutConfirm(false)}
-                  className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-500 hover:text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
                 >
                   Keep My Data
                 </button>

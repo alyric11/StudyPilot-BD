@@ -37,6 +37,14 @@ export type SubjectProgressMap = Record<string, ChapterProgress>;
 export type StudentProgress = Record<string, SubjectProgressMap>;
 
 // Homework assignment log structure
+// Student-created subject without NCTB curriculum/chapter data
+export interface AdditionalSubject {
+  id: string;
+  name: string;
+  active: boolean;
+  createdAt: string;
+}
+
 export interface Homework {
   id: string;
   subject: string;
