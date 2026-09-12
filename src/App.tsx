@@ -1095,6 +1095,7 @@ export default function App() {
                 <StudyPlanner
                   profile={profile}
                   subjects={activeSubjects}
+                  additionalSubjects={additionalSubjects}
                   routineBlocks={routineBlocks}
                   onAddRoutineBlock={handleAddRoutineBlock}
                   onDeleteRoutineBlock={handleDeleteRoutineBlock}

@@ -1,32 +1,26 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   UserProfile,
-  StudyPlanResponse,
+  AdditionalSubject,
   RoutineBlock
 } from "../types";
 
 import {
-  Clock,
   CalendarDays,
-  Flame,
-  CheckCircle,
-  Sparkles,
   Plus,
   X,
   BookOpen,
-  Trash2,
   AlertTriangle
 } from "lucide-react";
 import TimePicker from "./TimePicker";
 
+import { Subject } from "../data/curriculum";
+
 interface StudyPlannerProps {
   profile: UserProfile;
-  subjects: Array<{
-    id: string;
-    name: string;
-    banglaName: string;
-  }>;
+  subjects: Subject[];
+  additionalSubjects?: AdditionalSubject[];
   routineBlocks: RoutineBlock[];
   onAddRoutineBlock: (
     newBlock: Omit<RoutineBlock, "id">
@@ -55,7 +49,8 @@ const ROUTINE_COLORS = [
   "cyan",
   "rose",
   "teal",
-  "violet"
+  "violet",
+  "amber"
 ] as const;
 
 const ROUTINE_COLOR_STYLES = {
@@ -99,6 +94,10 @@ const ROUTINE_COLOR_STYLES = {
     card: "bg-violet-50 border-violet-200 hover:bg-violet-100",
     time: "text-violet-600",
   },
+  amber: {
+    card: "bg-amber-50 border-amber-200 hover:bg-amber-100",
+    time: "text-amber-600",
+  },
 } as const;
 
 const getWeekDates = () => {
@@ -125,6 +124,7 @@ const getWeekDates = () => {
 export default function StudyPlanner({
   profile,
   subjects,
+  additionalSubjects = [],
   routineBlocks,
   onAddRoutineBlock,
   onDeleteRoutineBlock,
@@ -156,6 +156,54 @@ export default function StudyPlanner({
   const timeToMinutes = (time: string) => {
     const [hours, minutes] = time.split(":").map(Number);
     return hours * 60 + minutes;
+  };
+
+  const getRoutineColorForSubject = (subjectColor: string) => {
+    const color = subjectColor.toLowerCase();
+
+    if (color.includes("emerald")) return "green";
+    if (color.includes("blue")) return "blue";
+    if (color.includes("purple") || color.includes("violet")) return "purple";
+    if (color.includes("cyan")) return "cyan";
+    if (color.includes("amber") || color.includes("orange")) return "amber";
+    if (color.includes("teal")) return "teal";
+    if (color.includes("fuchsia") || color.includes("pink")) return "pink";
+    if (color.includes("rose")) return "rose";
+    if (color.includes("yellow")) return "yellow";
+
+    return null;
+  };
+
+  const getSubjectRoutineColor = (title: string) => {
+    const normalizedTitle = title.trim().toLowerCase();
+
+    const matchingSubject = subjects.find((subject) => {
+      const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
+
+      return (
+        normalizedTitle === compactName ||
+        normalizedTitle.startsWith(`${compactName}:`)
+      );
+    });
+
+    if (matchingSubject) {
+      return getRoutineColorForSubject(matchingSubject.color);
+    }
+
+    const matchingAdditionalSubject = safeAdditionalSubjects.find((subject) => {
+      const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
+
+      return (
+        normalizedTitle === compactName ||
+        normalizedTitle.startsWith(`${compactName}:`)
+      );
+    });
+
+    if (matchingAdditionalSubject) {
+      return "amber";
+    }
+
+    return null;
   };
 
   const handleAddRoutine = () => {
@@ -197,8 +245,11 @@ export default function StudyPlanner({
       (color) => !usedColors.has(color)
     );
 
+    const subjectColor = getSubjectRoutineColor(title);
+
     const color =
       existingBlock?.color ??
+      subjectColor ??
       availableColors[Math.floor(Math.random() * availableColors.length)] ??
       ROUTINE_COLORS[Math.floor(Math.random() * ROUTINE_COLORS.length)];
     const newStart = timeToMinutes(routineStart);
@@ -236,6 +287,24 @@ export default function StudyPlanner({
     setRoutineTitle("");
   };
 
+  const renderRoutineTitle = (title: string) => {
+    const colonIndex = title.indexOf(":");
+
+    if (colonIndex === -1) {
+      return <span className="whitespace-nowrap">{title}</span>;
+    }
+
+    const subjectPart = title.slice(0, colonIndex + 1);
+    const chapterPart = title.slice(colonIndex + 1).trimStart();
+
+    return (
+      <span className="flex w-full flex-wrap justify-center gap-x-1 gap-y-0 leading-tight">
+        <span className="whitespace-nowrap">{subjectPart}</span>
+        <span className="whitespace-nowrap">{chapterPart}</span>
+      </span>
+    );
+  };
+
   const sortedRoutineBlocks = [...routineBlocks].sort(
     (a, b) => {
       if (a.dayOfWeek !== b.dayOfWeek) {
@@ -249,182 +318,302 @@ export default function StudyPlanner({
     }
   );
 
+
   // ------------------------------------------------------------
-  // Existing AI Daily Planner
+  // Subjects & Chapters
   // ------------------------------------------------------------
 
-  const [hours, setHours] = useState("2");
+  const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
 
-  const [selectedSubjects, setSelectedSubjects] =
-    useState<string[]>(
-      subjects.slice(0, 3).map((s) => s.name)
-    );
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
 
-  const [generating, setGenerating] =
-    useState(false);
-
-  const [planResult, setPlanResult] =
-    useState<StudyPlanResponse | null>(null);
-
-  const [errors, setErrors] = useState<{
-    hours?: string;
-    subjects?: string;
-  }>({});
-
-  const [apiWarning, setApiWarning] =
-    useState<string | null>(null);
-
-  const toggleSubject = (name: string) => {
-    setSelectedSubjects((prev) => {
-      const next = prev.includes(name)
-        ? prev.filter((s) => s !== name)
-        : [...prev, name];
-
-      if (next.length > 0 && errors.subjects) {
-        setErrors((errs) => ({
-          ...errs,
-          subjects: undefined
-        }));
+      if (!target.closest(".chapter-popover")) {
+        setExpandedSubjectId(null);
       }
+    };
 
-      return next;
-    });
-  };
+    document.addEventListener("mousedown", handleOutsideClick);
 
-  const generateLocalFallbackPlan = (
-    numHours: number,
-    subjectList: string[]
-  ): StudyPlanResponse => {
-    const totalMin = Math.round(numHours * 60);
-    const revisionMin = 15;
-    const studyPool = totalMin - revisionMin;
-    const subjectsCount = Math.max(
-      subjectList.length,
-      1
-    );
-    const blockMin = Math.max(
-      Math.floor(studyPool / subjectsCount),
-      15
-    );
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
+  const safeAdditionalSubjects = additionalSubjects ?? [];
 
-    const items: Array<{
-      timeInMinutes: number;
-      subject: string;
-      chapter: string;
-      activity: string;
-    }> = [];
+  const getSubjectCardStyles = (color: string) => {
+    if (color.includes("emerald")) {
+      return {
+        card: "bg-emerald-50/45 border-emerald-100/70 hover:border-emerald-200",
+        chapter: "bg-emerald-50/40 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border-emerald-100/60",
+        icon: "bg-emerald-100 text-emerald-600",
+      };
+    }
 
-    subjectList.forEach((subName) => {
-      const subObj = subjects.find(
-        (s) => s.name === subName
-      );
+    if (color.includes("blue")) {
+      return {
+        card: "bg-blue-50/45 border-blue-100/70 hover:border-blue-200",
+        chapter: "bg-blue-50/40 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border-blue-100/60",
+        icon: "bg-blue-100 text-blue-600",
+      };
+    }
 
-      const subTitle = subObj
-        ? `${subObj.banglaName} (${subObj.name})`
-        : subName;
+    if (color.includes("purple") || color.includes("violet")) {
+      return {
+        card: "bg-purple-50/45 border-purple-100/70 hover:border-purple-200",
+        chapter: "bg-purple-50/40 hover:bg-purple-50 text-slate-600 hover:text-purple-700 border-purple-100/60",
+        icon: "bg-purple-100 text-purple-600",
+      };
+    }
 
-      items.push({
-        timeInMinutes: blockMin,
-        subject: subTitle,
-        chapter: "Syllabus Core Study",
-        activity:
-          "Review key textbook sections, write out equations in your notebook, and solve Creative Question (CQ) exercises."
-      });
-    });
+    if (color.includes("cyan")) {
+      return {
+        card: "bg-cyan-50/45 border-cyan-100/70 hover:border-cyan-200",
+        chapter: "bg-cyan-50/40 hover:bg-cyan-50 text-slate-600 hover:text-cyan-700 border-cyan-100/60",
+        icon: "bg-cyan-100 text-cyan-600",
+      };
+    }
 
-    items.push({
-      timeInMinutes: revisionMin,
-      subject: "Revision Block",
-      chapter: "Formulas & Diaries",
-      activity:
-        "Revise formulas in your Study Diary, review custom equations, and check off completed syllabus topics."
-    });
+    if (color.includes("amber") || color.includes("orange")) {
+      return {
+        card: "bg-amber-50/45 border-amber-100/70 hover:border-amber-200",
+        chapter: "bg-amber-50/40 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border-amber-100/60",
+        icon: "bg-amber-100 text-amber-600",
+      };
+    }
+
+    if (color.includes("teal")) {
+      return {
+        card: "bg-teal-50/45 border-teal-100/70 hover:border-teal-200",
+        chapter: "bg-teal-50/40 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border-teal-100/60",
+        icon: "bg-teal-100 text-teal-600",
+      };
+    }
+
+    if (color.includes("fuchsia") || color.includes("pink")) {
+      return {
+        card: "bg-pink-50/45 border-pink-100/70 hover:border-pink-200",
+        chapter: "bg-pink-50/40 hover:bg-pink-50 text-slate-600 hover:text-pink-700 border-pink-100/60",
+        icon: "bg-pink-100 text-pink-600",
+      };
+    }
+
+    if (color.includes("rose")) {
+      return {
+        card: "bg-rose-50/45 border-rose-100/70 hover:border-rose-200",
+        chapter: "bg-rose-50/40 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border-rose-100/60",
+        icon: "bg-rose-100 text-rose-600",
+      };
+    }
 
     return {
-      totalMinutes: totalMin,
-      plan: items,
-      motivationQuote:
-        "সাফল্যের রাস্তা একটাই—পরিশ্রম ও ধারাবাহিকতা। Every step counts! Keep going!"
+      card: "bg-slate-50/60 border-slate-200/70 hover:border-slate-300",
+      chapter: "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-700 border-slate-200",
+      icon: "bg-slate-100 text-slate-600",
     };
   };
 
-  const handleGeneratePlan = async () => {
-    const newErrors: typeof errors = {};
+  const additionalSubjectStyles = {
+    card: "bg-amber-50/45 border-amber-100/70 hover:border-amber-200",
+    chapter: "bg-amber-50/40 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border-amber-100/60",
+    icon: "bg-amber-100 text-amber-600",
+  };
 
-    setApiWarning(null);
+  const formatChapterNumber = (chapterNumber: string) => {
+    const trimmed = chapterNumber.trim();
 
-    const parsedHours = parseFloat(hours);
-
-    if (isNaN(parsedHours) || parsedHours <= 0) {
-      newErrors.hours =
-        "Please enter a valid study duration.";
-    } else if (parsedHours < 0.5) {
-      newErrors.hours =
-        "Minimum study time is 0.5 hours.";
-    } else if (parsedHours > 16) {
-      newErrors.hours =
-        "Maximum study time is capped at 16 hours.";
+    if (/^chapter\s+/i.test(trimmed)) {
+      return trimmed.replace(/^chapter\s+/i, "Ch-");
     }
 
-    if (selectedSubjects.length === 0) {
-      newErrors.subjects =
-        "Please select at least 1 subject to build your plan.";
+    if (/^lesson\s+/i.test(trimmed)) {
+      return trimmed.replace(/^lesson\s+/i, "Less-");
     }
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (/^question\s+/i.test(trimmed)) {
+      return trimmed.replace(/^question\s+/i, "Ques-");
+    }
+
+    if (/^ch[-\s]?/i.test(trimmed)) {
+      return trimmed.replace(/^ch[-\s]?/i, "Ch-");
+    }
+
+    if (/^less[-\s]?/i.test(trimmed)) {
+      return trimmed.replace(/^less[-\s]?/i, "Less-");
+    }
+
+    if (/^ques[-\s]?/i.test(trimmed)) {
+      return trimmed.replace(/^ques[-\s]?/i, "Ques-");
+    }
+
+    return `Ch-${trimmed}`;
+  };
+
+  const toggleSubject = (subjectId: string) => {
+    setExpandedSubjectId((current) =>
+      current === subjectId ? null : subjectId
+    );
+  };
+
+  const formatRoutineSubjectName = (subjectName: string) => {
+    const words = subjectName.trim().split(/\s+/).filter(Boolean);
+
+    // Examples:
+    // Bangla 2nd Paper -> Bangla-2
+    // English 1st Paper -> English-1
+    // Higher Mathematics -> HM
+    // ICT -> ICT
+    const paperNumberIndex = words.findIndex((word) =>
+      /^(1st|2nd|3rd|4th|5th|6th|7th|8th|9th|10th)$/i.test(word)
+    );
+
+    if (paperNumberIndex > 0) {
+      const baseName = words
+        .slice(0, paperNumberIndex)
+        .map((word) => word.replace(/[^A-Za-z]/g, ""))
+        .filter(Boolean)
+        .join(" ");
+
+      return `${baseName}-${words[paperNumberIndex].replace(/\D/g, "")}`;
+    }
+
+    if (words.length === 1) {
+      return words[0];
+    }
+
+    return words
+      .map((word) => word.replace(/[^A-Za-z]/g, "").charAt(0).toUpperCase())
+      .filter(Boolean)
+      .join("");
+  };
+
+  const handleChapterSelect = (
+    subjectName: string,
+    chapterNumber: string
+  ) => {
+    if (!showRoutineForm) {
       return;
     }
 
-    setErrors({});
-    setGenerating(true);
-
-    try {
-      const res = await fetch(
-        "/api/generate-study-plan",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            hours: parsedHours.toString(),
-            subjects: selectedSubjects,
-            classLevel: profile.classLevel,
-            group: profile.group
-          })
-        }
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        setPlanResult(data);
-      } else {
-        throw new Error(
-          "Server returned an error status"
-        );
-      }
-    } catch (err) {
-      console.warn(
-        "Could not generate plan from API, using custom offline algorithm instead.",
-        err
-      );
-
-      const offlinePlan =
-        generateLocalFallbackPlan(
-          parsedHours,
-          selectedSubjects
-        );
-
-      setPlanResult(offlinePlan);
-
-      setApiWarning(
-        "Unable to reach AI co-pilot. Generated an optimized offline study routine for you instead!"
-      );
-    } finally {
-      setGenerating(false);
-    }
+    setRoutineTitle(
+      `${formatRoutineSubjectName(subjectName)}: ${formatChapterNumber(chapterNumber)}`
+    );
+    setExpandedSubjectId(null);
   };
+
+  const handleAdditionalSubjectSelect = (subjectName: string) => {
+    if (!showRoutineForm) {
+      return;
+    }
+
+    setRoutineTitle(formatRoutineSubjectName(subjectName));
+    setExpandedSubjectId(null);
+  };
+
+  const renderSubjectCard = (
+    subject: Subject,
+    cardIndex: number
+  ) => {
+    const isExpanded = expandedSubjectId === subject.id;
+    const styles = getSubjectCardStyles(subject.color);
+
+    return (
+      <div
+        key={`${subject.id}-${cardIndex}`}
+        className="relative min-w-0"
+      >
+        {isExpanded && (
+          <div className="chapter-popover absolute bottom-full left-0 right-0 z-30 mb-2 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+            {subject.chapters.length > 0 ? (
+              <div className="max-h-[260px] overflow-y-auto space-y-1 pr-1">
+                {subject.chapters.map((chapter) => (
+                  <button
+                    type="button"
+                    key={chapter.id}
+                    onClick={() =>
+                      handleChapterSelect(
+                        subject.name,
+                        chapter.chapterNumber
+                      )
+                    }
+                    className={`w-full rounded-lg border px-2.5 py-2 text-left text-[11px] transition cursor-pointer ${styles.chapter}`}
+                  >
+                    <span className="font-semibold">
+                      {formatChapterNumber(chapter.chapterNumber)}:
+                    </span>{" "}
+                    <span>{chapter.banglaName}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-2.5 py-3 text-[11px] text-slate-400">
+                No chapter data is available for this subject yet.
+              </div>
+            )}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => toggleSubject(subject.id)}
+          aria-expanded={isExpanded}
+          className={`w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm transition-all cursor-pointer ${styles.card}`}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className={`rounded-lg p-1.5 shrink-0 ${styles.icon}`}>
+              <BookOpen className="w-4 h-4" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-bold text-slate-800 truncate">
+                {subject.name}
+              </div>
+              <div className="mt-0.5 text-[10px] text-slate-400">
+                {isExpanded ? "Hide chapters" : "View chapters"}
+              </div>
+            </div>
+
+            <span
+              className={`text-slate-400 text-base transition-transform ${
+                isExpanded ? "rotate-90" : ""
+              }`}
+              aria-hidden="true"
+            >
+              ›
+            </span>
+          </div>
+        </button>
+      </div>
+    );
+  };
+
+  const renderAdditionalSubjectCard = (
+    subject: AdditionalSubject,
+    cardIndex: number
+  ) => (
+    <button
+      type="button"
+      key={`${subject.id}-${cardIndex}`}
+      onClick={() => handleAdditionalSubjectSelect(subject.name)}
+      className={`w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm transition-all cursor-pointer ${additionalSubjectStyles.card}`}
+    >
+      <div className="flex items-center gap-2.5">
+        <div className={`rounded-lg p-1.5 shrink-0 ${additionalSubjectStyles.icon}`}>
+          <BookOpen className="w-4 h-4" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-bold text-slate-800 truncate">
+            {subject.name}
+          </div>
+          <div className="mt-0.5 text-[10px] text-slate-400">
+            Additional subject
+          </div>
+        </div>
+      </div>
+    </button>
+  );
 
   return (
     <div
@@ -435,8 +624,8 @@ export default function StudyPlanner({
       {/* Weekly Routine */}
       {/* ------------------------------------------------------ */}
 
-      <section className="space-y-5">
-        <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="space-y-5 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 sm:p-5">
+        <div className="flex flex-col gap-4 border-b border-indigo-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
               <CalendarDays className="w-6 h-6" />
@@ -646,11 +835,6 @@ export default function StudyPlanner({
                       })}
                     </div>
 
-                    {isToday && (
-                      <span className="mt-1 inline-block text-[10px] font-semibold uppercase tracking-wide text-indigo-600">
-                        Today
-                      </span>
-                    )}
                   </div>
 
                   {/* Routine blocks */}
@@ -674,7 +858,7 @@ export default function StudyPlanner({
                           </div>
 
                           <div className="mt-1 pr-1 text-sm font-semibold text-slate-800">
-                            {block.title}
+                            {renderRoutineTitle(block.title)}
                           </div>
 
                         </div>
@@ -744,7 +928,7 @@ export default function StudyPlanner({
                           </div>
 
                           <div className="mt-1 text-sm font-semibold text-slate-800">
-                            {block.title}
+                            {renderRoutineTitle(block.title)}
                           </div>
 
                         </div>
@@ -763,250 +947,47 @@ export default function StudyPlanner({
         </div>
       </section>
 
+
       {/* ------------------------------------------------------ */}
-      {/* Existing AI Daily Planner */}
+      {/* Subjects & Chapters */}
       {/* ------------------------------------------------------ */}
 
-      <section className="pt-2 border-t border-slate-100 space-y-6">
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Sparkles className="w-6 h-6" />
-          </div>
-
-          <div>
-            <h2 className="text-xl font-display font-bold text-slate-800 tracking-tight">
-              Daily Study Planner
-            </h2>
-
-            <p className="text-slate-400 text-xs">
-              Generate an AI-guided study plan for today's available study time.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          {/* Setup Column */}
-          <div className="lg:col-span-2 space-y-5 bg-slate-50/50 p-5 rounded-xl border border-slate-200">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-display">
-              Flight Controls
-            </h3>
-
-            {/* Hours Input */}
-            <div className="space-y-1.5">
-              <label
-                className="block text-xs font-semibold text-slate-500"
-                htmlFor="hours-input"
-              >
-                Available Study Time Today (Hours)
-              </label>
-
-              <div className="relative">
-                <input
-                  id="hours-input"
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  max="16"
-                  value={hours}
-                  onChange={(e) => {
-                    setHours(e.target.value);
-
-                    if (errors.hours) {
-                      setErrors((prev) => ({
-                        ...prev,
-                        hours: undefined
-                      }));
-                    }
-                  }}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm bg-white font-medium text-slate-800 focus:outline-none focus:border-indigo-500 ${errors.hours
-                    ? "border-rose-300 focus:ring-1 focus:ring-rose-100"
-                    : "border-slate-200"
-                    }`}
-                />
-
-                <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-bold">
-                  Hours
-                </span>
-              </div>
-
-              {errors.hours && (
-                <p className="text-rose-600 text-[9px] font-semibold">
-                  {errors.hours}
-                </p>
-              )}
-
-              <p className="text-[10px] text-slate-400">
-                Usually 1.5 to 3 hours are highly recommended for daily self-study.
+      <section className="pt-2 border-t border-slate-100">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-800">
+                Active Subjects
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Select a subject to view its NCTB chapters.
               </p>
             </div>
 
-            {/* Subjects Picker */}
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500">
-                Prioritize Today's Subjects
-              </label>
+            <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+              {subjects.length + safeAdditionalSubjects.length} subjects
+            </span>
+          </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {subjects.map((sub) => (
-                  <button
-                    type="button"
-                    key={sub.id}
-                    onClick={() =>
-                      toggleSubject(sub.name)
-                    }
-                    className={`p-2 rounded-lg border text-left transition-all text-xs flex items-center justify-between cursor-pointer ${selectedSubjects.includes(
-                      sub.name
-                    )
-                      ? "bg-indigo-50 border-indigo-300 text-indigo-800 font-semibold"
-                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-                      }`}
-                  >
-                    <span>
-                      {sub.banglaName} ({sub.name})
-                    </span>
+          {subjects.length + safeAdditionalSubjects.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {subjects.map((subject, index) =>
+                renderSubjectCard(subject, index)
+              )}
 
-                    <CheckCircle
-                      className={`w-3.5 h-3.5 ${selectedSubjects.includes(
-                        sub.name
-                      )
-                        ? "text-indigo-500 fill-indigo-100"
-                        : "text-transparent"
-                        }`}
-                    />
-                  </button>
-                ))}
-              </div>
-
-              {errors.subjects && (
-                <p className="text-rose-600 text-[9px] font-semibold">
-                  {errors.subjects}
-                </p>
+              {safeAdditionalSubjects.map((subject, index) =>
+                renderAdditionalSubjectCard(subject, index)
               )}
             </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 p-5 text-center text-xs text-slate-400">
+              No active subjects available.
+            </div>
+          )}
 
-            <button
-              onClick={handleGeneratePlan}
-              disabled={generating}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition-all text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              id="plan-generate-btn"
-            >
-              <Sparkles className="w-4 h-4" />
-
-              {generating
-                ? "AI is Calculating Timings..."
-                : "Generate Guided Flight Plan"}
-            </button>
-          </div>
-
-          {/* Results Column */}
-          <div className="lg:col-span-3 space-y-4">
-            {apiWarning && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-amber-800 text-xs flex items-start gap-2.5 shadow-xs">
-                <span className="text-base">⚠️</span>
-
-                <div>
-                  <p className="font-bold">
-                    Offline Planner Active
-                  </p>
-
-                  <p className="text-amber-700 mt-0.5">
-                    {apiWarning}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {generating ? (
-              <div className="h-full min-h-[250px] flex flex-col items-center justify-center text-center p-6 space-y-4 border-2 border-dashed border-slate-200 rounded-xl">
-                <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-slate-700">
-                    Pilot AI is Plotting Your Study Plan...
-                  </h4>
-
-                  <p className="text-xs text-slate-400 max-w-xs">
-                    Splitting available time, designing revision blocks, and finding custom learning milestones.
-                  </p>
-                </div>
-              </div>
-            ) : planResult ? (
-              <div
-                className="space-y-5"
-                id="study-plan-output"
-              >
-                {/* Motivation quote */}
-                <div className="bg-slate-900 p-4.5 rounded-xl text-white shadow-sm flex items-start gap-3">
-                  <Flame className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
-
-                  <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-                      Daily Inspiration
-                    </h4>
-
-                    <p className="text-xs italic font-medium leading-relaxed mt-0.5 text-slate-200">
-                      "{planResult.motivationQuote}"
-                    </p>
-                  </div>
-                </div>
-
-                {/* Timeline list */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Today's Step-by-Step Schedule
-                  </h3>
-
-                  <div className="relative before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-100 space-y-4">
-                    {planResult.plan.map(
-                      (item, index) => (
-                        <div
-                          key={index}
-                          className="flex gap-4 relative"
-                        >
-                          <div className="w-7 h-7 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0">
-                            {index + 1}
-                          </div>
-
-                          <div className="bg-slate-50/50 p-3.5 rounded-xl border border-slate-200/50 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:border-slate-300 hover:bg-white transition-all duration-250">
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                {item.subject}
-                              </span>
-
-                              <h4 className="text-xs font-semibold text-slate-800 font-display">
-                                {item.chapter}
-                              </h4>
-
-                              <p className="text-xs text-slate-500">
-                                {item.activity}
-                              </p>
-                            </div>
-
-                            <div className="shrink-0 flex items-center gap-1 bg-indigo-50 text-indigo-700 font-bold text-xs px-2.5 py-1 rounded-full border border-indigo-100/40 self-start sm:self-center">
-                              <Clock className="w-3.5 h-3.5" />
-                              {item.timeInMinutes} mins
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="h-full min-h-[250px] flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-200 rounded-xl space-y-2">
-                <Clock className="w-8 h-8 text-slate-300" />
-
-                <h4 className="text-sm font-bold text-slate-600">
-                  No Plan Generated
-                </h4>
-
-                <p className="text-xs text-slate-400 max-w-xs">
-                  Select your study time and subjects in the left column to create today's custom co-pilot schedule.
-                </p>
-              </div>
-            )}
-          </div>
+          <p className="mt-4 text-[11px] text-slate-400">
+            Tip: Open <span className="font-semibold text-slate-500">Add Routine Block</span> first, then select a chapter to place it in the Activity field.
+          </p>
         </div>
       </section>
 

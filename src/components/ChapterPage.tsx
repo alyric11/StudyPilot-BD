@@ -262,10 +262,16 @@ export default function ChapterPage({
 
               <h1 className="mt-2 text-xl md:text-3xl font-display font-bold text-slate-800 break-words leading-tight">
                 {chapterBanglaName}
-                <span className="text-slate-400 font-normal block sm:inline">
-                  {" | "}
-                  {chapterName}
-                </span>
+                {chapterBanglaName && chapterName && (
+                  <span className="text-slate-400 font-normal block sm:inline">
+                    {" | "}
+                  </span>
+                )}
+                {chapterName && (
+                  <span className="text-slate-400 font-normal block sm:inline">
+                    {chapterName}
+                  </span>
+                )}
               </h1>
             </div>
 
