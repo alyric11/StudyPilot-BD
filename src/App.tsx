@@ -9,101 +9,13 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-
-const getSubjectCardStyles = (color: string) => {
-  if (color.includes("emerald")) {
-    return {
-      card: "bg-emerald-50/45 border-emerald-100/70 hover:border-emerald-200",
-      progress: "bg-emerald-500",
-      chapter: "bg-emerald-50/40 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border-emerald-100/60",
-      mastery: "text-emerald-600",
-      icon: "bg-emerald-100 text-emerald-600"
-    };
-  }
-
-  if (color.includes("blue")) {
-    return {
-      card: "bg-blue-50/45 border-blue-100/70 hover:border-blue-200",
-      progress: "bg-blue-500",
-      chapter: "bg-blue-50/40 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border-blue-100/60",
-      mastery: "text-blue-600",
-      icon: "bg-blue-100 text-blue-600"
-    };
-  }
-
-  if (color.includes("purple") || color.includes("violet")) {
-    return {
-      card: "bg-purple-50/45 border-purple-100/70 hover:border-purple-200",
-      progress: "bg-purple-500",
-      chapter: "bg-purple-50/40 hover:bg-purple-50 text-slate-600 hover:text-purple-700 border-purple-100/60",
-      mastery: "text-purple-600",
-      icon: "bg-purple-100 text-purple-600"
-    };
-  }
-
-  if (color.includes("cyan")) {
-    return {
-      card: "bg-cyan-50/45 border-cyan-100/70 hover:border-cyan-200",
-      progress: "bg-cyan-500",
-      chapter: "bg-cyan-50/40 hover:bg-cyan-50 text-slate-600 hover:text-cyan-700 border-cyan-100/60",
-      mastery: "text-cyan-600",
-      icon: "bg-cyan-100 text-cyan-600"
-    };
-  }
-
-  if (color.includes("amber") || color.includes("orange")) {
-    return {
-      card: "bg-amber-50/45 border-amber-100/70 hover:border-amber-200",
-      progress: "bg-amber-500",
-      chapter: "bg-amber-50/40 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border-amber-100/60",
-      mastery: "text-amber-600",
-      icon: "bg-amber-100 text-amber-600"
-    };
-  }
-
-  if (color.includes("teal")) {
-    return {
-      card: "bg-teal-50/45 border-teal-100/70 hover:border-teal-200",
-      progress: "bg-teal-500",
-      chapter: "bg-teal-50/40 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border-teal-100/60",
-      mastery: "text-teal-600",
-      icon: "bg-teal-100 text-teal-600"
-    };
-  }
-
-  if (color.includes("fuchsia") || color.includes("pink")) {
-    return {
-      card: "bg-pink-50/45 border-pink-100/70 hover:border-pink-200",
-      progress: "bg-pink-500",
-      chapter: "bg-pink-50/40 hover:bg-pink-50 text-slate-600 hover:text-pink-700 border-pink-100/60",
-      mastery: "text-pink-600",
-      icon: "bg-pink-100 text-pink-600"
-    };
-  }
-
-  if (color.includes("rose")) {
-    return {
-      card: "bg-rose-50/45 border-rose-100/70 hover:border-rose-200",
-      progress: "bg-rose-500",
-      chapter: "bg-rose-50/40 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border-rose-100/60",
-      mastery: "text-rose-600",
-      icon: "bg-rose-100 text-rose-600"
-    };
-  }
-
-  return {
-    card: "bg-slate-50/60 border-slate-200/70 hover:border-slate-300",
-    progress: "bg-slate-500",
-    chapter: "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-700 border-slate-150",
-    mastery: "text-slate-600",
-    icon: "bg-slate-100 text-slate-600"
-  };
-};
+import { getSubjectCardStyles } from "./colorPalettes";
 import { ChapterProgress } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
 import { AnimatePresence, motion } from "motion/react";
 import VideoLessonsPage from "./components/VideoLessonsPage";
+import { formatTimeRange } from "./utils/time";
 
 // Component Imports
 import ProfileSetup from "./components/ProfileSetup";
@@ -211,6 +123,7 @@ export default function App() {
     handleSaveProfile,
     handleAddRoutineBlock,
     handleDeleteRoutineBlock,
+    handleUpdateRoutineBlock,
     handleUpdateChapterProgress,
     handleAddHomework,
     handleToggleHomework,
@@ -461,7 +374,7 @@ export default function App() {
           {/* Mobile Navigation Trigger */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 cursor-pointer transition-colors"
+            className="p-1.5 text-slate-500 transition-colors hover:bg-slate-100 rounded-lg cursor-pointer lg:hidden"
             id="mobile-nav-toggle"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -504,14 +417,14 @@ export default function App() {
       <div className="w-full min-w-0" id="app-main-pane">
         {/* Navigation Sidebar Drawer */}
         <aside
-          className={`fixed top-[58px] bottom-0 left-0 z-40 bg-slate-900 border-r border-slate-800 w-[260px] p-4 shadow-lg md:shadow-none transition-transform duration-300 transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          className={`fixed top-[58px] bottom-0 left-0 z-40 bg-[#15213a] border-r border-[#24324a] w-[260px] p-4 shadow-lg lg:shadow-none transition-transform duration-300 transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
             }`}
           id="app-navigation-sidebar"
         >
           <div className="flex flex-col justify-between h-full">
             <div className="space-y-6">
               <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block px-2 mb-2">Student Cockpit</span>
+                <span className="text-[10px] text-[#7182a0] font-bold uppercase tracking-wider block px-2 mb-2">Student Cockpit</span>
                 <nav className="space-y-1">
                   {[
                     { id: 'dashboard', label: 'Study Cockpit', icon: LayoutDashboard },
@@ -530,8 +443,8 @@ export default function App() {
                           setSidebarOpen(false);
                         }}
                         className={`w-full py-2 px-3 rounded-lg text-left text-xs font-semibold flex items-center gap-3 transition-all cursor-pointer ${isActive
-                          ? "bg-slate-800 text-white font-bold border-l-4 border-indigo-500"
-                          : "text-slate-500 hover:text-white hover:bg-slate-800/50"
+                          ? "bg-[#24324a] text-white font-bold border-l-4 border-[#6d5dfc]"
+                          : "text-[#9aabc5] hover:text-white hover:bg-[#1d2a43]"
                           }`}
                         id={`sidebar-link-${item.id}`}
                       >
@@ -545,7 +458,7 @@ export default function App() {
             </div>
 
             {/* Logout panel */}
-            <div className="pt-4 border-t border-slate-800">
+            <div className="pt-4 border-t border-[#24324a]">
               <button
                 onClick={handleLogOut}
                 className="w-full py-2 px-3 rounded-lg text-left text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 flex items-center gap-3 transition-all cursor-pointer"
@@ -562,12 +475,12 @@ export default function App() {
         {sidebarOpen && (
           <div
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-30 bg-slate-900/30 backdrop-blur-xs md:hidden"
+            className="fixed inset-0 z-30 bg-slate-900/30 backdrop-blur-xs lg:hidden"
           />
         )}
 
         {/* Study Workstation */}
-        <main className={`min-w-0 w-full md:ml-[260px] md:w-[calc(100%-260px)] p-3 sm:p-4 md:p-6 overflow-x-hidden ${activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : ""}`} id="dynamic-flight-window">
+        <main className={`min-w-0 w-full lg:ml-[260px] lg:w-[calc(100%-260px)] p-3 sm:p-4 lg:p-6 overflow-x-hidden ${activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : activeSection === "planner" ? "bg-[#f5f7fb]" : ""}`} id="dynamic-flight-window">
           {showVideoLessons ? (
             <VideoLessonsPage
               chapter={selectedChapter!}
@@ -690,7 +603,7 @@ export default function App() {
                             {activeSubjects.length} Subjects
                           </span>
                         </div>
-                        
+
                         {/* Common Subjects */}
                         <div>
                           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
@@ -732,20 +645,20 @@ export default function App() {
                               >
                                 <div className="space-y-2">
                                   <div
-                                      className="flex items-center gap-3 cursor-pointer"
-                                    >
-                                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
-                                        <BookOpen className="w-4 h-4" />
-                                      </div>
-                                      <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
-                                        <span className="text-xs font-bold text-slate-800 font-display truncate">
-                                          {sub.banglaName}
-                                        </span>
-                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono shrink-0">
-                                          {sub.name}
-                                        </span>
-                                      </div>
+                                    className="flex items-center gap-3 cursor-pointer"
+                                  >
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
+                                      <BookOpen className="w-4 h-4" />
                                     </div>
+                                    <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                                      <span className="text-xs font-bold text-slate-800 font-display truncate">
+                                        {sub.banglaName}
+                                      </span>
+                                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono shrink-0">
+                                        {sub.name}
+                                      </span>
+                                    </div>
+                                  </div>
                                   <div className="flex items-center gap-1.5 text-xs">
                                     <div className="flex items-center gap-2">
                                       <span className={`font-bold ${subjectStyles.mastery}`}>{mastery}%</span>
@@ -764,7 +677,7 @@ export default function App() {
                                   </div>
                                 </div>
 
-                                
+
                               </div>
                             );
                           })}
@@ -801,32 +714,32 @@ export default function App() {
                                   <div
                                     key={sub.id}
                                     className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between space-y-3 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${subjectStyles.card}`}
-                                onClick={() => setSelectedSubjectPaper(sub.id)}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    setSelectedSubjectPaper(sub.id);
-                                  }
-                                }}
+                                    onClick={() => setSelectedSubjectPaper(sub.id)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        setSelectedSubjectPaper(sub.id);
+                                      }
+                                    }}
                                   >
                                     <div className="space-y-2">
                                       <div
-                                      className="flex items-center gap-3 cursor-pointer"
-                                    >
-                                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
-                                        <BookOpen className="w-4 h-4" />
+                                        className="flex items-center gap-3 cursor-pointer"
+                                      >
+                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
+                                          <BookOpen className="w-4 h-4" />
+                                        </div>
+                                        <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                                          <span className="text-xs font-bold text-slate-800 font-display truncate">
+                                            {sub.banglaName}
+                                          </span>
+                                          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono shrink-0">
+                                            {sub.name}
+                                          </span>
+                                        </div>
                                       </div>
-                                      <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
-                                        <span className="text-xs font-bold text-slate-800 font-display truncate">
-                                          {sub.banglaName}
-                                        </span>
-                                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono shrink-0">
-                                          {sub.name}
-                                        </span>
-                                      </div>
-                                    </div>
 
                                       <div className="flex items-center gap-1.5 text-xs">
                                         <div className="flex items-center gap-2">
@@ -847,7 +760,7 @@ export default function App() {
                                       </div>
                                     </div>
 
-                                    
+
                                   </div>
                                 );
                               })}
@@ -877,11 +790,10 @@ export default function App() {
                             {additionalSubjects.map((subject) => (
                               <div
                                 key={subject.id}
-                                className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition-colors ${
-                                  subject.active
+                                className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition-colors ${subject.active
                                     ? "bg-indigo-50/50 border-indigo-200"
                                     : "bg-slate-50 border-slate-200"
-                                }`}
+                                  }`}
                               >
                                 <button
                                   type="button"
@@ -889,9 +801,8 @@ export default function App() {
                                   className="min-w-0 flex-1 text-left cursor-pointer"
                                   aria-pressed={subject.active}
                                 >
-                                  <div className={`text-xs font-bold truncate ${
-                                    subject.active ? "text-indigo-700" : "text-slate-600"
-                                  }`}>
+                                  <div className={`text-xs font-bold truncate ${subject.active ? "text-indigo-700" : "text-slate-600"
+                                    }`}>
                                     {subject.name}
                                   </div>
                                   <div className="text-[10px] text-slate-400 mt-0.5">
@@ -939,8 +850,7 @@ export default function App() {
                                     toggleSubjectGroupSelection(group.papers.map((paper) => paper.id))
                                   }
 
-                                  className={`flex items-center justify-between gap-3 p-3 rounded-lg border text-left transition-all ${
-                                    isSelected
+                                  className={`flex items-center justify-between gap-3 p-3 rounded-lg border text-left transition-all ${isSelected
                                       ? "bg-indigo-50/70 border-indigo-200 text-indigo-700 shadow-xs"
                                       : "bg-white border-slate-200/80 text-slate-600 hover:bg-indigo-50/40 hover:border-indigo-100"
                                     }`}
@@ -996,7 +906,7 @@ export default function App() {
                           <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">
                             Today's Tasks
                           </h2>
-                          
+
                         </div>
 
                         {todayRoutineBlocks.length > 0 ? (
@@ -1007,7 +917,7 @@ export default function App() {
                                 className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-b-0"
                               >
                                 <div className="text-xs font-bold text-indigo-600 whitespace-nowrap">
-                                  {block.startTime}–{block.endTime}
+                                  {formatTimeRange(block.startTime, block.endTime)}
                                 </div>
 
                                 <div className="h-4 w-px bg-slate-200" />
@@ -1099,6 +1009,7 @@ export default function App() {
                   routineBlocks={routineBlocks}
                   onAddRoutineBlock={handleAddRoutineBlock}
                   onDeleteRoutineBlock={handleDeleteRoutineBlock}
+                  onUpdateRoutineBlock={handleUpdateRoutineBlock}
                 />
               )}
 

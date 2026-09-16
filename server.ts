@@ -589,13 +589,24 @@ app.get("/api/video-lessons", async (req, res) => {
     });
   }
 
+  const isSSC = classLevel === "9" || classLevel === "10";
+  const curriculumLevel = isSSC ? "SSC" : "HSC";
+  const classLabel = isSSC
+    ? `Class ${classLevel}`
+    : `Class ${classLevel}`;
+
+  // Search terms are deliberately ordered from the most specific
+  // chapter identifier to the broader curriculum context.
   const query = [
-    `Class ${classLevel || ""}`,
-    subject,
     chapterBanglaName || "",
+    curriculumLevel,
+    classLabel,
+    subject,
+    `অধ্যায় ${chapterBanglaName || ""}`,
+    `Chapter ${chapterName}`,
+    `Lesson ${chapterName}`,
+    `Question ${chapterName}`,
     chapterName,
-    "Bangladesh NCTB",
-    "lecture tutorial"
   ]
     .filter(Boolean)
     .join(" ");
@@ -605,7 +616,7 @@ app.get("/api/video-lessons", async (req, res) => {
       part: "snippet",
       q: query,
       type: "video",
-      maxResults: "3",
+      maxResults: "5",
       key: youtubeApiKey
     });
 
@@ -627,15 +638,7 @@ app.get("/api/video-lessons", async (req, res) => {
     const filteredItems = (data.items || []).filter((item: any) => {
       const title = item.snippet?.title?.toLowerCase() || "";
 
-      if (classLevel === "11") {
-        return !(
-          title.includes("class 9") ||
-          title.includes("class 10") ||
-          title.includes("ssc")
-        );
-      }
-
-      if (classLevel === "12") {
+      if (classLevel === "11" || classLevel === "12") {
         return !(
           title.includes("class 9") ||
           title.includes("class 10") ||
@@ -689,7 +692,7 @@ app.get("/api/video-lessons", async (req, res) => {
       })
       .filter((video: any) => {
         if (!video.duration) return false;
-        if (Number(video.viewCount) < 10000) return false;
+        if (Number(video.viewCount) < 5000) return false;
 
         const match = video.duration.match(
           /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
@@ -707,7 +710,7 @@ app.get("/api/video-lessons", async (req, res) => {
         return totalSeconds >= 300;
       });
 
-    res.json(videosWithDetails.slice(0, 3));
+    res.json(videosWithDetails.slice(0, 5));
 
   } catch (error) {
     console.error("YouTube search error:", error);

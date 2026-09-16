@@ -59,7 +59,7 @@ export default function VideoLessonsPage({
         }
 
         const data = await response.json();
-        setVideos(data.slice(0, 3));
+        setVideos(data.slice(0, 5));
       } catch (err) {
         console.error("Video lessons error:", err);
         setError("Unable to load video lessons right now.");

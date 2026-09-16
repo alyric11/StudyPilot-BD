@@ -76,7 +76,7 @@ export const class12Subjects = (group: string): Subject[] => {
     id: "bangla_1",
     name: "Bangla 1st Paper",
     banglaName: "বাংলা ১ম পত্র",
-    color: "from-emerald-500 to-emerald-600",
+    color: "from-orange-500 to-orange-600",
     category: "common",
     chapters: [
       createChapter("b1_12_ch1", "Chapter 1", "", "বাঙ্গালার নব্য লেখকদিগের প্রতি নিবেদন", "", CLASS_NAME, group, "Bangla 1st Paper", "NCTB Class 11 Sahitto Path", "গদ্য"),
@@ -113,7 +113,7 @@ export const class12Subjects = (group: string): Subject[] => {
     id: "bangla_2",
     name: "Bangla 2nd Paper",
     banglaName: "বাংলা ২য় পত্র",
-    color: "from-emerald-500 to-emerald-600",
+    color: "from-orange-500 to-orange-600",
     category: "common",
     chapters: [
       createChapter("b2_12_q1", "Question 1", "", "বাংলা উচ্চারণের নিয়ম", "বাংলা উচ্চারণের নিয়ম।", CLASS_NAME, group, "Bangla 2nd Paper", "HSC Bangla 2nd Paper", "ব্যাকরণ"),
@@ -137,7 +137,7 @@ export const class12Subjects = (group: string): Subject[] => {
     id: "english_1",
     name: "English 1st Paper",
     banglaName: "English 1st Paper",
-    color: "from-blue-500 to-indigo-600",
+    color: "from-blue-500 to-blue-600",
     category: "common",
     chapters: [
       createChapter("e1_12_u1_l1", "Lesson 1", "", "The Parrot's Tale", "Unit One: Education and Life", CLASS_NAME, group, "English 1st Paper", "NCTB Class 11 English For Today", "Unit One: Education and Life"),
@@ -207,7 +207,7 @@ export const class12Subjects = (group: string): Subject[] => {
     id: "english_2",
     name: "English 2nd Paper",
     banglaName: "English 2nd Paper",
-    color: "from-blue-500 to-indigo-600",
+    color: "from-blue-500 to-blue-600",
     category: "common",
     chapters: [
       createChapter("e2_12_q1", "Question 1", "", "Article", "Grammar — Article.", CLASS_NAME, group, "English 2nd Paper", "HSC English 2nd Paper", "Grammar"),
@@ -235,7 +235,7 @@ export const class12Subjects = (group: string): Subject[] => {
     id: "ict_11",
     name: "ICT",
     banglaName: "তথ্য ও যোগাযোগ প্রযুক্তি",
-    color: "from-purple-500 to-violet-600",
+    color: "from-purple-500 to-purple-600",
     category: "common",
     chapters: [
       createChapter("ict_12_ch1", "Chapter 1", "Information and Communication Technology: World and Bangladesh Perspective", "তথ্য ও যোগাযোগ প্রযুক্তি: বিশ্ব ও বাংলাদেশ প্রেক্ষিত", "", CLASS_NAME, group, "ICT", "NCTB Class 11 ICT Board Book"),
@@ -254,7 +254,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "physics1",
       name: "Physics 1st Paper",
       banglaName: "পদার্থবিজ্ঞান ১ম পত্র",
-      color: "from-cyan-500 to-blue-600",
+      color: "from-cyan-500 to-cyan-600",
       category: "mandatory",
       eligibleGroups: ["Science"],
       chapters: [
@@ -276,7 +276,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "physics2",
       name: "Physics 2nd Paper",
       banglaName: "পদার্থবিজ্ঞান ২য় পত্র",
-      color: "from-cyan-500 to-blue-600",
+      color: "from-cyan-500 to-cyan-600",
       category: "mandatory",
       eligibleGroups: ["Science"],
       chapters: [
@@ -299,7 +299,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "chemistry1",
       name: "Chemistry 1st Paper",
       banglaName: "রসায়ন ১ম পত্র",
-      color: "from-pink-500 to-rose-600",
+      color: "from-pink-500 to-pink-600",
       category: "mandatory",
       eligibleGroups: ["Science"],
       chapters: [
@@ -316,7 +316,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "chemistry2",
       name: "Chemistry 2nd Paper",
       banglaName: "রসায়ন ২য় পত্র",
-      color: "from-pink-500 to-rose-600",
+      color: "from-pink-500 to-pink-600",
       category: "mandatory",
       eligibleGroups: ["Science"],
       chapters: [
@@ -333,7 +333,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "biology1",
       name: "Biology 1st Paper",
       banglaName: "জীববিজ্ঞান ১ম পত্র",
-      color: "from-green-500 to-emerald-600",
+      color: "from-green-500 to-green-600",
       category: "selectable",
       eligibleGroups: ["Science"],
       chapters: [
@@ -357,7 +357,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "biology2",
       name: "Biology 2nd Paper",
       banglaName: "জীববিজ্ঞান ২য় পত্র",
-      color: "from-green-500 to-emerald-600",
+      color: "from-green-500 to-green-600",
       category: "selectable",
       eligibleGroups: ["Science"],
       chapters: [
@@ -381,7 +381,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "soil_science1",
       name: "Soil Science 1st Paper",
       banglaName: "মৃত্তিকাবিজ্ঞান ১ম পত্র",
-      color: "from-amber-500 to-orange-600",
+      color: "from-gray-500 to-gray-600",
       category: "selectable",
       eligibleGroups: ["Science"],
       chapters: [
@@ -398,7 +398,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "soil_science2",
       name: "Soil Science 2nd Paper",
       banglaName: "মৃত্তিকাবিজ্ঞান ২য় পত্র",
-      color: "from-amber-500 to-orange-600",
+      color: "from-gray-500 to-gray-600",
       category: "selectable",
       eligibleGroups: ["Science"],
       chapters: [
@@ -418,7 +418,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "accounting1",
       name: "Accounting 1st Paper",
       banglaName: "হিসাববিজ্ঞান ১ম পত্র",
-      color: "from-indigo-500 to-violet-600",
+      color: "from-cyan-500 to-cyan-600",
       category: "mandatory",
       eligibleGroups: ["Business Studies"],
       chapters: [
@@ -440,7 +440,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "accounting2",
       name: "Accounting 2nd Paper",
       banglaName: "হিসাববিজ্ঞান ২য় পত্র",
-      color: "from-indigo-500 to-violet-600",
+      color: "from-cyan-500 to-cyan-600",
       category: "mandatory",
       eligibleGroups: ["Business Studies"],
       chapters: [
@@ -462,7 +462,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "bus_org1",
       name: "Business Org 1st Paper",
       banglaName: "ব্যবসায় সংগঠন ও ব্যবস্থাপনা ১ম পত্র",
-      color: "from-sky-500 to-cyan-600",
+      color: "from-pink-500 to-pink-600",
       category: "mandatory",
       eligibleGroups: ["Business Studies"],
       chapters: [
@@ -486,7 +486,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "bus_org2",
       name: "Business Org 2nd Paper",
       banglaName: "ব্যবসায় সংগঠন ও ব্যবস্থাপনা ২য় পত্র",
-      color: "from-sky-500 to-cyan-600",
+      color: "from-pink-500 to-pink-600",
       category: "mandatory",
       eligibleGroups: ["Business Studies"],
       chapters: [
@@ -508,7 +508,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "finance1",
       name: "Finance 1st Paper",
       banglaName: "ফিন্যান্স ও ব্যাংকিং ১ম পত্র",
-      color: "from-amber-500 to-yellow-600",
+      color: "from-green-500 to-green-600",
       category: "selectable",
       eligibleGroups: ["Business Studies"],
 
@@ -532,7 +532,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "finance2",
       name: "Finance 2nd Paper",
       banglaName: "ফিন্যান্স ও ব্যাংকিং ২য় পত্র",
-      color: "from-amber-500 to-yellow-600",
+      color: "from-green-500 to-green-600",
       category: "selectable",
       eligibleGroups: ["Business Studies"],
       chapters: [
@@ -559,7 +559,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "production_marketing1",
       name: "Production Management & Marketing 1st Paper",
       banglaName: "উৎপাদন ব্যবস্থাপনা ও বিপণন ১ম পত্র",
-      color: "from-violet-500 to-purple-600",
+      color: "from-violet-500 to-violet-600",
       category: "selectable",
       eligibleGroups: ["Business Studies"],
       chapters: [
@@ -581,7 +581,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "production_marketing2",
       name: "Production Management & Marketing 2nd Paper",
       banglaName: "উৎপাদন ব্যবস্থাপনা ও বিপণন ২য় পত্র",
-      color: "from-violet-500 to-purple-600",
+      color: "from-violet-500 to-violet-600",
       category: "selectable",
       eligibleGroups: ["Business Studies"],
       chapters: [
@@ -604,7 +604,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "tourism_hospitality1",
       name: "Tourism & Hospitality 1st Paper",
       banglaName: "ট্যুরিজম অ্যান্ড হসপিটালিটি ১ম পত্র",
-      color: "from-teal-500 to-cyan-600",
+      color: "from-teal-500 to-teal-600",
       category: "selectable",
       eligibleGroups: ["Business Studies"],
       chapters: []
@@ -615,7 +615,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "tourism_hospitality2",
       name: "Tourism & Hospitality 2nd Paper",
       banglaName: "ট্যুরিজম অ্যান্ড হসপিটালিটি ২য় পত্র",
-      color: "from-teal-500 to-cyan-600",
+      color: "from-teal-500 to-teal-600",
       category: "selectable",
       eligibleGroups: ["Business Studies"],
       chapters: []
@@ -628,7 +628,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "history1",
       name: "History 1st Paper",
       banglaName: "ইতিহাস ১ম পত্র",
-      color: "from-orange-500 to-red-600",
+      color: "from-green-500 to-green-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -647,7 +647,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "history2",
       name: "History 2nd Paper",
       banglaName: "ইতিহাস ২য় পত্র",
-      color: "from-orange-500 to-red-600",
+      color: "from-green-500 to-green-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -668,7 +668,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "islamic_history1",
       name: "Islamic History & Culture 1st Paper",
       banglaName: "ইসলামের ইতিহাস ও সংস্কৃতি ১ম পত্র",
-      color: "from-emerald-500 to-green-600",
+      color: "from-cyan-500 to-cyan-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -690,7 +690,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "islamic_history2",
       name: "Islamic History & Culture 2nd Paper",
       banglaName: "ইসলামের ইতিহাস ও সংস্কৃতি ২য় পত্র",
-      color: "from-emerald-500 to-green-600",
+      color: "from-cyan-500 to-cyan-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -708,7 +708,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "civics1",
       name: "Civics & Good Governance 1st Paper",
       banglaName: "পৌরনীতি ও সুশাসন ১ম পত্র",
-      color: "from-fuchsia-500 to-pink-600",
+      color: "from-yellow-500 to-yellow-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -730,7 +730,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "civics2",
       name: "Civics & Good Governance 2nd Paper",
       banglaName: "পৌরনীতি ও সুশাসন ২য় পত্র",
-      color: "from-fuchsia-500 to-pink-600",
+      color: "from-yellow-500 to-yellow-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -752,7 +752,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "sociology1",
       name: "Sociology 1st Paper",
       banglaName: "সমাজবিজ্ঞান ১ম পত্র",
-      color: "from-indigo-500 to-blue-600",
+      color: "from-pink-500 to-pink-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -775,7 +775,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "sociology2",
       name: "Sociology 2nd Paper",
       banglaName: "সমাজবিজ্ঞান ২য় পত্র",
-      color: "from-indigo-500 to-blue-600",
+      color: "from-pink-500 to-pink-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -797,7 +797,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "social_work1",
       name: "Social Work 1st Paper",
       banglaName: "সমাজকর্ম ১ম পত্র",
-      color: "from-rose-500 to-pink-600",
+      color: "from-slate-500 to-slate-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -817,7 +817,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "social_work2",
       name: "Social Work 2nd Paper",
       banglaName: "সমাজকর্ম ২য় পত্র",
-      color: "from-rose-500 to-pink-600",
+      color: "from-slate-500 to-slate-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -838,7 +838,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "logic1",
       name: "Logic 1st Paper",
       banglaName: "যুক্তিবিদ্যা ১ম পত্র",
-      color: "from-violet-500 to-indigo-600",
+      color: "from-periwinkle-500 to-periwinkle-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -858,7 +858,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "logic2",
       name: "Logic 2nd Paper",
       banglaName: "যুক্তিবিদ্যা ২য় পত্র",
-      color: "from-violet-500 to-indigo-600",
+      color: "from-periwinkle-500 to-periwinkle-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -878,7 +878,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "islamic_studies1",
       name: "Islamic Studies 1st Paper",
       banglaName: "ইসলাম শিক্ষা ১ম পত্র",
-      color: "from-lime-500 to-green-600",
+      color: "from-mint-500 to-mint-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -897,7 +897,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "islamic_studies2",
       name: "Islamic Studies 2nd Paper",
       banglaName: "ইসলাম শিক্ষা ২য় পত্র",
-      color: "from-lime-500 to-green-600",
+      color: "from-mint-500 to-mint-600",
       category: "selectable",
       eligibleGroups: ["Humanities"],
       chapters: [
@@ -918,7 +918,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "math1",
       name: "Higher Math 1st Paper",
       banglaName: "উচ্চতর গণিত ১ম পত্র",
-      color: "from-amber-500 to-orange-600",
+      color: "from-red-500 to-red-600",
       category: "selectable",
       eligibleGroups: ["Science", "Humanities"],
       chapters: [
@@ -940,7 +940,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "math2",
       name: "Higher Math 2nd Paper",
       banglaName: "উচ্চতর গণিত ২য় পত্র",
-      color: "from-amber-500 to-orange-600",
+      color: "from-red-500 to-red-600",
       category: "selectable",
       eligibleGroups: ["Science", "Humanities"],
       chapters: [
@@ -962,7 +962,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "psychology1",
       name: "Psychology 1st Paper",
       banglaName: "মনোবিজ্ঞান ১ম পত্র",
-      color: "from-pink-500 to-rose-600",
+      color: "from-lavender-500 to-lavender-600",
       category: "selectable",
       eligibleGroups: ["Science", "Humanities"],
       chapters: [
@@ -982,7 +982,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "psychology2",
       name: "Psychology 2nd Paper",
       banglaName: "মনোবিজ্ঞান ২য় পত্র",
-      color: "from-pink-500 to-rose-600",
+      color: "from-lavender-500 to-lavender-600",
       category: "selectable",
       eligibleGroups: ["Science", "Humanities"],
       chapters: [
@@ -1005,7 +1005,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "economics1",
       name: "Economics 1st Paper",
       banglaName: "অর্থনীতি ১ম পত্র",
-      color: "from-blue-500 to-indigo-600",
+      color: "from-stone-500 to-stone-600",
       category: "selectable",
       eligibleGroups: ["Business Studies", "Humanities"],
       chapters: [
@@ -1027,7 +1027,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "economics2",
       name: "Economics 2nd Paper",
       banglaName: "অর্থনীতি ২য় পত্র",
-      color: "from-blue-500 to-indigo-600",
+      color: "from-stone-500 to-stone-600",
       category: "selectable",
       eligibleGroups: ["Business Studies", "Humanities"],
       chapters: [
@@ -1049,7 +1049,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "home_science1",
       name: "Home Science 1st Paper",
       banglaName: "গার্হস্থ্য বিজ্ঞান ১ম পত্র",
-      color: "from-rose-500 to-pink-600",
+      color: "from-indigo-500 to-indigo-600",
       category: "selectable",
       eligibleGroups: ["Business Studies", "Humanities"],
       chapters: [
@@ -1077,7 +1077,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "home_science2",
       name: "Home Science 2nd Paper",
       banglaName: "গার্হস্থ্য বিজ্ঞান ২য় পত্র",
-      color: "from-rose-500 to-pink-600",
+      color: "from-indigo-500 to-indigo-600",
       category: "selectable",
       eligibleGroups: ["Business Studies", "Humanities"],
       chapters: [
@@ -1107,7 +1107,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "agriculture1",
       name: "Agriculture Studies 1st Paper",
       banglaName: "কৃষিশিক্ষা ১ম পত্র",
-      color: "from-green-500 to-emerald-600",
+      color: "from-sky-500 to-sky-600",
       category: "selectable",
       eligibleGroups: ["Science", "Business Studies", "Humanities"],
       chapters: [
@@ -1125,7 +1125,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "agriculture2",
       name: "Agriculture Studies 2nd Paper",
       banglaName: "কৃষিশিক্ষা ২য় পত্র",
-      color: "from-green-500 to-emerald-600",
+      color: "from-sky-500 to-sky-600",
       category: "selectable",
       eligibleGroups: ["Science", "Business Studies", "Humanities"],
       chapters: [
@@ -1142,7 +1142,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "geography1",
       name: "Geography 1st Paper",
       banglaName: "ভূগোল ১ম পত্র",
-      color: "from-teal-500 to-cyan-600",
+      color: "from-amber-500 to-amber-600",
       category: "selectable",
       eligibleGroups: ["Science", "Business Studies", "Humanities"],
       chapters: [
@@ -1164,7 +1164,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "geography2",
       name: "Geography 2nd Paper",
       banglaName: "ভূগোল ২য় পত্র",
-      color: "from-teal-500 to-cyan-600",
+      color: "from-amber-500 to-amber-600",
       category: "selectable",
       eligibleGroups: ["Science", "Business Studies", "Humanities"],
       chapters: [
@@ -1186,7 +1186,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "statistics1",
       name: "Statistics 1st Paper",
       banglaName: "পরিসংখ্যান ১ম পত্র",
-      color: "from-indigo-500 to-violet-600",
+      color: "from-rose-500 to-rose-600",
       category: "selectable",
       eligibleGroups: ["Science", "Business Studies", "Humanities"],
       chapters: [
@@ -1206,7 +1206,7 @@ export const class12Subjects = (group: string): Subject[] => {
       id: "statistics2",
       name: "Statistics 2nd Paper",
       banglaName: "পরিসংখ্যান ২য় পত্র",
-      color: "from-indigo-500 to-violet-600",
+      color: "from-rose-500 to-rose-600",
       category: "selectable",
       eligibleGroups: ["Science", "Business Studies", "Humanities"],
       chapters: [

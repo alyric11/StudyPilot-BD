@@ -61,6 +61,8 @@ export interface RoutineBlock {
   id: string;
   dayOfWeek: number; // 0 = Sunday, 6 = Saturday
   title: string;
+  // Links a curriculum routine to its subject, so its theme never depends on the title text.
+  subjectId?: string;
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
   color?: string;

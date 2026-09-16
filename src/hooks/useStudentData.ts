@@ -377,6 +377,19 @@ export default function useStudentData(
         showToast("Routine block deleted.", "info");
     };
 
+    const handleUpdateRoutineBlock = (
+        id: string,
+        updatedBlock: Omit<RoutineBlock, "id">
+    ) => {
+        const updated = routineBlocks.map((block) =>
+            block.id === id ? { ...updatedBlock, id } : block
+        );
+
+        setRoutineBlocks(updated);
+        localStorage.setItem("sp_routine", JSON.stringify(updated));
+        showToast("Routine updated successfully!", "success");
+    };
+
     const handleAddHomework = (
         newHw: Omit<Homework, "id" | "completed">
     ) => {
@@ -615,6 +628,7 @@ export default function useStudentData(
 
         handleAddRoutineBlock,
         handleDeleteRoutineBlock,
+        handleUpdateRoutineBlock,
 
         handleAddHomework,
         handleToggleHomework,

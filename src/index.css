@@ -37,3 +37,185 @@ body {
   color: #1e293b;
   -webkit-font-smoothing: antialiased;
 }
+
+@keyframes time-picker-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes time-picker-collapse {
+  from {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.94);
+  }
+}
+
+@keyframes time-picker-expand-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scaleY(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes time-picker-collapse-up {
+  from {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(8px) scaleY(0.94);
+  }
+}
+
+@keyframes routine-card-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  60% {
+    transform: scale(1.06);
+  }
+
+  100% {
+    transform: scale(1.03);
+  }
+}
+
+
+.routine-dropdown {
+  transform-origin: top;
+}
+
+.routine-dropdown-above {
+  transform-origin: bottom;
+}
+
+.routine-dropdown-opening {
+  animation: time-picker-expand 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.routine-dropdown-closing {
+  animation: time-picker-collapse 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.routine-dropdown-opening-up {
+  animation: time-picker-expand-up 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.routine-dropdown-closing-up {
+  animation: time-picker-collapse-up 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.routine-card-editing {
+  animation: routine-card-pop 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.planner-focus:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+.planner-selector {
+  border-color: #d8e2f1;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(51 65 85 / 4%);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.planner-selector:hover {
+  border-color: #bdcbe0;
+  background: #fdfefe;
+}
+
+.planner-selector[data-state="open"] {
+  border-color: #818cf8;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgb(129 140 248 / 14%);
+}
+
+.planner-selector-menu {
+  border-color: #dce5f1;
+  box-shadow: 0 16px 30px -18px rgb(30 41 59 / 35%);
+}
+
+.planner-selector-option {
+  color: #475569;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.planner-selector-option:hover {
+  background: #f3f6fb;
+  color: #334155;
+}
+
+.planner-selector-option[aria-pressed="true"],
+.planner-selector-option[aria-selected="true"] {
+  background: #eeefff;
+  color: #5144bd;
+  box-shadow: inset 0 0 0 1px #d2ceff;
+}
+
+
+.chapter-popover-scroll {
+  scrollbar-color: var(--chapter-accent) transparent;
+}
+
+.chapter-popover-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chapter-popover-scroll::-webkit-scrollbar-thumb {
+  background: var(--chapter-accent);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #study-planner-container *,
+  .routine-dropdown,
+  .chapter-popover {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+
+  .routine-dropdown-opening,
+  .routine-dropdown-closing {
+    animation-duration: 1ms;
+  }
+
+  .routine-dropdown-opening-up,
+  .routine-dropdown-closing-up {
+    animation-duration: 1ms;
+  }
+
+  .routine-card-editing {
+    animation-duration: 1ms;
+  }
+
+}

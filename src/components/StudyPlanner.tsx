@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { createPortal } from "react-dom";
 
 import {
   UserProfile,
@@ -14,8 +16,19 @@ import {
   AlertTriangle
 } from "lucide-react";
 import TimePicker from "./TimePicker";
+import DayPicker from "./DayPicker";
 
 import { Subject } from "../data/curriculum";
+import {
+  getSubjectCardStyles,
+  getSubjectRoutineStyles,
+  getSubjectAccentColor,
+} from "../colorPalettes";
+import {
+  FloatingPlacement,
+  getSideAwareFloatingPosition,
+} from "../utils/floatingPosition";
+import { formatTimeRange } from "../utils/time";
 
 interface StudyPlannerProps {
   profile: UserProfile;
@@ -26,6 +39,10 @@ interface StudyPlannerProps {
     newBlock: Omit<RoutineBlock, "id">
   ) => void;
   onDeleteRoutineBlock: (id: string) => void;
+  onUpdateRoutineBlock: (
+    id: string,
+    updatedBlock: Omit<RoutineBlock, "id">
+  ) => void;
   onBackToDashboard?: () => void;
 }
 
@@ -128,8 +145,11 @@ export default function StudyPlanner({
   routineBlocks,
   onAddRoutineBlock,
   onDeleteRoutineBlock,
+  onUpdateRoutineBlock,
   onBackToDashboard
 }: StudyPlannerProps) {
+  const shouldReduceMotion = useReducedMotion();
+
   // ------------------------------------------------------------
   // Weekly Routine
   // ------------------------------------------------------------
@@ -140,11 +160,37 @@ export default function StudyPlanner({
   );
   const [showRoutineForm, setShowRoutineForm] = useState(false);
   const [routineTitle, setRoutineTitle] = useState("");
+  const [routineSubjectId, setRoutineSubjectId] = useState<string | null>(null);
   const [routineStart, setRoutineStart] = useState("17:00");
   const [routineEnd, setRoutineEnd] = useState("18:00");
+  const [endPickerOpenRequest, setEndPickerOpenRequest] = useState(0);
   const [routineError, setRoutineError] = useState<string | null>(null);
+  const routineErrorRef = React.useRef<HTMLDivElement>(null);
+  const routineMenuRef = React.useRef<HTMLDivElement>(null);
   const [routineToDelete, setRoutineToDelete] =
     useState<RoutineBlock | null>(null);
+  const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
+  const [routineMenuPosition, setRoutineMenuPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 176,
+    maxHeight: 148,
+    placement: "right" as FloatingPlacement,
+  });
+  const [isRoutineMenuClosing, setIsRoutineMenuClosing] = useState(false);
+
+  useEffect(() => {
+    if (!routineError) return;
+
+    const dismissRoutineError = (event: MouseEvent) => {
+      if (!routineErrorRef.current?.contains(event.target as Node)) {
+        setRoutineError(null);
+      }
+    };
+
+    document.addEventListener("mousedown", dismissRoutineError);
+    return () => document.removeEventListener("mousedown", dismissRoutineError);
+  }, [routineError]);
 
   const getDayName = (dayOfWeek: number) => {
     return (
@@ -158,18 +204,66 @@ export default function StudyPlanner({
     return hours * 60 + minutes;
   };
 
+  const getRoutineDurationMinutes = (startTime: string, endTime: string) => {
+    const minutesPerDay = 24 * 60;
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+
+    if (end === start) return 0;
+
+    return end > start ? end - start : minutesPerDay - start + end;
+  };
+
+  const routinesOverlap = (
+    firstDay: number,
+    firstStartTime: string,
+    firstEndTime: string,
+    secondDay: number,
+    secondStartTime: string,
+    secondEndTime: string
+  ) => {
+    const minutesPerDay = 24 * 60;
+    const minutesPerWeek = 7 * minutesPerDay;
+    const firstStart = firstDay * minutesPerDay + timeToMinutes(firstStartTime);
+    const firstEnd = firstStart + getRoutineDurationMinutes(firstStartTime, firstEndTime);
+    const secondStart = secondDay * minutesPerDay + timeToMinutes(secondStartTime);
+    const secondEnd = secondStart + getRoutineDurationMinutes(secondStartTime, secondEndTime);
+
+    return [-minutesPerWeek, 0, minutesPerWeek].some((weekShift) => {
+      const shiftedSecondStart = secondStart + weekShift;
+      const shiftedSecondEnd = secondEnd + weekShift;
+
+      return firstStart < shiftedSecondEnd && firstEnd > shiftedSecondStart;
+    });
+  };
+
+  const handleStartPeriodChange = (startTime: string) => {
+    const minutesInDay = 24 * 60;
+    const endMinutes = (timeToMinutes(startTime) + 60) % minutesInDay;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMinutePart = endMinutes % 60;
+
+    setRoutineEnd(
+      `${String(endHours).padStart(2, "0")}:${String(endMinutePart).padStart(2, "0")}`
+    );
+    setEndPickerOpenRequest((request) => request + 1);
+  };
+
   const getRoutineColorForSubject = (subjectColor: string) => {
     const color = subjectColor.toLowerCase();
 
-    if (color.includes("emerald")) return "green";
-    if (color.includes("blue")) return "blue";
-    if (color.includes("purple") || color.includes("violet")) return "purple";
+    if (color.includes("emerald") || color.includes("green")) return "green";
+    if (color.includes("blue") || color.includes("sky")) return "blue";
+    if (color.includes("purple") || color.includes("violet") || color.includes("periwinkle")) return "purple";
     if (color.includes("cyan")) return "cyan";
     if (color.includes("amber") || color.includes("orange")) return "amber";
     if (color.includes("teal")) return "teal";
     if (color.includes("fuchsia") || color.includes("pink")) return "pink";
     if (color.includes("rose")) return "rose";
     if (color.includes("yellow")) return "yellow";
+    if (color.includes("red")) return "rose";
+    if (color.includes("indigo") || color.includes("lavender") || color.includes("mint")) return "purple";
+    if (color.includes("gray") || color.includes("stone") || color.includes("slate")) return "blue";
 
     return null;
   };
@@ -206,24 +300,118 @@ export default function StudyPlanner({
     return null;
   };
 
+  const getRoutineBlockSubject = (block: RoutineBlock) => {
+    const linkedSubject = subjects.find((subject) => subject.id === block.subjectId);
+
+    if (linkedSubject) {
+      return linkedSubject;
+    }
+
+    const normalizedTitle = block.title.trim().toLowerCase();
+
+    return subjects.find((subject) => {
+      const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
+
+      return (
+        normalizedTitle === compactName ||
+        normalizedTitle.startsWith(`${compactName}:`)
+      );
+    });
+  };
+
+  const getRoutineBlockCardStyle = (block: RoutineBlock) => {
+    const matchingSubject = getRoutineBlockSubject(block);
+
+    if (matchingSubject) {
+      return getSubjectRoutineStyles(matchingSubject.color).card;
+    }
+
+    const normalizedTitle = block.title.trim().toLowerCase();
+
+    const matchingAdditionalSubject = safeAdditionalSubjects.find((subject) => {
+      const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
+
+      return (
+        normalizedTitle === compactName ||
+        normalizedTitle.startsWith(`${compactName}:`)
+      );
+    });
+
+    if (matchingAdditionalSubject) {
+      return additionalSubjectStyles.card;
+    }
+
+    return (
+      ROUTINE_COLOR_STYLES[block.color as keyof typeof ROUTINE_COLOR_STYLES]?.card ??
+      "bg-slate-50 border-slate-200 hover:bg-slate-100"
+    );
+  };
+
+  const getRoutineBlockTimeStyle = (block: RoutineBlock) => {
+    const matchingSubject = getRoutineBlockSubject(block);
+
+    if (matchingSubject) {
+      return getSubjectRoutineStyles(matchingSubject.color).time;
+    }
+
+    const normalizedTitle = block.title.trim().toLowerCase();
+
+    const matchingAdditionalSubject = safeAdditionalSubjects.find((subject) => {
+      const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
+
+      return (
+        normalizedTitle === compactName ||
+        normalizedTitle.startsWith(`${compactName}:`)
+      );
+    });
+
+    if (matchingAdditionalSubject) {
+      return "text-amber-600";
+    }
+
+    return (
+      ROUTINE_COLOR_STYLES[block.color as keyof typeof ROUTINE_COLOR_STYLES]?.time ??
+      "text-slate-600"
+    );
+  };
+
+  const toggleRoutineForm = () => {
+    const nextOpenState = !showRoutineForm;
+
+    setRoutineError(null);
+    setEndPickerOpenRequest(0);
+
+    if (nextOpenState) {
+      setEditingRoutineId(null);
+    }
+
+    setShowRoutineForm(nextOpenState);
+  };
+
   const handleAddRoutine = () => {
     setRoutineError(null);
 
     const title = routineTitle.trim();
 
     if (!title) {
-      setRoutineError("Please enter an activity.");
+      setRoutineError("Enter an activity.");
       return;
     }
 
-    if (
-      !routineStart ||
-      !routineEnd ||
-      timeToMinutes(routineEnd) <= timeToMinutes(routineStart)
-    ) {
+    if (!routineStart || !routineEnd) {
       setRoutineError(
-        "End time must be later than start time."
+        "Choose at least 30 minutes."
       );
+      return;
+    }
+
+    const routineDuration = getRoutineDurationMinutes(
+      routineStart,
+      routineEnd
+    );
+
+    if (routineDuration < 30) {
+      setRoutineError("Choose at least 30 minutes.");
       return;
     }
 
@@ -252,39 +440,157 @@ export default function StudyPlanner({
       subjectColor ??
       availableColors[Math.floor(Math.random() * availableColors.length)] ??
       ROUTINE_COLORS[Math.floor(Math.random() * ROUTINE_COLORS.length)];
-    const newStart = timeToMinutes(routineStart);
-    const newEnd = timeToMinutes(routineEnd);
-
     const hasOverlap = routineBlocks.some((block) => {
-      if (block.dayOfWeek !== dayOfWeek) {
-        return false;
-      }
-
-      const existingStart = timeToMinutes(block.startTime);
-      const existingEnd = timeToMinutes(block.endTime);
-
-      return (
-        newStart < existingEnd &&
-        newEnd > existingStart
+      return routinesOverlap(
+        dayOfWeek,
+        routineStart,
+        routineEnd,
+        block.dayOfWeek,
+        block.startTime,
+        block.endTime
       );
     });
 
     if (hasOverlap) {
       setRoutineError(
-        "This time overlaps with another routine block. Please choose a different time."
+        "This overlaps an existing routine. Choose another time."
       );
       return;
     }
 
-    onAddRoutineBlock({
+    const updatedRoutine = {
       dayOfWeek,
       title,
+      subjectId: routineSubjectId ?? undefined,
       startTime: routineStart,
       endTime: routineEnd,
       color,
-    });
+    };
+
+    onAddRoutineBlock(updatedRoutine);
 
     setRoutineTitle("");
+    setRoutineSubjectId(null);
+    setEndPickerOpenRequest(0);
+    setShowRoutineForm(false);
+  };
+
+  const focusVisibleRoutineCard = (routineId: string) => {
+    const routineCard = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        `[data-routine-card-id="${routineId}"]`
+      )
+    ).find((card) => card.offsetParent !== null);
+
+    routineCard?.focus();
+  };
+
+  const closeRoutineMenu = (afterClose?: () => void) => {
+    if (!routineToDelete || isRoutineMenuClosing) return;
+
+    setIsRoutineMenuClosing(true);
+    setTimeout(() => {
+      setRoutineToDelete(null);
+      setIsRoutineMenuClosing(false);
+      afterClose?.();
+    }, shouldReduceMotion ? 0 : 200);
+  };
+
+  const openRoutineMenu = (
+    cardElement: HTMLDivElement,
+    block: RoutineBlock
+  ) => {
+    const card = cardElement.getBoundingClientRect();
+    setRoutineMenuPosition(
+      getSideAwareFloatingPosition(card, 176, 148, 8, 8)
+    );
+    setIsRoutineMenuClosing(false);
+    setRoutineToDelete(block);
+  };
+
+  useEffect(() => {
+    if (!routineToDelete || isRoutineMenuClosing) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      routineMenuRef.current
+        ?.querySelector<HTMLButtonElement>('[role="menuitem"]')
+        ?.focus();
+    });
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      if (
+        !routineMenuRef.current?.contains(target) &&
+        !target.closest("[data-routine-card-id]")
+      ) {
+        closeRoutineMenu();
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isRoutineMenuClosing, routineToDelete]);
+
+  const handleRoutineMenuKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      const routineId = routineToDelete?.id;
+      closeRoutineMenu(() => {
+        if (!routineId) return;
+        focusVisibleRoutineCard(routineId);
+      });
+      return;
+    }
+
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    const items = Array.from(
+      routineMenuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]'
+      ) ?? []
+    );
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    let nextIndex = currentIndex;
+
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = items.length - 1;
+    if (event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % items.length;
+    }
+    if (event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + items.length) % items.length;
+    }
+
+    items[nextIndex]?.focus();
+  };
+
+  const startEditingRoutine = () => {
+    if (!routineToDelete) return;
+
+    const block = routineToDelete;
+    closeRoutineMenu(() => {
+      setShowRoutineForm(false);
+      setRoutineError(null);
+      setRoutineTitle("");
+      setRoutineSubjectId(null);
+      setEndPickerOpenRequest(0);
+      setEditingRoutineId(block.id);
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLButtonElement>("[data-subject-card]")
+          ?.focus();
+      });
+    });
   };
 
   const renderRoutineTitle = (title: string) => {
@@ -324,6 +630,17 @@ export default function StudyPlanner({
   // ------------------------------------------------------------
 
   const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
+  const [chapterTrigger, setChapterTrigger] = useState<HTMLButtonElement | null>(
+    null
+  );
+  const chapterPopoverRef = React.useRef<HTMLDivElement>(null);
+  const [chapterPopoverPosition, setChapterPopoverPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+    maxHeight: 360,
+    placement: "right" as FloatingPlacement,
+  });
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -331,6 +648,7 @@ export default function StudyPlanner({
 
       if (!target.closest(".chapter-popover")) {
         setExpandedSubjectId(null);
+        setChapterTrigger(null);
       }
     };
 
@@ -340,79 +658,91 @@ export default function StudyPlanner({
       document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, []);
-  const safeAdditionalSubjects = additionalSubjects ?? [];
 
-  const getSubjectCardStyles = (color: string) => {
-    if (color.includes("emerald")) {
-      return {
-        card: "bg-emerald-50/45 border-emerald-100/70 hover:border-emerald-200",
-        chapter: "bg-emerald-50/40 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border-emerald-100/60",
-        icon: "bg-emerald-100 text-emerald-600",
-      };
-    }
+  useEffect(() => {
+    if (!expandedSubjectId || !chapterTrigger) return;
 
-    if (color.includes("blue")) {
-      return {
-        card: "bg-blue-50/45 border-blue-100/70 hover:border-blue-200",
-        chapter: "bg-blue-50/40 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border-blue-100/60",
-        icon: "bg-blue-100 text-blue-600",
-      };
-    }
+    const updateChapterPosition = () => {
+      const triggerRect = chapterTrigger.getBoundingClientRect();
+      const measuredHeight = chapterPopoverRef.current?.offsetHeight || 360;
 
-    if (color.includes("purple") || color.includes("violet")) {
-      return {
-        card: "bg-purple-50/45 border-purple-100/70 hover:border-purple-200",
-        chapter: "bg-purple-50/40 hover:bg-purple-50 text-slate-600 hover:text-purple-700 border-purple-100/60",
-        icon: "bg-purple-100 text-purple-600",
-      };
-    }
-
-    if (color.includes("cyan")) {
-      return {
-        card: "bg-cyan-50/45 border-cyan-100/70 hover:border-cyan-200",
-        chapter: "bg-cyan-50/40 hover:bg-cyan-50 text-slate-600 hover:text-cyan-700 border-cyan-100/60",
-        icon: "bg-cyan-100 text-cyan-600",
-      };
-    }
-
-    if (color.includes("amber") || color.includes("orange")) {
-      return {
-        card: "bg-amber-50/45 border-amber-100/70 hover:border-amber-200",
-        chapter: "bg-amber-50/40 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border-amber-100/60",
-        icon: "bg-amber-100 text-amber-600",
-      };
-    }
-
-    if (color.includes("teal")) {
-      return {
-        card: "bg-teal-50/45 border-teal-100/70 hover:border-teal-200",
-        chapter: "bg-teal-50/40 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border-teal-100/60",
-        icon: "bg-teal-100 text-teal-600",
-      };
-    }
-
-    if (color.includes("fuchsia") || color.includes("pink")) {
-      return {
-        card: "bg-pink-50/45 border-pink-100/70 hover:border-pink-200",
-        chapter: "bg-pink-50/40 hover:bg-pink-50 text-slate-600 hover:text-pink-700 border-pink-100/60",
-        icon: "bg-pink-100 text-pink-600",
-      };
-    }
-
-    if (color.includes("rose")) {
-      return {
-        card: "bg-rose-50/45 border-rose-100/70 hover:border-rose-200",
-        chapter: "bg-rose-50/40 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border-rose-100/60",
-        icon: "bg-rose-100 text-rose-600",
-      };
-    }
-
-    return {
-      card: "bg-slate-50/60 border-slate-200/70 hover:border-slate-300",
-      chapter: "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-700 border-slate-200",
-      icon: "bg-slate-100 text-slate-600",
+      setChapterPopoverPosition(
+        getSideAwareFloatingPosition(
+          triggerRect,
+          triggerRect.width,
+          measuredHeight
+        )
+      );
     };
+
+    updateChapterPosition();
+    const frame = window.requestAnimationFrame(() => {
+      const firstChapter = chapterPopoverRef.current?.querySelector<HTMLElement>(
+        "[data-chapter-option]"
+      );
+
+      (firstChapter ?? chapterPopoverRef.current)?.focus();
+    });
+    window.addEventListener("resize", updateChapterPosition);
+    window.addEventListener("scroll", updateChapterPosition, true);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateChapterPosition);
+      window.removeEventListener("scroll", updateChapterPosition, true);
+    };
+  }, [chapterTrigger, expandedSubjectId]);
+
+  const closeChapterPopover = (restoreFocus = false) => {
+    const trigger = chapterTrigger;
+    setExpandedSubjectId(null);
+    setChapterTrigger(null);
+
+    if (restoreFocus) {
+      trigger?.focus();
+    }
   };
+
+  const handleChapterPopoverKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeChapterPopover(true);
+      return;
+    }
+
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      return;
+    }
+
+    const chapters = Array.from(
+      chapterPopoverRef.current?.querySelectorAll<HTMLButtonElement>(
+        "[data-chapter-option]"
+      ) ?? []
+    );
+
+    if (chapters.length === 0) return;
+
+    event.preventDefault();
+    const currentIndex = chapters.indexOf(
+      document.activeElement as HTMLButtonElement
+    );
+    let nextIndex = currentIndex;
+
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = chapters.length - 1;
+    if (event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % chapters.length;
+    }
+    if (event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + chapters.length) % chapters.length;
+    }
+
+    chapters[nextIndex]?.focus();
+  };
+
+  const safeAdditionalSubjects = additionalSubjects ?? [];
 
   const additionalSubjectStyles = {
     card: "bg-amber-50/45 border-amber-100/70 hover:border-amber-200",
@@ -450,10 +780,22 @@ export default function StudyPlanner({
     return `Ch-${trimmed}`;
   };
 
-  const toggleSubject = (subjectId: string) => {
-    setExpandedSubjectId((current) =>
-      current === subjectId ? null : subjectId
+  const toggleSubject = (
+    subjectId: string,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    if (expandedSubjectId === subjectId) {
+      setExpandedSubjectId(null);
+      setChapterTrigger(null);
+      return;
+    }
+
+    const card = event.currentTarget.getBoundingClientRect();
+    setChapterPopoverPosition(
+      getSideAwareFloatingPosition(card, card.width, 360)
     );
+    setChapterTrigger(event.currentTarget);
+    setExpandedSubjectId(subjectId);
   };
 
   const formatRoutineSubjectName = (subjectName: string) => {
@@ -488,26 +830,98 @@ export default function StudyPlanner({
       .join("");
   };
 
-  const handleChapterSelect = (
-    subjectName: string,
-    chapterNumber: string
+  const scrollRoutineCardIntoView = (routineId: string) => {
+    window.setTimeout(() => {
+      const routineCard = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          `[data-routine-card-id="${routineId}"]`
+        )
+      ).find((card) => card.offsetParent !== null);
+
+      routineCard?.scrollIntoView({
+        behavior: shouldReduceMotion ? "auto" : "smooth",
+        block: "center",
+      });
+      routineCard?.focus();
+    }, 0);
+  };
+
+  const replaceRoutineSubject = (
+    routineId: string,
+    title: string,
+    subjectId: string | undefined,
+    color: string | undefined
   ) => {
-    if (!showRoutineForm) {
+    const routineBeingEdited = routineBlocks.find(
+      (block) => block.id === routineId
+    );
+
+    if (!routineBeingEdited) {
+      setEditingRoutineId(null);
+      setExpandedSubjectId(null);
       return;
     }
 
-    setRoutineTitle(
-      `${formatRoutineSubjectName(subjectName)}: ${formatChapterNumber(chapterNumber)}`
-    );
+    onUpdateRoutineBlock(routineId, {
+      dayOfWeek: routineBeingEdited.dayOfWeek,
+      title,
+      subjectId,
+      startTime: routineBeingEdited.startTime,
+      endTime: routineBeingEdited.endTime,
+      color: color ?? routineBeingEdited.color,
+    });
+
+    setEditingRoutineId(null);
+    setExpandedSubjectId(null);
+    scrollRoutineCardIntoView(routineId);
+  };
+
+  const handleChapterSelect = (
+    subjectId: string,
+    subjectName: string,
+    chapterNumber: string
+  ) => {
+    if (!showRoutineForm && !editingRoutineId) {
+      return;
+    }
+
+    const title = `${formatRoutineSubjectName(subjectName)}: ${formatChapterNumber(
+      chapterNumber
+    )}`;
+
+    if (editingRoutineId) {
+      const selectedSubject = subjects.find(
+        (subject) => subject.id === subjectId
+      );
+
+      replaceRoutineSubject(
+        editingRoutineId,
+        title,
+        subjectId,
+        getRoutineColorForSubject(selectedSubject?.color ?? "") ?? undefined
+      );
+      return;
+    }
+
+    setRoutineTitle(title);
+    setRoutineSubjectId(subjectId);
     setExpandedSubjectId(null);
   };
 
   const handleAdditionalSubjectSelect = (subjectName: string) => {
+    const title = formatRoutineSubjectName(subjectName);
+
+    if (editingRoutineId) {
+      replaceRoutineSubject(editingRoutineId, title, undefined, "amber");
+      return;
+    }
+
     if (!showRoutineForm) {
       return;
     }
 
-    setRoutineTitle(formatRoutineSubjectName(subjectName));
+    setRoutineTitle(title);
+    setRoutineSubjectId(null);
     setExpandedSubjectId(null);
   };
 
@@ -517,48 +931,99 @@ export default function StudyPlanner({
   ) => {
     const isExpanded = expandedSubjectId === subject.id;
     const styles = getSubjectCardStyles(subject.color);
+    const subjectAccent = getSubjectAccentColor(subject.color);
 
     return (
       <div
         key={`${subject.id}-${cardIndex}`}
         className="relative min-w-0"
       >
-        {isExpanded && (
-          <div className="chapter-popover absolute bottom-full left-0 right-0 z-30 mb-2 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+        {isExpanded && createPortal(
+          <div
+            ref={chapterPopoverRef}
+            id={`chapter-picker-${subject.id}`}
+            role="dialog"
+            aria-label={`Choose a chapter from ${subject.name}`}
+            tabIndex={-1}
+            onKeyDown={handleChapterPopoverKeyDown}
+            className={`chapter-popover routine-dropdown fixed z-[110] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl ${
+              chapterPopoverPosition.placement === "above"
+                ? "routine-dropdown-above routine-dropdown-opening-up"
+                : "routine-dropdown-opening"
+            }`}
+            style={{
+              top: chapterPopoverPosition.top,
+              left: chapterPopoverPosition.left,
+              width: chapterPopoverPosition.width || undefined,
+              maxHeight: chapterPopoverPosition.maxHeight,
+              borderColor: `${subjectAccent}55`,
+              boxShadow: `0 18px 30px -18px ${subjectAccent}66, inset 0 0 0 1px ${subjectAccent}26`,
+              ["--chapter-accent" as string]: subjectAccent,
+            }}
+          >
+            <div className="flex shrink-0 items-center gap-2 px-3 py-2.5">
+              <div className={`rounded-lg p-1.5 ${styles.icon}`}>
+                <BookOpen className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-xs font-bold text-slate-800">
+                  {subject.name}
+                </div>
+                <div className="text-[10px] font-medium text-slate-400">
+                  Select a chapter
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="mx-3 h-px shrink-0"
+              style={{
+                backgroundColor: `${subjectAccent}80`,
+                boxShadow: `0 1px 0 ${subjectAccent}24`,
+              }}
+            />
+
             {subject.chapters.length > 0 ? (
-              <div className="max-h-[260px] overflow-y-auto space-y-1 pr-1">
+              <div className="chapter-popover-scroll max-h-[280px] min-h-0 flex-1 space-y-1 overflow-y-auto pb-3 pl-3 pr-1 pt-2">
                 {subject.chapters.map((chapter) => (
                   <button
                     type="button"
                     key={chapter.id}
+                    data-chapter-option
                     onClick={() =>
                       handleChapterSelect(
+                        subject.id,
                         subject.name,
                         chapter.chapterNumber
                       )
                     }
-                    className={`w-full rounded-lg border px-2.5 py-2 text-left text-[11px] transition cursor-pointer ${styles.chapter}`}
+                    className={`planner-focus flex w-full items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[11px] transition cursor-pointer ${styles.chapter}`}
                   >
-                    <span className="font-semibold">
-                      {formatChapterNumber(chapter.chapterNumber)}:
+                    <span className={`shrink-0 rounded-md px-1.5 py-1 text-[10px] font-bold ${styles.icon}`}>
+                      {formatChapterNumber(chapter.chapterNumber)}
                     </span>{" "}
-                    <span>{chapter.banglaName}</span>
+                    <span className="min-w-0 flex-1 font-medium">{chapter.banglaName}</span>
+                    <span className="text-sm text-slate-400">›</span>
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="px-2.5 py-3 text-[11px] text-slate-400">
+              <div className="px-3 py-4 text-[11px] text-slate-400">
                 No chapter data is available for this subject yet.
               </div>
             )}
-          </div>
+          </div>,
+          document.body
         )}
 
         <button
           type="button"
-          onClick={() => toggleSubject(subject.id)}
+          onClick={(event) => toggleSubject(subject.id, event)}
+          data-subject-card
+          aria-haspopup="dialog"
           aria-expanded={isExpanded}
-          className={`w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm transition-all cursor-pointer ${styles.card}`}
+          aria-controls={`chapter-picker-${subject.id}`}
+          className={`planner-focus w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm transition-all cursor-pointer ${styles.card}`}
         >
           <div className="flex items-center gap-2.5">
             <div className={`rounded-lg p-1.5 shrink-0 ${styles.icon}`}>
@@ -596,7 +1061,9 @@ export default function StudyPlanner({
       type="button"
       key={`${subject.id}-${cardIndex}`}
       onClick={() => handleAdditionalSubjectSelect(subject.name)}
-      className={`w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm transition-all cursor-pointer ${additionalSubjectStyles.card}`}
+      data-subject-card
+      aria-label={`${subject.name}, additional subject`}
+      className={`planner-focus w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm transition-all cursor-pointer ${additionalSubjectStyles.card}`}
     >
       <div className="flex items-center gap-2.5">
         <div className={`rounded-lg p-1.5 shrink-0 ${additionalSubjectStyles.icon}`}>
@@ -617,18 +1084,18 @@ export default function StudyPlanner({
 
   return (
     <div
-      className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm space-y-8"
+      className="space-y-5 rounded-2xl border border-[#dce5f4] bg-[#fcfdfe] p-3 shadow-sm sm:space-y-6 sm:p-4 lg:space-y-8 lg:p-6"
       id="study-planner-container"
     >
       {/* ------------------------------------------------------ */}
       {/* Weekly Routine */}
       {/* ------------------------------------------------------ */}
 
-      <section className="space-y-5 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 sm:p-5">
-        <div className="flex flex-col gap-4 border-b border-indigo-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="rounded-2xl bg-[#f7f9fe] p-3 sm:p-4 lg:p-5">
+        <div className="flex flex-col gap-3 border-b border-[#dce5f4] pb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-              <CalendarDays className="w-6 h-6" />
+            <div className="p-2.5 bg-[#edf3ff] text-indigo-600 rounded-xl">
+              <CalendarDays className="w-6 h-6" aria-hidden="true" />
             </div>
 
             <div>
@@ -642,60 +1109,72 @@ export default function StudyPlanner({
             </div>
           </div>
 
-          <button
+          <motion.button
             type="button"
-            onClick={() => setShowRoutineForm((prev) => !prev)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-all text-sm flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+            onClick={toggleRoutineForm}
+            aria-expanded={showRoutineForm}
+            aria-controls="routine-add-form"
+            animate={{
+              scale: 1,
+              width: showRoutineForm ? "6.25rem" : "12.5rem",
+            }}
+            transition={{
+              scale: { duration: shouldReduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] },
+              width: { duration: shouldReduceMotion ? 0 : 0.26, ease: [0.16, 1, 0.3, 1] },
+            }}
+            className={`planner-focus relative h-11 self-start rounded-xl text-sm font-semibold transition-colors cursor-pointer sm:self-auto ${
+              showRoutineForm
+                ? "border border-indigo-200 bg-white text-indigo-600 shadow-none hover:border-indigo-300 hover:bg-indigo-50"
+                : "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
+            }`}
           >
-            {showRoutineForm ? (
-              <X className="w-4 h-4" />
-            ) : (
-              <Plus className="w-4 h-4" />
-            )}
-            {showRoutineForm ? "Close" : "Add Routine Block"}
-          </button>
+            <AnimatePresence initial={false} mode="sync">
+              <motion.span
+                key={showRoutineForm ? "close" : "add"}
+                initial={shouldReduceMotion ? false : { opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 5 }}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.16, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0 flex items-center justify-center gap-1.5"
+              >
+                {showRoutineForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {showRoutineForm ? "Close" : "Add Routine Block"}
+              </motion.span>
+            </AnimatePresence>
+          </motion.button>
         </div>
 
-        {showRoutineForm && (
-          <div className="bg-indigo-50 p-5 rounded-xl border border-indigo-200 space-y-4">
+        <AnimatePresence initial={false}>
+          {showRoutineForm && (
+            <motion.div
+              id="routine-add-form"
+              initial={shouldReduceMotion ? false : { height: 0, marginTop: 0, opacity: 0 }}
+              animate={{ height: "auto", marginTop: 20, opacity: 1 }}
+              exit={{ height: 0, marginTop: 0, opacity: 0 }}
+              transition={{
+                height: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] },
+                marginTop: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: shouldReduceMotion ? 0 : 0.18, ease: "linear" },
+              }}
+              className="overflow-hidden will-change-[height]"
+            >
+              <motion.div
+                initial={shouldReduceMotion ? false : { y: -6 }}
+                animate={{ y: 0 }}
+                exit={{ y: -6 }}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="space-y-3 rounded-xl border border-[#c9daf9] bg-[#edf3ff] p-3 sm:p-4"
+              >
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-700">
-                  Add Routine
-                </h3>
-
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Add a recurring activity to your weekly schedule.
-                </p>
-              </div>
+              <h3 className="text-sm font-semibold text-slate-700">
+                Add an activity to your schedule
+              </h3>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.15fr_1.6fr_1.15fr_1.15fr]">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-[1.15fr_1.6fr_1.15fr_1.15fr]">
 
               {/* Day */}
-              <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-3">
-                <span className="text-sm font-semibold text-slate-600">
-                  Day
-                </span>
-
-                <span className="mx-3 h-5 w-px bg-slate-200" />
-
-                <CalendarDays className="h-4 w-4 shrink-0 text-indigo-500" />
-
-                <span className="mx-3 h-5 w-px bg-slate-200" />
-
-                <select
-                  value={routineDay}
-                  onChange={(e) => setRoutineDay(e.target.value)}
-                  className="min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-800 outline-none"
-                >
-                  {DAYS.map((day) => (
-                    <option key={day.value} value={day.value}>
-                      {day.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <DayPicker value={routineDay} onChange={setRoutineDay} days={DAYS} />
 
               {/* Activity */}
               <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-3">
@@ -712,9 +1191,13 @@ export default function StudyPlanner({
                 <input
                   type="text"
                   value={routineTitle}
-                  onChange={(e) => setRoutineTitle(e.target.value)}
+                  onChange={(e) => {
+                    setRoutineTitle(e.target.value);
+                    setRoutineSubjectId(null);
+                  }}
                   placeholder="e.g. Chemistry"
-                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  aria-label="Routine activity"
+                  className="planner-focus min-w-0 flex-1 rounded-sm bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
                 />
               </div>
 
@@ -723,6 +1206,8 @@ export default function StudyPlanner({
                 value={routineStart}
                 onChange={setRoutineStart}
                 label="Start"
+                onPeriodChange={handleStartPeriodChange}
+                closeOnPeriodChange
               />
 
               {/* End */}
@@ -730,38 +1215,169 @@ export default function StudyPlanner({
                 value={routineEnd}
                 onChange={setRoutineEnd}
                 label="End"
+                openRequest={endPickerOpenRequest}
+                onOpenRequestHandled={() => setEndPickerOpenRequest(0)}
               />
-
             </div>
 
-            {/* Validation error */}
-            {routineError && (
-              <div className="flex items-start gap-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-
-                <span>{routineError}</span>
-              </div>
-            )}
-
             {/* Submit */}
-            <div className="flex justify-start">
+            <div className="grid min-h-11 grid-cols-1 items-center gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:gap-3">
               <button
                 type="button"
                 onClick={handleAddRoutine}
-                className="w-full md:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition-all text-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                className="planner-focus flex h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 md:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 Add to Weekly Routine
               </button>
+
+              <AnimatePresence initial={false}>
+                {routineError && (
+                  <div className="flex min-w-0 justify-center">
+                    <motion.div
+                      ref={routineErrorRef}
+                      role="alert"
+                      initial={shouldReduceMotion ? false : { opacity: 0, scaleX: 0 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      exit={{ opacity: 0, scaleX: 0 }}
+                      transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className="inline-flex h-11 w-fit max-w-full origin-center items-center gap-2 overflow-hidden whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-3 text-[11px] text-rose-700 sm:text-xs"
+                      title={routineError}
+                    >
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
+                      <span className="truncate">{routineError}</span>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
             </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ------------------------------------------------------ */}
+      {/* Subjects & Chapters */}
+      {/* ------------------------------------------------------ */}
+
+      <section className="pt-2 border-t border-[#e6edf8]">
+        <div className="rounded-2xl border border-[#dce5f4] bg-white p-3 sm:p-4 lg:p-5">
+          <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-slate-800">
+                Active Subjects
+              </h2>
+              <p
+                className="mt-0.5 text-xs text-slate-400"
+                role="status"
+                aria-live="polite"
+              >
+                {editingRoutineId ? (
+                  <>
+                    <span className="font-semibold text-indigo-600">Editing:</span>{" "}
+                    choose a subject and chapter. The saved day and time will not change.
+                  </>
+                ) : showRoutineForm ? (
+                  <>
+                    <span className="font-semibold text-slate-600">Adding:</span>{" "}
+                    choose a subject and chapter, or type an activity above.
+                  </>
+                ) : (
+                  <>
+                    To add, open <span className="font-semibold text-slate-600">Add Routine Block</span>.
+                    To edit, select a routine card and choose <span className="font-semibold text-slate-600">Edit</span>.
+                  </>
+                )}
+              </p>
+            </div>
+
+            <span className="shrink-0 rounded-full border border-[#dce5f4] bg-[#f4f7fc] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+              {subjects.length + safeAdditionalSubjects.length} subjects
+            </span>
           </div>
-        )}
+
+          {subjects.length + safeAdditionalSubjects.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {subjects.map((subject, index) =>
+                renderSubjectCard(subject, index)
+              )}
+
+              {safeAdditionalSubjects.map((subject, index) =>
+                renderAdditionalSubjectCard(subject, index)
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 p-5 text-center text-xs text-slate-400">
+              No active subjects available.
+            </div>
+          )}
+
+        </div>
+      </section>
+
+      {routineToDelete && createPortal(
+        <div
+          ref={routineMenuRef}
+          id="routine-actions-menu"
+          role="menu"
+          aria-label={`Actions for ${routineToDelete.title}`}
+          onKeyDown={handleRoutineMenuKeyDown}
+          className={`routine-dropdown fixed z-[110] overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl ${
+            routineMenuPosition.placement === "above"
+              ? "routine-dropdown-above"
+              : ""
+          } ${
+            isRoutineMenuClosing
+              ? routineMenuPosition.placement === "above"
+                ? "routine-dropdown-closing-up"
+                : "routine-dropdown-closing"
+              : routineMenuPosition.placement === "above"
+                ? "routine-dropdown-opening-up"
+                : "routine-dropdown-opening"
+          }`}
+          style={{
+            top: routineMenuPosition.top,
+            left: routineMenuPosition.left,
+            width: routineMenuPosition.width,
+            maxHeight: routineMenuPosition.maxHeight,
+          }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={startEditingRoutine}
+            className="planner-focus w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              const routineId = routineToDelete.id;
+              closeRoutineMenu(() => focusVisibleRoutineCard(routineId));
+            }}
+            className="planner-focus w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => closeRoutineMenu(() => onDeleteRoutineBlock(routineToDelete.id))}
+            className="planner-focus w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-600 transition hover:bg-rose-50"
+          >
+            Delete
+          </button>
+        </div>,
+        document.body
+      )}
 
         {/* Weekly Routine Board */}
-        <div className="mt-8">
+        <div className="mt-5 sm:mt-6 lg:mt-8">
 
           {/* Mobile day selector */}
-          <div className="flex gap-2 overflow-x-auto pb-2 lg:hidden">
+          <div className="flex snap-x gap-2 overflow-x-auto pb-2 xl:hidden">
             {getWeekDates().map((day) => {
               const isSelected = mobileRoutineDay === day.value;
               const isToday = day.value === new Date().getDay();
@@ -771,9 +1387,14 @@ export default function StudyPlanner({
                   key={day.value}
                   type="button"
                   onClick={() => setMobileRoutineDay(day.value)}
-                  className={`shrink-0 rounded-lg border px-3 py-2 text-center transition ${isSelected
-                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                    : "border-slate-200 bg-white text-slate-600"
+                  aria-pressed={isSelected}
+                  aria-label={`${day.label}, ${day.date.toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                  })}${isToday ? ", today" : ""}`}
+                  className={`planner-focus min-w-20 shrink-0 snap-start rounded-lg border px-3 py-2 text-center transition ${isSelected
+                    ? "border-indigo-500 bg-[#eef1ff] text-indigo-700"
+                    : "border-[#dce5f4] bg-[#fcfdfe] text-slate-600"
                     }`}
                 >
                   <div className="text-xs font-semibold">
@@ -797,7 +1418,7 @@ export default function StudyPlanner({
             })}
           </div>
 
-          <div className="hidden gap-3 lg:grid lg:grid-cols-7">
+          <div className="hidden gap-3 xl:grid xl:grid-cols-7">
             {getWeekDates().map((day) => {
               const dayBlocks = routineBlocks
                 .filter((block) => block.dayOfWeek === day.value)
@@ -812,13 +1433,13 @@ export default function StudyPlanner({
                 <div
                   key={day.value}
                   className={`min-h-[180px] rounded-xl border p-3 text-center shadow-sm ${isToday
-                    ? "border-indigo-400 bg-indigo-100"
-                    : "border-indigo-200 bg-indigo-50"
+                    ? "border-indigo-400 bg-[#eef1ff]"
+                    : "border-[#dbe4f6] bg-[#f4f7fc]"
                     }`}
                 >
                   {/* Day header */}
                   <div
-                    className={`mb-3 border-b pb-2 ${isToday ? "border-indigo-200" : "border-slate-200"
+                    className={`mb-3 border-b pb-2 ${isToday ? "border-indigo-200" : "border-[#dce5f4]"
                       }`}
                   >
                     <div
@@ -842,29 +1463,68 @@ export default function StudyPlanner({
                     {dayBlocks.length > 0 ? (
                       dayBlocks.map((block) => (
                         <div
+                          data-routine-card-id={block.id}
                           key={block.id}
-                          onClick={() => setRoutineToDelete(block)}
-                          className={`group cursor-pointer rounded-lg border p-2.5 text-center shadow-sm transition ${ROUTINE_COLOR_STYLES[block.color as keyof typeof ROUTINE_COLOR_STYLES]?.card ??
-                            "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                          role={editingRoutineId === block.id ? "group" : "button"}
+                          tabIndex={editingRoutineId === block.id ? -1 : 0}
+                          aria-haspopup={editingRoutineId === block.id ? undefined : "menu"}
+                          aria-controls={editingRoutineId === block.id ? undefined : "routine-actions-menu"}
+                          aria-expanded={editingRoutineId === block.id ? undefined : routineToDelete?.id === block.id}
+                          aria-label={
+                            editingRoutineId === block.id
+                              ? `${block.title} is being edited.`
+                              : `${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. Open routine actions.`
+                          }
+                          onClick={(event) => {
+                            if (editingRoutineId !== block.id) {
+                              openRoutineMenu(event.currentTarget, block);
+                            }
+                          }}
+                          onKeyDown={(event) => {
+                            if (
+                              editingRoutineId !== block.id &&
+                              event.target === event.currentTarget &&
+                              (event.key === "Enter" || event.key === " ")
+                            ) {
+                              event.preventDefault();
+                              openRoutineMenu(event.currentTarget, block);
+                            }
+                          }}
+                          className={`planner-focus group cursor-pointer rounded-lg border p-2.5 text-center shadow-sm transition ${getRoutineBlockCardStyle(block)} ${
+                            editingRoutineId === block.id
+                              ? "routine-card-editing relative z-10 scale-[1.03] ring-2 ring-indigo-400 ring-offset-2"
+                              : ""
                             }`}
                         >
                           <div
-                            className={`text-[10px] font-semibold ${ROUTINE_COLOR_STYLES[
-                              block.color as keyof typeof ROUTINE_COLOR_STYLES
-                            ]?.time ?? "text-slate-600"
-                              }`}
+                            className={`text-[10px] font-semibold ${getRoutineBlockTimeStyle(block)}`}
                           >
-                            {block.startTime} – {block.endTime}
+                            {formatTimeRange(block.startTime, block.endTime)}
                           </div>
 
                           <div className="mt-1 pr-1 text-sm font-semibold text-slate-800">
                             {renderRoutineTitle(block.title)}
                           </div>
 
+                          {editingRoutineId === block.id && (
+                            <div className="mt-1 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setEditingRoutineId(null);
+                                }}
+                                className="planner-focus text-[10px] font-bold text-rose-600 underline underline-offset-2 hover:text-rose-700"
+                              >
+                                Cancel edit
+                              </button>
+                            </div>
+                          )}
+
                         </div>
                       ))
                     ) : (
-                      <div className="rounded-lg border border-dashed border-slate-200 py-5 text-center text-[11px] text-slate-400">
+                      <div className="rounded-lg border border-dashed border-[#dce5f4] bg-[#f8faff] py-5 text-center text-[11px] text-slate-400">
                         No routine blocks
                       </div>
                     )}
@@ -874,7 +1534,7 @@ export default function StudyPlanner({
             })}
           </div>
           {/* Mobile selected-day routine */}
-          <div className="lg:hidden">
+          <div className="xl:hidden">
             {(() => {
               const selectedDay = getWeekDates().find(
                 (day) => day.value === mobileRoutineDay
@@ -911,25 +1571,63 @@ export default function StudyPlanner({
                     <div className="space-y-3">
                       {selectedDayBlocks.map((block) => (
                         <div
+                          data-routine-card-id={block.id}
                           key={block.id}
-                          onClick={() => setRoutineToDelete(block)}
-                          className={`cursor-pointer rounded-xl border p-3 text-center ${ROUTINE_COLOR_STYLES[
-                            block.color as keyof typeof ROUTINE_COLOR_STYLES
-                          ]?.card ?? "bg-slate-50 border-slate-200"
+                          role={editingRoutineId === block.id ? "group" : "button"}
+                          tabIndex={editingRoutineId === block.id ? -1 : 0}
+                          aria-haspopup={editingRoutineId === block.id ? undefined : "menu"}
+                          aria-controls={editingRoutineId === block.id ? undefined : "routine-actions-menu"}
+                          aria-expanded={editingRoutineId === block.id ? undefined : routineToDelete?.id === block.id}
+                          aria-label={
+                            editingRoutineId === block.id
+                              ? `${block.title} is being edited.`
+                              : `${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. Open routine actions.`
+                          }
+                          onClick={(event) => {
+                            if (editingRoutineId !== block.id) {
+                              openRoutineMenu(event.currentTarget, block);
+                            }
+                          }}
+                          onKeyDown={(event) => {
+                            if (
+                              editingRoutineId !== block.id &&
+                              event.target === event.currentTarget &&
+                              (event.key === "Enter" || event.key === " ")
+                            ) {
+                              event.preventDefault();
+                              openRoutineMenu(event.currentTarget, block);
+                            }
+                          }}
+                          className={`planner-focus cursor-pointer rounded-xl border p-3 text-center ${getRoutineBlockCardStyle(block)} ${
+                            editingRoutineId === block.id
+                              ? "routine-card-editing relative z-10 scale-[1.03] ring-2 ring-indigo-400 ring-offset-2"
+                              : ""
                             }`}
                         >
                           <div
-                            className={`text-xs font-medium ${ROUTINE_COLOR_STYLES[
-                              block.color as keyof typeof ROUTINE_COLOR_STYLES
-                            ]?.time ?? "text-slate-500"
-                              }`}
+                            className={`text-xs font-medium ${getRoutineBlockTimeStyle(block)}`}
                           >
-                            {block.startTime} – {block.endTime}
+                            {formatTimeRange(block.startTime, block.endTime)}
                           </div>
 
                           <div className="mt-1 text-sm font-semibold text-slate-800">
                             {renderRoutineTitle(block.title)}
                           </div>
+
+                          {editingRoutineId === block.id && (
+                            <div className="mt-1 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setEditingRoutineId(null);
+                                }}
+                                className="planner-focus text-[10px] font-bold text-rose-600 underline underline-offset-2 hover:text-rose-700"
+                              >
+                                Cancel edit
+                              </button>
+                            </div>
+                          )}
 
                         </div>
                       ))}
@@ -947,100 +1645,6 @@ export default function StudyPlanner({
         </div>
       </section>
 
-
-      {/* ------------------------------------------------------ */}
-      {/* Subjects & Chapters */}
-      {/* ------------------------------------------------------ */}
-
-      <section className="pt-2 border-t border-slate-100">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-800">
-                Active Subjects
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Select a subject to view its NCTB chapters.
-              </p>
-            </div>
-
-            <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-700">
-              {subjects.length + safeAdditionalSubjects.length} subjects
-            </span>
-          </div>
-
-          {subjects.length + safeAdditionalSubjects.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {subjects.map((subject, index) =>
-                renderSubjectCard(subject, index)
-              )}
-
-              {safeAdditionalSubjects.map((subject, index) =>
-                renderAdditionalSubjectCard(subject, index)
-              )}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 p-5 text-center text-xs text-slate-400">
-              No active subjects available.
-            </div>
-          )}
-
-          <p className="mt-4 text-[11px] text-slate-400">
-            Tip: Open <span className="font-semibold text-slate-500">Add Routine Block</span> first, then select a chapter to place it in the Activity field.
-          </p>
-        </div>
-      </section>
-
-      {routineToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-rose-50 p-2.5 text-rose-600">
-                <AlertTriangle className="h-5 w-5" />
-              </div>
-
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold text-slate-800">
-                  Delete routine?
-                </h3>
-
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                  Are you sure you want to delete{" "}
-                  <span className="font-semibold text-slate-700">
-                    {routineToDelete.title}
-                  </span>
-                  ?
-                </p>
-
-                <p className="mt-1 text-[11px] text-slate-400">
-                  {routineToDelete.startTime} – {routineToDelete.endTime}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setRoutineToDelete(null)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  onDeleteRoutineBlock(routineToDelete.id);
-                  setRoutineToDelete(null);
-                }}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700"
-              >
-                Delete Routine
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
 
   );
