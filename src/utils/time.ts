@@ -25,3 +25,28 @@ export const formatTime12Hour = (value: string): string => {
 
 export const formatTimeRange = (startTime: string, endTime: string): string =>
   `${formatTime12Hour(startTime)} – ${formatTime12Hour(endTime)}`;
+
+const getCompactTimeParts = (value: string) => {
+  const formattedTime = formatTime12Hour(value);
+  const [clock, period] = formattedTime.split(" ");
+
+  return {
+    clock: clock.replace(/^0/, ""),
+    period,
+  };
+};
+
+// Narrow routine cards need a shorter label while still keeping the 12-hour format.
+export const formatCompactTimeRange = (
+  startTime: string,
+  endTime: string
+): string => {
+  const start = getCompactTimeParts(startTime);
+  const end = getCompactTimeParts(endTime);
+
+  if (start.period === end.period) {
+    return `${start.clock}–${end.clock} ${end.period}`;
+  }
+
+  return `${start.clock} ${start.period}–${end.clock} ${end.period}`;
+};

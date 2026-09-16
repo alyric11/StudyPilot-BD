@@ -28,7 +28,7 @@ import {
   FloatingPlacement,
   getSideAwareFloatingPosition,
 } from "../utils/floatingPosition";
-import { formatTimeRange } from "../utils/time";
+import { formatCompactTimeRange, formatTimeRange } from "../utils/time";
 
 interface StudyPlannerProps {
   profile: UserProfile;
@@ -43,7 +43,19 @@ interface StudyPlannerProps {
     id: string,
     updatedBlock: Omit<RoutineBlock, "id">
   ) => void;
+  onOpenRoutineChapter: (subjectId: string, chapterId: string) => void;
   onBackToDashboard?: () => void;
+}
+
+interface RoutineChapterPreview {
+  block: RoutineBlock;
+  subject: Subject;
+  chapter: Subject["chapters"][number];
+  anchor: Pick<DOMRect, "top" | "right" | "bottom" | "left" | "height">;
+  top: number;
+  left: number;
+  width: number;
+  placement: "left" | "right" | "above" | "below";
 }
 
 const DAYS = [
@@ -146,6 +158,7 @@ export default function StudyPlanner({
   onAddRoutineBlock,
   onDeleteRoutineBlock,
   onUpdateRoutineBlock,
+  onOpenRoutineChapter,
   onBackToDashboard
 }: StudyPlannerProps) {
   const shouldReduceMotion = useReducedMotion();
@@ -161,6 +174,7 @@ export default function StudyPlanner({
   const [showRoutineForm, setShowRoutineForm] = useState(false);
   const [routineTitle, setRoutineTitle] = useState("");
   const [routineSubjectId, setRoutineSubjectId] = useState<string | null>(null);
+  const [routineChapterId, setRoutineChapterId] = useState<string | null>(null);
   const [routineStart, setRoutineStart] = useState("17:00");
   const [routineEnd, setRoutineEnd] = useState("18:00");
   const [endPickerOpenRequest, setEndPickerOpenRequest] = useState(0);
@@ -173,11 +187,78 @@ export default function StudyPlanner({
   const [routineMenuPosition, setRoutineMenuPosition] = useState({
     top: 0,
     left: 0,
-    width: 176,
-    maxHeight: 148,
+    width: 72,
+    maxHeight: 72,
     placement: "right" as FloatingPlacement,
   });
   const [isRoutineMenuClosing, setIsRoutineMenuClosing] = useState(false);
+  const [routineChapterPreview, setRoutineChapterPreview] =
+    useState<RoutineChapterPreview | null>(null);
+  const routinePreviewCloseTimer = React.useRef<number | null>(null);
+  const routinePreviewRef = React.useRef<HTMLButtonElement>(null);
+
+  const clearRoutinePreviewCloseTimer = () => {
+    if (routinePreviewCloseTimer.current !== null) {
+      window.clearTimeout(routinePreviewCloseTimer.current);
+      routinePreviewCloseTimer.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => clearRoutinePreviewCloseTimer();
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!routineChapterPreview || !routinePreviewRef.current) return;
+
+    const preview = {
+      width: routinePreviewRef.current.offsetWidth,
+      height: routinePreviewRef.current.offsetHeight,
+    };
+    const { anchor } = routineChapterPreview;
+    const gap = 8;
+    const padding = 8;
+    const leftFits = anchor.left - preview.width - gap >= padding;
+    const rightFits = anchor.right + preview.width + gap <= window.innerWidth - padding;
+    const placement = leftFits
+      ? "left"
+      : rightFits
+        ? "right"
+        : window.innerHeight - anchor.bottom >= anchor.top
+          ? "below"
+          : "above";
+    const top =
+      placement === "below"
+        ? anchor.bottom + gap
+        : placement === "above"
+          ? Math.max(padding, anchor.top - preview.height - gap)
+          : Math.min(
+              Math.max(padding, anchor.top + (anchor.height - preview.height) / 2),
+              window.innerHeight - preview.height - padding
+            );
+    const left =
+      placement === "left"
+        ? anchor.left - preview.width - gap
+        : placement === "right"
+          ? anchor.right + gap
+          : Math.min(
+              Math.max(padding, anchor.left),
+              window.innerWidth - preview.width - padding
+            );
+
+    setRoutineChapterPreview((current) => {
+      if (!current || current.block.id !== routineChapterPreview.block.id) return current;
+      if (
+        current.placement === placement &&
+        Math.abs(current.top - top) < 1 &&
+        Math.abs(current.left - left) < 1
+      ) {
+        return current;
+      }
+
+      return { ...current, placement, top, left };
+    });
+  }, [routineChapterPreview]);
 
   useEffect(() => {
     if (!routineError) return;
@@ -317,6 +398,161 @@ export default function StudyPlanner({
         normalizedTitle.startsWith(`${compactName}:`)
       );
     });
+  };
+
+  const getRoutineBlockChapter = (block: RoutineBlock) => {
+    const subject = getRoutineBlockSubject(block);
+
+    if (!subject) return null;
+
+    const linkedChapter = block.chapterId
+      ? subject.chapters.find((chapter) => chapter.id === block.chapterId)
+      : undefined;
+
+    if (linkedChapter) return { subject, chapter: linkedChapter };
+
+    // Older saved routines did not contain chapterId. Match their visible
+    // chapter label so students can still use the new preview safely.
+    const chapterLabel = block.title.split(":").slice(1).join(":").trim().toLowerCase();
+    const matchingChapter = subject.chapters.find(
+      (chapter) => formatChapterNumber(chapter.chapterNumber).toLowerCase() === chapterLabel
+    );
+
+    return matchingChapter ? { subject, chapter: matchingChapter } : null;
+  };
+
+  const getBalancedRoutinePreviewLines = (chapterName: string) => {
+    const normalizedName = chapterName.trim().replace(/\s+/g, " ");
+    const colonIndex = normalizedName.indexOf(":");
+
+    // A colon already gives the title a meaningful natural break.
+    if (colonIndex >= 0 && colonIndex < normalizedName.length - 1) {
+      return [
+        normalizedName.slice(0, colonIndex + 1).trim(),
+        normalizedName.slice(colonIndex + 1).trim(),
+      ];
+    }
+
+    const words = normalizedName.split(" ").filter(Boolean);
+    if (words.length <= 5) return [normalizedName];
+
+    // Choose the word boundary whose two lines have the closest character length.
+    let bestBreakIndex = 1;
+    let smallestDifference = Number.POSITIVE_INFINITY;
+
+    for (let index = 1; index < words.length; index += 1) {
+      const firstLineLength = words.slice(0, index).join(" ").length;
+      const secondLineLength = words.slice(index).join(" ").length;
+      const difference = Math.abs(firstLineLength - secondLineLength);
+
+      if (difference < smallestDifference) {
+        smallestDifference = difference;
+        bestBreakIndex = index;
+      }
+    }
+
+    return [
+      words.slice(0, bestBreakIndex).join(" "),
+      words.slice(bestBreakIndex).join(" "),
+    ];
+  };
+
+  const getRoutinePreviewWidth = (
+    chapter: Subject["chapters"][number]
+  ) => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    const fontFamily = window.getComputedStyle(document.body).fontFamily;
+    const fullLabel = formatFullChapterLabel(chapter.chapterNumber);
+    const horizontalBoxSpace = 22; // 10px padding on both sides plus borders.
+    const labelInnerSpace = 12;
+    const viewportLimit = Math.max(0, window.innerWidth - 16);
+    const maximumWidth = Math.min(360, viewportLimit);
+
+    if (!context) return Math.min(220, maximumWidth);
+
+    context.font = `700 10px ${fontFamily}`;
+    const labelWidth = context.measureText(fullLabel).width + labelInnerSpace;
+    context.font = `600 12px ${fontFamily}`;
+    const chapterNameWidth = Math.max(
+      ...getBalancedRoutinePreviewLines(chapter.banglaName).map(
+        (line) => context.measureText(line).width
+      )
+    );
+
+    return Math.ceil(
+      Math.min(maximumWidth, Math.max(labelWidth, chapterNameWidth) + horizontalBoxSpace)
+    );
+  };
+
+  const getRoutinePreviewPosition = (card: DOMRect, width: number) => {
+    const height = 118;
+    const gap = 8;
+    const padding = 8;
+    const leftSpace = card.left - gap - padding;
+    const rightSpace = window.innerWidth - card.right - gap - padding;
+    const placement =
+      leftSpace >= width
+        ? "left"
+        : rightSpace >= width
+          ? "right"
+          : window.innerHeight - card.bottom >= card.top
+            ? "below"
+            : "above";
+    const top =
+      placement === "below"
+        ? card.bottom + gap
+        : placement === "above"
+          ? Math.max(padding, card.top - height - gap)
+          : Math.min(
+              Math.max(padding, card.top + (card.height - height) / 2),
+              window.innerHeight - height - padding
+            );
+    const left =
+      placement === "left"
+        ? card.left - width - gap
+        : placement === "right"
+          ? card.right + gap
+          : Math.min(Math.max(padding, card.left), window.innerWidth - width - padding);
+
+    return { top, left, width, placement } as const;
+  };
+
+  const showRoutineChapterPreview = (
+    cardElement: HTMLDivElement,
+    block: RoutineBlock
+  ) => {
+    if (editingRoutineId === block.id || !window.matchMedia("(hover: hover)").matches) return;
+
+    const chapterDetails = getRoutineBlockChapter(block);
+    if (!chapterDetails) {
+      setRoutineChapterPreview(null);
+      return;
+    }
+
+    clearRoutinePreviewCloseTimer();
+    const card = cardElement.getBoundingClientRect();
+    const previewWidth = getRoutinePreviewWidth(chapterDetails.chapter);
+    setRoutineChapterPreview({
+      block,
+      ...chapterDetails,
+      anchor: {
+        top: card.top,
+        right: card.right,
+        bottom: card.bottom,
+        left: card.left,
+        height: card.height,
+      },
+      ...getRoutinePreviewPosition(card, previewWidth),
+    });
+  };
+
+  const scheduleRoutineChapterPreviewClose = () => {
+    clearRoutinePreviewCloseTimer();
+    routinePreviewCloseTimer.current = window.setTimeout(() => {
+      setRoutineChapterPreview(null);
+      routinePreviewCloseTimer.current = null;
+    }, shouldReduceMotion ? 0 : 110);
   };
 
   const getRoutineBlockCardStyle = (block: RoutineBlock) => {
@@ -462,6 +698,7 @@ export default function StudyPlanner({
       dayOfWeek,
       title,
       subjectId: routineSubjectId ?? undefined,
+      chapterId: routineChapterId ?? undefined,
       startTime: routineStart,
       endTime: routineEnd,
       color,
@@ -471,6 +708,7 @@ export default function StudyPlanner({
 
     setRoutineTitle("");
     setRoutineSubjectId(null);
+    setRoutineChapterId(null);
     setEndPickerOpenRequest(0);
     setShowRoutineForm(false);
   };
@@ -501,9 +739,24 @@ export default function StudyPlanner({
     block: RoutineBlock
   ) => {
     const card = cardElement.getBoundingClientRect();
-    setRoutineMenuPosition(
-      getSideAwareFloatingPosition(card, 176, 148, 8, 8)
+    const menuWidth = 72;
+    const menuHeight = 72;
+    const position = getSideAwareFloatingPosition(
+      card,
+      menuWidth,
+      menuHeight,
+      8,
+      8
     );
+
+    if (position.placement === "left" || position.placement === "right") {
+      position.top = Math.min(
+        Math.max(8, card.top + (card.height - menuHeight) / 2),
+        window.innerHeight - menuHeight - 8
+      );
+    }
+
+    setRoutineMenuPosition(position);
     setIsRoutineMenuClosing(false);
     setRoutineToDelete(block);
   };
@@ -583,6 +836,7 @@ export default function StudyPlanner({
       setRoutineError(null);
       setRoutineTitle("");
       setRoutineSubjectId(null);
+      setRoutineChapterId(null);
       setEndPickerOpenRequest(0);
       setEditingRoutineId(block.id);
       window.requestAnimationFrame(() => {
@@ -780,6 +1034,36 @@ export default function StudyPlanner({
     return `Ch-${trimmed}`;
   };
 
+  const formatFullChapterLabel = (chapterNumber: string) => {
+    const trimmed = chapterNumber.trim();
+
+    if (/^chapter\s+/i.test(trimmed)) {
+      return trimmed.replace(/^chapter\s+/i, "Chapter-");
+    }
+
+    if (/^lesson\s+/i.test(trimmed)) {
+      return trimmed.replace(/^lesson\s+/i, "Lesson-");
+    }
+
+    if (/^question\s+/i.test(trimmed)) {
+      return trimmed.replace(/^question\s+/i, "Question-");
+    }
+
+    if (/^ch[-\s]?/i.test(trimmed)) {
+      return trimmed.replace(/^ch[-\s]?/i, "Chapter-");
+    }
+
+    if (/^less[-\s]?/i.test(trimmed)) {
+      return trimmed.replace(/^less[-\s]?/i, "Lesson-");
+    }
+
+    if (/^ques[-\s]?/i.test(trimmed)) {
+      return trimmed.replace(/^ques[-\s]?/i, "Question-");
+    }
+
+    return `Chapter-${trimmed}`;
+  };
+
   const toggleSubject = (
     subjectId: string,
     event: React.MouseEvent<HTMLButtonElement>
@@ -850,6 +1134,7 @@ export default function StudyPlanner({
     routineId: string,
     title: string,
     subjectId: string | undefined,
+    chapterId: string | undefined,
     color: string | undefined
   ) => {
     const routineBeingEdited = routineBlocks.find(
@@ -866,6 +1151,7 @@ export default function StudyPlanner({
       dayOfWeek: routineBeingEdited.dayOfWeek,
       title,
       subjectId,
+      chapterId,
       startTime: routineBeingEdited.startTime,
       endTime: routineBeingEdited.endTime,
       color: color ?? routineBeingEdited.color,
@@ -879,7 +1165,8 @@ export default function StudyPlanner({
   const handleChapterSelect = (
     subjectId: string,
     subjectName: string,
-    chapterNumber: string
+    chapterNumber: string,
+    chapterId: string
   ) => {
     if (!showRoutineForm && !editingRoutineId) {
       return;
@@ -898,6 +1185,7 @@ export default function StudyPlanner({
         editingRoutineId,
         title,
         subjectId,
+        chapterId,
         getRoutineColorForSubject(selectedSubject?.color ?? "") ?? undefined
       );
       return;
@@ -905,6 +1193,7 @@ export default function StudyPlanner({
 
     setRoutineTitle(title);
     setRoutineSubjectId(subjectId);
+    setRoutineChapterId(chapterId);
     setExpandedSubjectId(null);
   };
 
@@ -912,7 +1201,7 @@ export default function StudyPlanner({
     const title = formatRoutineSubjectName(subjectName);
 
     if (editingRoutineId) {
-      replaceRoutineSubject(editingRoutineId, title, undefined, "amber");
+      replaceRoutineSubject(editingRoutineId, title, undefined, undefined, "amber");
       return;
     }
 
@@ -922,6 +1211,7 @@ export default function StudyPlanner({
 
     setRoutineTitle(title);
     setRoutineSubjectId(null);
+    setRoutineChapterId(null);
     setExpandedSubjectId(null);
   };
 
@@ -994,7 +1284,8 @@ export default function StudyPlanner({
                       handleChapterSelect(
                         subject.id,
                         subject.name,
-                        chapter.chapterNumber
+                        chapter.chapterNumber,
+                        chapter.id
                       )
                     }
                     className={`planner-focus flex w-full items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[11px] transition cursor-pointer ${styles.chapter}`}
@@ -1003,7 +1294,6 @@ export default function StudyPlanner({
                       {formatChapterNumber(chapter.chapterNumber)}
                     </span>{" "}
                     <span className="min-w-0 flex-1 font-medium">{chapter.banglaName}</span>
-                    <span className="text-sm text-slate-400">›</span>
                   </button>
                 ))}
               </div>
@@ -1023,10 +1313,11 @@ export default function StudyPlanner({
           aria-haspopup="dialog"
           aria-expanded={isExpanded}
           aria-controls={`chapter-picker-${subject.id}`}
-          className={`planner-focus w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm transition-all cursor-pointer ${styles.card}`}
+          style={{ ["--subject-hover-color" as string]: subjectAccent }}
+          className={`planner-focus subject-card-live w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm cursor-pointer ${styles.card}`}
         >
           <div className="flex items-center gap-2.5">
-            <div className={`rounded-lg p-1.5 shrink-0 ${styles.icon}`}>
+            <div className={`subject-card-live-icon rounded-lg p-1.5 shrink-0 ${styles.icon}`}>
               <BookOpen className="w-4 h-4" />
             </div>
 
@@ -1063,10 +1354,11 @@ export default function StudyPlanner({
       onClick={() => handleAdditionalSubjectSelect(subject.name)}
       data-subject-card
       aria-label={`${subject.name}, additional subject`}
-      className={`planner-focus w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm transition-all cursor-pointer ${additionalSubjectStyles.card}`}
+      style={{ ["--subject-hover-color" as string]: "#d97706" }}
+      className={`planner-focus subject-card-live w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm cursor-pointer ${additionalSubjectStyles.card}`}
     >
       <div className="flex items-center gap-2.5">
-        <div className={`rounded-lg p-1.5 shrink-0 ${additionalSubjectStyles.icon}`}>
+        <div className={`subject-card-live-icon rounded-lg p-1.5 shrink-0 ${additionalSubjectStyles.icon}`}>
           <BookOpen className="w-4 h-4" />
         </div>
 
@@ -1194,6 +1486,7 @@ export default function StudyPlanner({
                   onChange={(e) => {
                     setRoutineTitle(e.target.value);
                     setRoutineSubjectId(null);
+                    setRoutineChapterId(null);
                   }}
                   placeholder="e.g. Chemistry"
                   aria-label="Routine activity"
@@ -1315,6 +1608,87 @@ export default function StudyPlanner({
         </div>
       </section>
 
+      {routineChapterPreview && createPortal(
+        <motion.button
+          ref={routinePreviewRef}
+          type="button"
+          aria-label={`${routineChapterPreview.chapter.banglaName}. Open this chapter.`}
+          onMouseEnter={clearRoutinePreviewCloseTimer}
+          onMouseLeave={scheduleRoutineChapterPreviewClose}
+          onFocus={clearRoutinePreviewCloseTimer}
+          onBlur={scheduleRoutineChapterPreviewClose}
+          initial={shouldReduceMotion ? false : {
+            opacity: 0,
+            scale: 0.96,
+            top: routineChapterPreview.top,
+            left: routineChapterPreview.left,
+            x: routineChapterPreview.placement === "left"
+              ? 6
+              : routineChapterPreview.placement === "right"
+                ? -6
+                : 0,
+            y: routineChapterPreview.placement === "above"
+              ? 6
+              : routineChapterPreview.placement === "below"
+                ? -6
+                : 0,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            x: 0,
+            y: 0,
+            top: routineChapterPreview.top,
+            left: routineChapterPreview.left,
+          }}
+          exit={shouldReduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
+          transition={{ duration: shouldReduceMotion ? 0 : 0.16, ease: [0.16, 1, 0.3, 1] }}
+          onClick={() => {
+            const { subject, chapter } = routineChapterPreview;
+            setRoutineChapterPreview(null);
+            onOpenRoutineChapter(subject.id, chapter.id);
+          }}
+          className="routine-chapter-preview planner-focus fixed z-[105] inline-flex max-w-[calc(100vw-16px)] cursor-pointer flex-col items-center rounded-xl border px-2.5 py-2.5 text-center shadow-xl transition hover:brightness-[0.98]"
+          style={{
+            width: routineChapterPreview.width,
+            transformOrigin:
+              routineChapterPreview.placement === "left"
+                ? "right center"
+                : routineChapterPreview.placement === "right"
+                  ? "left center"
+                  : routineChapterPreview.placement === "above"
+                    ? "center bottom"
+                    : "center top",
+            borderColor: `${getSubjectAccentColor(routineChapterPreview.subject.color)}66`,
+            background: `linear-gradient(135deg, ${getSubjectAccentColor(routineChapterPreview.subject.color)}20, #ffffff 78%)`,
+            boxShadow: `0 16px 28px -18px ${getSubjectAccentColor(routineChapterPreview.subject.color)}aa, inset 0 0 0 1px ${getSubjectAccentColor(routineChapterPreview.subject.color)}18`,
+          }}
+        >
+          <div className="flex w-fit max-w-full flex-col items-center gap-1 text-center">
+            <div
+              className="mx-auto w-fit rounded-md px-1.5 py-1 text-[10px] font-bold"
+              style={{
+                color: getSubjectAccentColor(routineChapterPreview.subject.color),
+                backgroundColor: `${getSubjectAccentColor(routineChapterPreview.subject.color)}18`,
+              }}
+            >
+              {formatFullChapterLabel(routineChapterPreview.chapter.chapterNumber)}
+            </div>
+            <p lang="bn" className="w-fit max-w-full text-xs font-semibold leading-relaxed text-slate-800">
+              {getBalancedRoutinePreviewLines(
+                routineChapterPreview.chapter.banglaName
+              ).map((line, index) => (
+                <React.Fragment key={`${line}-${index}`}>
+                  {index > 0 && <br />}
+                  {line}
+                </React.Fragment>
+              ))}
+            </p>
+          </div>
+        </motion.button>,
+        document.body
+      )}
+
       {routineToDelete && createPortal(
         <div
           ref={routineMenuRef}
@@ -1322,7 +1696,7 @@ export default function StudyPlanner({
           role="menu"
           aria-label={`Actions for ${routineToDelete.title}`}
           onKeyDown={handleRoutineMenuKeyDown}
-          className={`routine-dropdown fixed z-[110] overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl ${
+          className={`routine-dropdown fixed z-[110] overflow-x-hidden overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-xl ${
             routineMenuPosition.placement === "above"
               ? "routine-dropdown-above"
               : ""
@@ -1346,26 +1720,15 @@ export default function StudyPlanner({
             type="button"
             role="menuitem"
             onClick={startEditingRoutine}
-            className="planner-focus w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+            className="planner-focus w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
           >
             Edit
           </button>
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
-              const routineId = routineToDelete.id;
-              closeRoutineMenu(() => focusVisibleRoutineCard(routineId));
-            }}
-            className="planner-focus w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            role="menuitem"
             onClick={() => closeRoutineMenu(() => onDeleteRoutineBlock(routineToDelete.id))}
-            className="planner-focus w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-600 transition hover:bg-rose-50"
+            className="planner-focus w-full rounded-md px-2.5 py-2 text-left text-xs font-bold text-rose-600 transition hover:bg-rose-50"
           >
             Delete
           </button>
@@ -1480,6 +1843,14 @@ export default function StudyPlanner({
                               openRoutineMenu(event.currentTarget, block);
                             }
                           }}
+                          onMouseEnter={(event) =>
+                            showRoutineChapterPreview(event.currentTarget, block)
+                          }
+                          onMouseLeave={scheduleRoutineChapterPreviewClose}
+                          onFocus={(event) =>
+                            showRoutineChapterPreview(event.currentTarget, block)
+                          }
+                          onBlur={scheduleRoutineChapterPreviewClose}
                           onKeyDown={(event) => {
                             if (
                               editingRoutineId !== block.id &&
@@ -1497,9 +1868,9 @@ export default function StudyPlanner({
                             }`}
                         >
                           <div
-                            className={`text-[10px] font-semibold ${getRoutineBlockTimeStyle(block)}`}
+                            className={`whitespace-nowrap text-[9px] font-semibold tracking-tight tabular-nums ${getRoutineBlockTimeStyle(block)}`}
                           >
-                            {formatTimeRange(block.startTime, block.endTime)}
+                            {formatCompactTimeRange(block.startTime, block.endTime)}
                           </div>
 
                           <div className="mt-1 pr-1 text-sm font-semibold text-slate-800">
@@ -1588,6 +1959,14 @@ export default function StudyPlanner({
                               openRoutineMenu(event.currentTarget, block);
                             }
                           }}
+                          onMouseEnter={(event) =>
+                            showRoutineChapterPreview(event.currentTarget, block)
+                          }
+                          onMouseLeave={scheduleRoutineChapterPreviewClose}
+                          onFocus={(event) =>
+                            showRoutineChapterPreview(event.currentTarget, block)
+                          }
+                          onBlur={scheduleRoutineChapterPreviewClose}
                           onKeyDown={(event) => {
                             if (
                               editingRoutineId !== block.id &&
@@ -1605,9 +1984,9 @@ export default function StudyPlanner({
                             }`}
                         >
                           <div
-                            className={`text-xs font-medium ${getRoutineBlockTimeStyle(block)}`}
+                            className={`whitespace-nowrap text-[10px] font-medium tracking-tight tabular-nums ${getRoutineBlockTimeStyle(block)}`}
                           >
-                            {formatTimeRange(block.startTime, block.endTime)}
+                            {formatCompactTimeRange(block.startTime, block.endTime)}
                           </div>
 
                           <div className="mt-1 text-sm font-semibold text-slate-800">

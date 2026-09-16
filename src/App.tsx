@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import { getSubjectCardStyles } from "./colorPalettes";
+import { getSubjectAccentColor, getSubjectCardStyles } from "./colorPalettes";
 import { ChapterProgress } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
@@ -619,6 +619,7 @@ export default function App() {
                           {activeSubjects.filter((sub) => sub.category === "common").map((sub) => {
                             const mastery = subjectMasteries[sub.id] || 0;
                             const subjectStyles = getSubjectCardStyles(sub.color);
+                            const subjectAccent = getSubjectAccentColor(sub.color);
                             const totalChapters = sub.chapters.length;
                             const completedChapters = sub.chapters.filter(
                               (ch) => studentProgress[sub.id]?.[ch.id]?.revisionCompleted
@@ -632,7 +633,8 @@ export default function App() {
                             return (
                               <div
                                 key={sub.id}
-                                className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between space-y-3 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${subjectStyles.card}`}
+                                style={{ ["--subject-hover-color" as string]: subjectAccent }}
+                                className={`subject-card-live p-4 rounded-xl border shadow-xs flex flex-col justify-between space-y-3 cursor-pointer ${subjectStyles.card}`}
                                 onClick={() => setSelectedSubjectPaper(sub.id)}
                                 role="button"
                                 tabIndex={0}
@@ -647,7 +649,7 @@ export default function App() {
                                   <div
                                     className="flex items-center gap-3 cursor-pointer"
                                   >
-                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
+                                    <div className={`subject-card-live-icon w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
                                       <BookOpen className="w-4 h-4" />
                                     </div>
                                     <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
@@ -699,6 +701,7 @@ export default function App() {
                               {[...compulsorySubjects, ...optionalSubjects].map((sub) => {
                                 const mastery = subjectMasteries[sub.id] || 0;
                                 const subjectStyles = getSubjectCardStyles(sub.color);
+                                const subjectAccent = getSubjectAccentColor(sub.color);
                                 const totalChapters = sub.chapters.length;
                                 const completedChapters = sub.chapters.filter(
                                   (ch) => studentProgress[sub.id]?.[ch.id]?.revisionCompleted
@@ -713,7 +716,8 @@ export default function App() {
                                 return (
                                   <div
                                     key={sub.id}
-                                    className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between space-y-3 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${subjectStyles.card}`}
+                                    style={{ ["--subject-hover-color" as string]: subjectAccent }}
+                                    className={`subject-card-live p-4 rounded-xl border shadow-xs flex flex-col justify-between space-y-3 cursor-pointer ${subjectStyles.card}`}
                                     onClick={() => setSelectedSubjectPaper(sub.id)}
                                     role="button"
                                     tabIndex={0}
@@ -728,7 +732,7 @@ export default function App() {
                                       <div
                                         className="flex items-center gap-3 cursor-pointer"
                                       >
-                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
+                                        <div className={`subject-card-live-icon w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${subjectStyles.icon}`}>
                                           <BookOpen className="w-4 h-4" />
                                         </div>
                                         <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
@@ -1010,6 +1014,21 @@ export default function App() {
                   onAddRoutineBlock={handleAddRoutineBlock}
                   onDeleteRoutineBlock={handleDeleteRoutineBlock}
                   onUpdateRoutineBlock={handleUpdateRoutineBlock}
+                  onOpenRoutineChapter={(subjectId, chapterId) => {
+                    const subject = activeSubjects.find((item) => item.id === subjectId);
+                    const chapter = subject?.chapters.find((item) => item.id === chapterId);
+
+                    if (!subject || !chapter) return;
+
+                    setShowVideoLessons(false);
+                    setSelectedChapter({
+                      subjectId: subject.id,
+                      subjectName: subject.name,
+                      chapterId: chapter.id,
+                      chapterName: chapter.name,
+                      chapterBanglaName: chapter.banglaName,
+                    });
+                  }}
                 />
               )}
 
