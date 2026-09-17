@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import {
   UserProfile,
   AdditionalSubject,
-  RoutineBlock
+  RoutineBlock,
+  RoutineEditRequest
 } from "../types";
 
 import {
@@ -13,10 +14,14 @@ import {
   Plus,
   X,
   BookOpen,
-  AlertTriangle
+  AlertTriangle,
+  MoreHorizontal
 } from "lucide-react";
 import TimePicker from "./TimePicker";
 import DayPicker from "./DayPicker";
+import usePlannerPopup from "../hooks/usePlannerPopup";
+import useDialogFocus from "../hooks/useDialogFocus";
+import { dateInViewedWeek, durationDescription, firstSixRowsHeight, popupOffset, routineDuration } from "../utils/plannerPresentation";
 
 import { Subject } from "../data/curriculum";
 import {
@@ -29,6 +34,7 @@ import {
   getSideAwareFloatingPosition,
 } from "../utils/floatingPosition";
 import { formatCompactTimeRange, formatTimeRange } from "../utils/time";
+import { resolveRoutineChapter, resolveRoutineSubject } from "../utils/routineTasks";
 
 interface StudyPlannerProps {
   profile: UserProfile;
@@ -39,11 +45,14 @@ interface StudyPlannerProps {
     newBlock: Omit<RoutineBlock, "id">
   ) => void;
   onDeleteRoutineBlock: (id: string) => void;
+  onRestoreRoutineBlock: (block: RoutineBlock) => void;
   onUpdateRoutineBlock: (
     id: string,
     updatedBlock: Omit<RoutineBlock, "id">
   ) => void;
   onOpenRoutineChapter: (subjectId: string, chapterId: string) => void;
+  editRoutineRequest?: RoutineEditRequest | null;
+  onEditRequestHandled?: () => void;
   onBackToDashboard?: () => void;
 }
 
@@ -129,15 +138,23 @@ const ROUTINE_COLOR_STYLES = {
   },
 } as const;
 
-const getWeekDates = () => {
-  const today = new Date();
-  const todayDay = today.getDay();
+const toDayStart = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const isSameCalendarDate = (first: Date, second: Date) =>
+  first.getFullYear() === second.getFullYear() &&
+  first.getMonth() === second.getMonth() &&
+  first.getDate() === second.getDate();
+
+const getWeekDates = (anchorDate: Date) => {
+  const anchor = toDayStart(anchorDate);
+  const anchorDay = anchor.getDay();
 
   // Saturday is the first day of our StudyPilot BD week.
-  const daysFromSaturday = (todayDay + 1) % 7;
+  const daysFromSaturday = (anchorDay + 1) % 7;
 
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - daysFromSaturday);
+  const weekStart = new Date(anchor);
+  weekStart.setDate(anchor.getDate() - daysFromSaturday);
 
   return DAYS.map((day, index) => {
     const date = new Date(weekStart);
@@ -157,8 +174,11 @@ export default function StudyPlanner({
   routineBlocks,
   onAddRoutineBlock,
   onDeleteRoutineBlock,
+  onRestoreRoutineBlock,
   onUpdateRoutineBlock,
   onOpenRoutineChapter,
+  editRoutineRequest,
+  onEditRequestHandled,
   onBackToDashboard
 }: StudyPlannerProps) {
   const shouldReduceMotion = useReducedMotion();
@@ -167,11 +187,37 @@ export default function StudyPlanner({
   // Weekly Routine
   // ------------------------------------------------------------
 
-  const [routineDay, setRoutineDay] = useState("6");
+  const [routineDay, setRoutineDay] = useState(() => String(new Date().getDay()));
   const [mobileRoutineDay, setMobileRoutineDay] = useState(
     new Date().getDay()
   );
+  const [weekAnchorDate, setWeekAnchorDate] = useState(() => toDayStart(new Date()));
+  const routineBoardRef = React.useRef<HTMLDivElement>(null);
+  const dayTabsRef = React.useRef<HTMLDivElement>(null);
+  const formHeadingRef = React.useRef<HTMLHeadingElement>(null);
+  const addButtonRef = React.useRef<HTMLButtonElement>(null);
+  const addedBlockRef = React.useRef<Omit<RoutineBlock, "id"> | null>(null);
+  const draftNeedsScroll = React.useRef(false);
+  const suppressPreviewRef = React.useRef<string | null>(null);
+  const menuCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const menuAnchorRef = React.useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const tabs = dayTabsRef.current;
+    if (!tabs) return;
+    const revealSelected = () => {
+      const selected = tabs.querySelector<HTMLElement>('[aria-pressed="true"]');
+      if (!selected || !tabs.clientWidth) return;
+      const offset = selected.getBoundingClientRect().left - tabs.getBoundingClientRect().left;
+      tabs.scrollTo({ left: tabs.scrollLeft + offset - (tabs.clientWidth - selected.offsetWidth) / 2, behavior: "instant" });
+    };
+    revealSelected();
+    const observer = new ResizeObserver(revealSelected);
+    observer.observe(tabs);
+    return () => observer.disconnect();
+  }, [mobileRoutineDay, weekAnchorDate]);
   const [showRoutineForm, setShowRoutineForm] = useState(false);
+  const formOpenRef = React.useRef(showRoutineForm);
+  formOpenRef.current = showRoutineForm;
   const [routineTitle, setRoutineTitle] = useState("");
   const [routineSubjectId, setRoutineSubjectId] = useState<string | null>(null);
   const [routineChapterId, setRoutineChapterId] = useState<string | null>(null);
@@ -184,6 +230,11 @@ export default function StudyPlanner({
   const [routineToDelete, setRoutineToDelete] =
     useState<RoutineBlock | null>(null);
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
+  const [routineToFocus, setRoutineToFocus] = useState<string | null>(null);
+  const [isWideRoutineBoard, setIsWideRoutineBoard] = useState(false);
+  const [deletedRoutine, setDeletedRoutine] = useState<RoutineBlock | null>(null);
+  const deletedRoutineTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mobileRoutineSheetRef = React.useRef<HTMLDivElement>(null);
   const [routineMenuPosition, setRoutineMenuPosition] = useState({
     top: 0,
     left: 0,
@@ -205,8 +256,52 @@ export default function StudyPlanner({
   };
 
   useEffect(() => {
-    return () => clearRoutinePreviewCloseTimer();
+    return () => {
+      clearRoutinePreviewCloseTimer();
+      if (menuCloseTimer.current) clearTimeout(menuCloseTimer.current);
+      if (deletedRoutineTimer.current) clearTimeout(deletedRoutineTimer.current);
+    };
   }, []);
+
+  useEffect(() => {
+    const board = routineBoardRef.current;
+    if (!board) return;
+    const updateWidth = () => setIsWideRoutineBoard(board.clientWidth >= 1170);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(board);
+    return () => observer.disconnect();
+  }, []);
+
+  // Never leave a floating card detached from its trigger after scrolling.
+  useEffect(() => {
+    if (!routineChapterPreview) return;
+    const dismiss = () => {
+      if (routinePreviewRef.current?.contains(document.activeElement)) {
+        suppressPreviewRef.current = routineChapterPreview.block.id;
+        focusVisibleRoutineCard(routineChapterPreview.block.id);
+      }
+      setRoutineChapterPreview(null);
+    };
+    const onScroll = (event: Event) => {
+      if (!(event.target instanceof Node) || !routinePreviewRef.current?.contains(event.target)) dismiss();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        suppressPreviewRef.current = routineChapterPreview.block.id;
+        dismiss();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", dismiss);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", dismiss);
+    };
+  }, [routineChapterPreview]);
 
   React.useLayoutEffect(() => {
     if (!routineChapterPreview || !routinePreviewRef.current) return;
@@ -263,14 +358,14 @@ export default function StudyPlanner({
   useEffect(() => {
     if (!routineError) return;
 
-    const dismissRoutineError = (event: MouseEvent) => {
+    const dismissRoutineError = (event: PointerEvent) => {
       if (!routineErrorRef.current?.contains(event.target as Node)) {
         setRoutineError(null);
       }
     };
 
-    document.addEventListener("mousedown", dismissRoutineError);
-    return () => document.removeEventListener("mousedown", dismissRoutineError);
+    document.addEventListener("pointerdown", dismissRoutineError);
+    return () => document.removeEventListener("pointerdown", dismissRoutineError);
   }, [routineError]);
 
   const getDayName = (dayOfWeek: number) => {
@@ -285,15 +380,29 @@ export default function StudyPlanner({
     return hours * 60 + minutes;
   };
 
-  const getRoutineDurationMinutes = (startTime: string, endTime: string) => {
-    const minutesPerDay = 24 * 60;
-    const start = timeToMinutes(startTime);
-    const end = timeToMinutes(endTime);
+  const handleRoutineDateSelect = (selectedDate: Date) => {
+    const date = toDayStart(selectedDate);
+    const today = toDayStart(new Date());
+    const isPastDate = date.getTime() < today.getTime();
 
-    if (end === start) return 0;
+    setWeekAnchorDate(date);
+    setMobileRoutineDay(date.getDay());
 
-    return end > start ? end - start : minutesPerDay - start + end;
+    // A recurring routine can be prepared for today or a future weekday.
+    // A past date is only for viewing its week, so reset the form to today.
+    setRoutineDay(String(isPastDate ? today.getDay() : date.getDay()));
+
+    if (isPastDate) {
+      window.requestAnimationFrame(() => {
+        routineBoardRef.current?.scrollIntoView({
+          behavior: shouldReduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+    }
   };
+
+  const getRoutineDurationMinutes = routineDuration;
 
   const routinesOverlap = (
     firstDay: number,
@@ -382,43 +491,11 @@ export default function StudyPlanner({
   };
 
   const getRoutineBlockSubject = (block: RoutineBlock) => {
-    const linkedSubject = subjects.find((subject) => subject.id === block.subjectId);
-
-    if (linkedSubject) {
-      return linkedSubject;
-    }
-
-    const normalizedTitle = block.title.trim().toLowerCase();
-
-    return subjects.find((subject) => {
-      const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
-
-      return (
-        normalizedTitle === compactName ||
-        normalizedTitle.startsWith(`${compactName}:`)
-      );
-    });
+    return resolveRoutineSubject(block, subjects);
   };
 
   const getRoutineBlockChapter = (block: RoutineBlock) => {
-    const subject = getRoutineBlockSubject(block);
-
-    if (!subject) return null;
-
-    const linkedChapter = block.chapterId
-      ? subject.chapters.find((chapter) => chapter.id === block.chapterId)
-      : undefined;
-
-    if (linkedChapter) return { subject, chapter: linkedChapter };
-
-    // Older saved routines did not contain chapterId. Match their visible
-    // chapter label so students can still use the new preview safely.
-    const chapterLabel = block.title.split(":").slice(1).join(":").trim().toLowerCase();
-    const matchingChapter = subject.chapters.find(
-      (chapter) => formatChapterNumber(chapter.chapterNumber).toLowerCase() === chapterLabel
-    );
-
-    return matchingChapter ? { subject, chapter: matchingChapter } : null;
+    return resolveRoutineChapter(block, subjects);
   };
 
   const getBalancedRoutinePreviewLines = (chapterName: string) => {
@@ -457,36 +534,12 @@ export default function StudyPlanner({
     ];
   };
 
-  const getRoutinePreviewWidth = (
-    chapter: Subject["chapters"][number]
-  ) => {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    const fontFamily = window.getComputedStyle(document.body).fontFamily;
-    const fullLabel = formatFullChapterLabel(chapter.chapterNumber);
-    const horizontalBoxSpace = 22; // 10px padding on both sides plus borders.
-    const labelInnerSpace = 12;
-    const viewportLimit = Math.max(0, window.innerWidth - 16);
-    const maximumWidth = Math.min(360, viewportLimit);
-
-    if (!context) return Math.min(220, maximumWidth);
-
-    context.font = `700 10px ${fontFamily}`;
-    const labelWidth = context.measureText(fullLabel).width + labelInnerSpace;
-    context.font = `600 12px ${fontFamily}`;
-    const chapterNameWidth = Math.max(
-      ...getBalancedRoutinePreviewLines(chapter.banglaName).map(
-        (line) => context.measureText(line).width
-      )
-    );
-
-    return Math.ceil(
-      Math.min(maximumWidth, Math.max(labelWidth, chapterNameWidth) + horizontalBoxSpace)
-    );
-  };
+  // A stable popover footprint stops the weekly board from feeling uneven as
+  // students move across routines with short and long chapter titles.
+  const getRoutinePreviewWidth = () => Math.min(220, window.innerWidth - 16);
 
   const getRoutinePreviewPosition = (card: DOMRect, width: number) => {
-    const height = 118;
+    const height = 100;
     const gap = 8;
     const padding = 8;
     const leftSpace = card.left - gap - padding;
@@ -522,7 +575,8 @@ export default function StudyPlanner({
     cardElement: HTMLDivElement,
     block: RoutineBlock
   ) => {
-    if (editingRoutineId === block.id || !window.matchMedia("(hover: hover)").matches) return;
+    if (editingRoutineId || routineToDelete || expandedSubjectId || showRoutineForm ||
+        suppressPreviewRef.current === block.id || !window.matchMedia("(hover: hover)").matches) return;
 
     const chapterDetails = getRoutineBlockChapter(block);
     if (!chapterDetails) {
@@ -532,7 +586,7 @@ export default function StudyPlanner({
 
     clearRoutinePreviewCloseTimer();
     const card = cardElement.getBoundingClientRect();
-    const previewWidth = getRoutinePreviewWidth(chapterDetails.chapter);
+    const previewWidth = getRoutinePreviewWidth();
     setRoutineChapterPreview({
       block,
       ...chapterDetails,
@@ -583,42 +637,23 @@ export default function StudyPlanner({
     );
   };
 
-  const getRoutineBlockTimeStyle = (block: RoutineBlock) => {
-    const matchingSubject = getRoutineBlockSubject(block);
-
-    if (matchingSubject) {
-      return getSubjectRoutineStyles(matchingSubject.color).time;
-    }
-
-    const normalizedTitle = block.title.trim().toLowerCase();
-
-    const matchingAdditionalSubject = safeAdditionalSubjects.find((subject) => {
-      const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
-
-      return (
-        normalizedTitle === compactName ||
-        normalizedTitle.startsWith(`${compactName}:`)
-      );
-    });
-
-    if (matchingAdditionalSubject) {
-      return "text-amber-600";
-    }
-
-    return (
-      ROUTINE_COLOR_STYLES[block.color as keyof typeof ROUTINE_COLOR_STYLES]?.time ??
-      "text-slate-600"
-    );
-  };
+  const getRoutineBlockTimeStyle = (_block: RoutineBlock) => "text-slate-600";
 
   const toggleRoutineForm = () => {
     const nextOpenState = !showRoutineForm;
+    claimChapterPopup();
+    setExpandedSubjectId(null);
+    setRoutineChapterPreview(null);
 
     setRoutineError(null);
     setEndPickerOpenRequest(0);
 
     if (nextOpenState) {
       setEditingRoutineId(null);
+      const today = toDayStart(new Date());
+      setRoutineDay(String(today.getDay()));
+      setWeekAnchorDate(today);
+      setMobileRoutineDay(today.getDay());
     }
 
     setShowRoutineForm(nextOpenState);
@@ -704,6 +739,9 @@ export default function StudyPlanner({
       color,
     };
 
+    addedBlockRef.current = updatedRoutine;
+    setMobileRoutineDay(dayOfWeek);
+    setWeekAnchorDate(dateInViewedWeek(weekAnchorDate, dayOfWeek));
     onAddRoutineBlock(updatedRoutine);
 
     setRoutineTitle("");
@@ -720,112 +758,51 @@ export default function StudyPlanner({
       )
     ).find((card) => card.offsetParent !== null);
 
-    routineCard?.focus();
+    routineCard?.focus({ preventScroll: true });
   };
 
   const closeRoutineMenu = (afterClose?: () => void) => {
-    if (!routineToDelete || isRoutineMenuClosing) return;
-
-    setIsRoutineMenuClosing(true);
-    setTimeout(() => {
-      setRoutineToDelete(null);
-      setIsRoutineMenuClosing(false);
-      afterClose?.();
-    }, shouldReduceMotion ? 0 : 200);
+    if (!routineToDelete) return;
+    setRoutineToDelete(null);
+    afterClose?.();
   };
 
   const openRoutineMenu = (
     cardElement: HTMLDivElement,
     block: RoutineBlock
   ) => {
-    const card = cardElement.getBoundingClientRect();
-    const menuWidth = 72;
-    const menuHeight = 72;
-    const position = getSideAwareFloatingPosition(
-      card,
-      menuWidth,
-      menuHeight,
-      8,
-      8
-    );
-
-    if (position.placement === "left" || position.placement === "right") {
-      position.top = Math.min(
-        Math.max(8, card.top + (card.height - menuHeight) / 2),
-        window.innerHeight - menuHeight - 8
-      );
+    if (editingRoutineId === block.id) return;
+    if (routineToDelete?.id === block.id) {
+      setRoutineToDelete(null);
+      return;
     }
-
-    setRoutineMenuPosition(position);
-    setIsRoutineMenuClosing(false);
+    claimRoutinePopup();
+    setExpandedSubjectId(null);
+    setRoutineChapterPreview(null);
+    clearRoutinePreviewCloseTimer();
+    menuAnchorRef.current = cardElement;
     setRoutineToDelete(block);
   };
 
   useEffect(() => {
-    if (!routineToDelete || isRoutineMenuClosing) return;
-
-    const frame = window.requestAnimationFrame(() => {
-      routineMenuRef.current
-        ?.querySelector<HTMLButtonElement>('[role="menuitem"]')
-        ?.focus();
-    });
+    if (!routineToDelete || !isWideRoutineBoard) return;
 
     const handleOutsideClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
 
       if (
-        !routineMenuRef.current?.contains(target) &&
+        !target.closest("[data-routine-details]") &&
         !target.closest("[data-routine-card-id]")
       ) {
         closeRoutineMenu();
       }
     };
-
     document.addEventListener("mousedown", handleOutsideClick);
 
     return () => {
-      window.cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, [isRoutineMenuClosing, routineToDelete]);
-
-  const handleRoutineMenuKeyDown = (
-    event: React.KeyboardEvent<HTMLDivElement>
-  ) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      const routineId = routineToDelete?.id;
-      closeRoutineMenu(() => {
-        if (!routineId) return;
-        focusVisibleRoutineCard(routineId);
-      });
-      return;
-    }
-
-    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
-      return;
-    }
-
-    event.preventDefault();
-    const items = Array.from(
-      routineMenuRef.current?.querySelectorAll<HTMLButtonElement>(
-        '[role="menuitem"]'
-      ) ?? []
-    );
-    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
-    let nextIndex = currentIndex;
-
-    if (event.key === "Home") nextIndex = 0;
-    if (event.key === "End") nextIndex = items.length - 1;
-    if (event.key === "ArrowDown") {
-      nextIndex = (currentIndex + 1) % items.length;
-    }
-    if (event.key === "ArrowUp") {
-      nextIndex = (currentIndex - 1 + items.length) % items.length;
-    }
-
-    items[nextIndex]?.focus();
-  };
+  }, [isWideRoutineBoard, routineToDelete]);
 
   const startEditingRoutine = () => {
     if (!routineToDelete) return;
@@ -838,20 +815,82 @@ export default function StudyPlanner({
       setRoutineSubjectId(null);
       setRoutineChapterId(null);
       setEndPickerOpenRequest(0);
+      setRoutineChapterPreview(null);
       setEditingRoutineId(block.id);
-      window.requestAnimationFrame(() => {
-        document
-          .querySelector<HTMLButtonElement>("[data-subject-card]")
-          ?.focus();
-      });
+      setRoutineToFocus(block.id);
     });
   };
+
+  const deleteRoutineWithUndo = () => {
+    if (!routineToDelete) return;
+    const block = routineToDelete;
+    closeRoutineMenu(() => {
+      onDeleteRoutineBlock(block.id);
+      setDeletedRoutine(block);
+      if (deletedRoutineTimer.current) clearTimeout(deletedRoutineTimer.current);
+      deletedRoutineTimer.current = setTimeout(() => {
+        setDeletedRoutine(null);
+        deletedRoutineTimer.current = null;
+      }, 6000);
+    });
+  };
+
+  const undoRoutineDelete = () => {
+    if (!deletedRoutine) return;
+    if (deletedRoutineTimer.current) clearTimeout(deletedRoutineTimer.current);
+    const block = deletedRoutine;
+    deletedRoutineTimer.current = null;
+    setDeletedRoutine(null);
+    onRestoreRoutineBlock(block);
+    setRoutineToFocus(block.id);
+  };
+
+  useDialogFocus(
+    !!routineToDelete && !isWideRoutineBoard,
+    mobileRoutineSheetRef,
+    () => closeRoutineMenu()
+  );
+
+  useEffect(() => {
+    if (!editRoutineRequest) return;
+    const block = routineBlocks.find((item) => item.id === editRoutineRequest.routineId);
+    if (block) {
+      const [year, month, day] = editRoutineRequest.occurrenceDate.split("-").map(Number);
+      setWeekAnchorDate(new Date(year, month - 1, day));
+      setShowRoutineForm(false);
+      setRoutineError(null);
+      setRoutineTitle("");
+      setRoutineSubjectId(null);
+      setRoutineChapterId(null);
+      setEndPickerOpenRequest(0);
+      setRoutineToDelete(null);
+      setRoutineChapterPreview(null);
+      setExpandedSubjectId(null);
+      setMobileRoutineDay(block.dayOfWeek);
+      setEditingRoutineId(block.id);
+      setRoutineToFocus(block.id);
+    }
+    onEditRequestHandled?.();
+  }, [editRoutineRequest, routineBlocks, onEditRequestHandled]);
+
+  useEffect(() => {
+    if (!routineToFocus) return;
+    // Wait for the selected mobile day and edit highlight to render.
+    const frame = window.requestAnimationFrame(() => {
+      const card = Array.from(document.querySelectorAll<HTMLElement>("[data-routine-card-id]"))
+        .find((element) => element.dataset.routineCardId === routineToFocus && element.offsetParent !== null);
+      card?.focus({ preventScroll: true });
+      card?.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth", block: "center" });
+      setRoutineToFocus(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [routineToFocus, mobileRoutineDay, shouldReduceMotion]);
 
   const renderRoutineTitle = (title: string) => {
     const colonIndex = title.indexOf(":");
 
     if (colonIndex === -1) {
-      return <span className="whitespace-nowrap">{title}</span>;
+      return <span className="break-words [overflow-wrap:anywhere]">{title}</span>;
     }
 
     const subjectPart = title.slice(0, colonIndex + 1);
@@ -859,8 +898,8 @@ export default function StudyPlanner({
 
     return (
       <span className="flex w-full flex-wrap justify-center gap-x-1 gap-y-0 leading-tight">
-        <span className="whitespace-nowrap">{subjectPart}</span>
-        <span className="whitespace-nowrap">{chapterPart}</span>
+        <span className="break-words [overflow-wrap:anywhere]">{subjectPart}</span>
+        <span className="break-words [overflow-wrap:anywhere]">{chapterPart}</span>
       </span>
     );
   };
@@ -877,6 +916,7 @@ export default function StudyPlanner({
       );
     }
   );
+  const visibleWeek = getWeekDates(weekAnchorDate);
 
 
   // ------------------------------------------------------------
@@ -888,6 +928,18 @@ export default function StudyPlanner({
     null
   );
   const chapterPopoverRef = React.useRef<HTMLDivElement>(null);
+  const [chapterListHeight, setChapterListHeight] = useState(280);
+  const claimChapterPopup = usePlannerPopup(() => {
+    setExpandedSubjectId(null);
+    setChapterTrigger(null);
+  });
+  const claimRoutinePopup = usePlannerPopup(() => {
+    clearRoutinePreviewCloseTimer();
+    setRoutineChapterPreview(null);
+    if (menuCloseTimer.current) clearTimeout(menuCloseTimer.current);
+    setRoutineToDelete(null);
+    setIsRoutineMenuClosing(false);
+  });
   const [chapterPopoverPosition, setChapterPopoverPosition] = useState({
     top: 0,
     left: 0,
@@ -900,7 +952,7 @@ export default function StudyPlanner({
     const handleOutsideClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
 
-      if (!target.closest(".chapter-popover")) {
+      if (!target.closest(".chapter-popover") && !target.closest("[data-subject-card]")) {
         setExpandedSubjectId(null);
         setChapterTrigger(null);
       }
@@ -917,6 +969,8 @@ export default function StudyPlanner({
     if (!expandedSubjectId || !chapterTrigger) return;
 
     const updateChapterPosition = () => {
+      const rows = Array.from(chapterPopoverRef.current?.querySelectorAll<HTMLElement>("[data-chapter-option]") ?? []);
+      if (rows.length) setChapterListHeight(firstSixRowsHeight(rows.map(row => row.getBoundingClientRect().height), 4, 20));
       const triggerRect = chapterTrigger.getBoundingClientRect();
       const measuredHeight = chapterPopoverRef.current?.offsetHeight || 360;
 
@@ -935,12 +989,18 @@ export default function StudyPlanner({
         "[data-chapter-option]"
       );
 
-      (firstChapter ?? chapterPopoverRef.current)?.focus();
+      (firstChapter ?? chapterPopoverRef.current)?.focus({ preventScroll: true });
     });
+    const observer = new ResizeObserver(updateChapterPosition);
+    if (chapterPopoverRef.current) observer.observe(chapterPopoverRef.current);
+    let alive = true;
+    document.fonts.ready.then(() => { if (alive) updateChapterPosition(); });
     window.addEventListener("resize", updateChapterPosition);
     window.addEventListener("scroll", updateChapterPosition, true);
 
     return () => {
+      alive = false;
+      observer.disconnect();
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", updateChapterPosition);
       window.removeEventListener("scroll", updateChapterPosition, true);
@@ -1074,6 +1134,9 @@ export default function StudyPlanner({
       return;
     }
 
+    claimChapterPopup();
+    setRoutineChapterPreview(null);
+    setChapterListHeight(280);
     const card = event.currentTarget.getBoundingClientRect();
     setChapterPopoverPosition(
       getSideAwareFloatingPosition(card, card.width, 360)
@@ -1126,7 +1189,7 @@ export default function StudyPlanner({
         behavior: shouldReduceMotion ? "auto" : "smooth",
         block: "center",
       });
-      routineCard?.focus();
+      routineCard?.focus({ preventScroll: true });
     }, 0);
   };
 
@@ -1162,16 +1225,23 @@ export default function StudyPlanner({
     scrollRoutineCardIntoView(routineId);
   };
 
+  const prepareDraft = () => {
+    if (showRoutineForm) return;
+    draftNeedsScroll.current = true;
+    const today = toDayStart(new Date());
+    setRoutineDay(String(today.getDay()));
+    setWeekAnchorDate(today);
+    setMobileRoutineDay(today.getDay());
+    setRoutineError(null);
+    setShowRoutineForm(true);
+  };
+
   const handleChapterSelect = (
     subjectId: string,
     subjectName: string,
     chapterNumber: string,
     chapterId: string
   ) => {
-    if (!showRoutineForm && !editingRoutineId) {
-      return;
-    }
-
     const title = `${formatRoutineSubjectName(subjectName)}: ${formatChapterNumber(
       chapterNumber
     )}`;
@@ -1191,6 +1261,7 @@ export default function StudyPlanner({
       return;
     }
 
+    prepareDraft();
     setRoutineTitle(title);
     setRoutineSubjectId(subjectId);
     setRoutineChapterId(chapterId);
@@ -1205,10 +1276,7 @@ export default function StudyPlanner({
       return;
     }
 
-    if (!showRoutineForm) {
-      return;
-    }
-
+    prepareDraft();
     setRoutineTitle(title);
     setRoutineSubjectId(null);
     setRoutineChapterId(null);
@@ -1228,19 +1296,24 @@ export default function StudyPlanner({
         key={`${subject.id}-${cardIndex}`}
         className="relative min-w-0"
       >
-        {isExpanded && createPortal(
-          <div
-            ref={chapterPopoverRef}
+        {createPortal(
+          <AnimatePresence initial={false}>{isExpanded && <motion.div
+            key={subject.id}
+            initial={shouldReduceMotion ? false : { opacity: 0, ...popupOffset(chapterPopoverPosition.placement) }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, ...popupOffset(chapterPopoverPosition.placement), pointerEvents: "none" }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+            data-subject-id={subject.id}
+            ref={(node) => {
+              if (node) chapterPopoverRef.current = node;
+              else if (chapterPopoverRef.current?.dataset.subjectId === subject.id) chapterPopoverRef.current = null;
+            }}
             id={`chapter-picker-${subject.id}`}
             role="dialog"
             aria-label={`Choose a chapter from ${subject.name}`}
             tabIndex={-1}
             onKeyDown={handleChapterPopoverKeyDown}
-            className={`chapter-popover routine-dropdown fixed z-[110] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl ${
-              chapterPopoverPosition.placement === "above"
-                ? "routine-dropdown-above routine-dropdown-opening-up"
-                : "routine-dropdown-opening"
-            }`}
+            className="chapter-popover planner-popup fixed z-[110] flex flex-col overflow-hidden rounded-xl border bg-white"
             style={{
               top: chapterPopoverPosition.top,
               left: chapterPopoverPosition.left,
@@ -1259,8 +1332,8 @@ export default function StudyPlanner({
                 <div className="truncate text-xs font-bold text-slate-800">
                   {subject.name}
                 </div>
-                <div className="text-[10px] font-medium text-slate-400">
-                  Select a chapter
+                <div className="text-xs font-medium text-slate-500">
+                  {editingRoutineId ? "Choose replacement chapter" : "Choose a chapter for your routine"}
                 </div>
               </div>
             </div>
@@ -1274,7 +1347,7 @@ export default function StudyPlanner({
             />
 
             {subject.chapters.length > 0 ? (
-              <div className="chapter-popover-scroll max-h-[280px] min-h-0 flex-1 space-y-1 overflow-y-auto pb-3 pl-3 pr-1 pt-2">
+              <div style={{ maxHeight: chapterListHeight }} className="chapter-popover-scroll min-h-0 flex-1 space-y-1 overflow-y-auto pb-3 pl-3 pr-1 pt-2">
                 {subject.chapters.map((chapter) => (
                   <button
                     type="button"
@@ -1288,7 +1361,7 @@ export default function StudyPlanner({
                         chapter.id
                       )
                     }
-                    className={`planner-focus flex w-full items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[11px] transition cursor-pointer ${styles.chapter}`}
+                    className={`planner-focus flex w-full items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[13px] transition-colors cursor-pointer ${styles.chapter}`}
                   >
                     <span className={`shrink-0 rounded-md px-1.5 py-1 text-[10px] font-bold ${styles.icon}`}>
                       {formatChapterNumber(chapter.chapterNumber)}
@@ -1298,11 +1371,11 @@ export default function StudyPlanner({
                 ))}
               </div>
             ) : (
-              <div className="px-3 py-4 text-[11px] text-slate-400">
+              <div className="px-3 py-4 text-xs text-slate-500">
                 No chapter data is available for this subject yet.
               </div>
             )}
-          </div>,
+          </motion.div>}</AnimatePresence>,
           document.body
         )}
 
@@ -1322,10 +1395,10 @@ export default function StudyPlanner({
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-bold text-slate-800 truncate">
+              <div className="text-[13px] font-semibold text-slate-800 break-words">
                 {subject.name}
               </div>
-              <div className="mt-0.5 text-[10px] text-slate-400">
+              <div className="mt-0.5 text-xs text-slate-500">
                 {isExpanded ? "Hide chapters" : "View chapters"}
               </div>
             </div>
@@ -1363,10 +1436,10 @@ export default function StudyPlanner({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-bold text-slate-800 truncate">
+          <div className="text-[13px] font-semibold text-slate-800 break-words">
             {subject.name}
           </div>
-          <div className="mt-0.5 text-[10px] text-slate-400">
+          <div className="mt-0.5 text-xs text-slate-500">
             Additional subject
           </div>
         </div>
@@ -1376,14 +1449,14 @@ export default function StudyPlanner({
 
   return (
     <div
-      className="space-y-5 rounded-2xl border border-[#dce5f4] bg-[#fcfdfe] p-3 shadow-sm sm:space-y-6 sm:p-4 lg:space-y-8 lg:p-6"
+      className="planner-shell"
       id="study-planner-container"
     >
       {/* ------------------------------------------------------ */}
       {/* Weekly Routine */}
       {/* ------------------------------------------------------ */}
 
-      <section className="rounded-2xl bg-[#f7f9fe] p-3 sm:p-4 lg:p-5">
+      <section className="planner-surface">
         <div className="flex flex-col gap-3 border-b border-[#dce5f4] pb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-[#edf3ff] text-indigo-600 rounded-xl">
@@ -1395,48 +1468,33 @@ export default function StudyPlanner({
                 Weekly Routine
               </h2>
 
-              <p className="text-slate-400 text-xs">
-                Create your own recurring weekly schedule.
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Repeats every week. Changing a chapter keeps its saved day and time.
               </p>
             </div>
           </div>
 
-          <motion.button
+          <button
+            ref={addButtonRef}
             type="button"
             onClick={toggleRoutineForm}
             aria-expanded={showRoutineForm}
             aria-controls="routine-add-form"
-            animate={{
-              scale: 1,
-              width: showRoutineForm ? "6.25rem" : "12.5rem",
-            }}
-            transition={{
-              scale: { duration: shouldReduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] },
-              width: { duration: shouldReduceMotion ? 0 : 0.26, ease: [0.16, 1, 0.3, 1] },
-            }}
-            className={`planner-focus relative h-11 self-start rounded-xl text-sm font-semibold transition-colors cursor-pointer sm:self-auto ${
-              showRoutineForm
-                ? "border border-indigo-200 bg-white text-indigo-600 shadow-none hover:border-indigo-300 hover:bg-indigo-50"
-                : "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
-            }`}
+            className={`planner-focus planner-form-toggle ${showRoutineForm ? "planner-secondary" : "planner-primary"}`}
           >
-            <AnimatePresence initial={false} mode="sync">
-              <motion.span
-                key={showRoutineForm ? "close" : "add"}
-                initial={shouldReduceMotion ? false : { opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 5 }}
-                transition={{ duration: shouldReduceMotion ? 0 : 0.16, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute inset-0 flex items-center justify-center gap-1.5"
-              >
-                {showRoutineForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {showRoutineForm ? "Close" : "Add Routine Block"}
-              </motion.span>
-            </AnimatePresence>
-          </motion.button>
+            {showRoutineForm ? <X size={16} /> : <Plus size={16} />}
+            <span>{showRoutineForm ? "Close" : "Add Routine Block"}</span>
+          </button>
         </div>
 
-        <AnimatePresence initial={false}>
+        <AnimatePresence initial={false} onExitComplete={() => {
+          if (addedBlockRef.current) {
+            const draft = addedBlockRef.current;
+            const added = routineBlocks.find(block => block.dayOfWeek === draft.dayOfWeek && block.startTime === draft.startTime && block.title === draft.title);
+            addedBlockRef.current = null;
+            if (added) setRoutineToFocus(added.id);
+          }
+        }}>
           {showRoutineForm && (
             <motion.div
               id="routine-add-form"
@@ -1448,28 +1506,46 @@ export default function StudyPlanner({
                 marginTop: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] },
                 opacity: { duration: shouldReduceMotion ? 0 : 0.18, ease: "linear" },
               }}
-              className="overflow-hidden will-change-[height]"
+              className="overflow-hidden"
+              onAnimationComplete={() => {
+                if (formOpenRef.current) {
+                  const active = document.activeElement;
+                  if (!(active instanceof Element) || (!active.closest("#routine-add-form") && !active.closest("[data-planner-popup]"))) {
+                    formHeadingRef.current?.focus({ preventScroll: true });
+                  }
+                  if (draftNeedsScroll.current) {
+                    draftNeedsScroll.current = false;
+                    formHeadingRef.current?.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth", block: "center" });
+                  }
+                }
+              }}
             >
               <motion.div
-                initial={shouldReduceMotion ? false : { y: -6 }}
-                animate={{ y: 0 }}
-                exit={{ y: -6 }}
-                transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="space-y-3 rounded-xl border border-[#c9daf9] bg-[#edf3ff] p-3 sm:p-4"
+                className="planner-form space-y-3"
               >
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">
+              <h3 ref={formHeadingRef} tabIndex={-1} className="text-sm font-semibold text-slate-700 outline-none">
                 Add an activity to your schedule
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-[1.15fr_1.6fr_1.15fr_1.15fr]">
+            <div className="planner-form-fields">
 
               {/* Day */}
-              <DayPicker value={routineDay} onChange={setRoutineDay} days={DAYS} />
+              <DayPicker
+                value={routineDay}
+                onChange={(value) => {
+                  setRoutineDay(value);
+                  setWeekAnchorDate(dateInViewedWeek(weekAnchorDate, Number(value)));
+                  setMobileRoutineDay(Number(value));
+                }}
+                days={DAYS}
+                selectedDate={weekAnchorDate}
+                onDateSelect={handleRoutineDateSelect}
+              />
 
               {/* Activity */}
-              <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-3">
+              <div className="planner-activity-field flex min-w-0 h-11 items-center rounded-xl border border-slate-200 bg-white px-3">
                 <span className="text-sm font-semibold text-slate-600">
                   Activity
                 </span>
@@ -1513,12 +1589,17 @@ export default function StudyPlanner({
               />
             </div>
 
+            <div className="planner-form-context" aria-live="polite">
+              <span>Repeats every {getDayName(Number(routineDay))} · not a one-time booking</span>
+              <span>{durationDescription(routineStart, routineEnd)}</span>
+            </div>
+
             {/* Submit */}
-            <div className="grid min-h-11 grid-cols-1 items-center gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:gap-3">
+            <div className="grid min-h-11 grid-cols-1 items-center md:grid-cols-[auto_minmax(0,1fr)] md:gap-3">
               <button
                 type="button"
                 onClick={handleAddRoutine}
-                className="planner-focus flex h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 md:w-auto"
+                className="planner-focus planner-primary flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-colors md:w-auto"
               >
                 <Plus className="w-4 h-4" />
                 Add to Weekly Routine
@@ -1526,21 +1607,28 @@ export default function StudyPlanner({
 
               <AnimatePresence initial={false}>
                 {routineError && (
-                  <div className="flex min-w-0 justify-center">
+                  <motion.div
+                    initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
+                    className="min-w-0 overflow-hidden">
+                    <div className="flex justify-center pt-2 md:pt-0">
                     <motion.div
                       ref={routineErrorRef}
                       role="alert"
-                      initial={shouldReduceMotion ? false : { opacity: 0, scaleX: 0 }}
-                      animate={{ opacity: 1, scaleX: 1 }}
-                      exit={{ opacity: 0, scaleX: 0 }}
+                      initial={shouldReduceMotion ? false : { opacity: 0, y: 3 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 3 }}
                       transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: [0.16, 1, 0.3, 1] }}
-                      className="inline-flex h-11 w-fit max-w-full origin-center items-center gap-2 overflow-hidden whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-3 text-[11px] text-rose-700 sm:text-xs"
+                      className="inline-flex min-h-11 w-fit max-w-full items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-relaxed text-rose-700"
                       title={routineError}
                     >
                       <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
-                      <span className="truncate">{routineError}</span>
+                      <span>{routineError}</span>
                     </motion.div>
-                  </div>
+                    </div>
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
@@ -1553,15 +1641,16 @@ export default function StudyPlanner({
       {/* Subjects & Chapters */}
       {/* ------------------------------------------------------ */}
 
-      <section className="pt-2 border-t border-[#e6edf8]">
-        <div className="rounded-2xl border border-[#dce5f4] bg-white p-3 sm:p-4 lg:p-5">
+      <section className="planner-subject-section">
+        <div className="planner-subject-panel">
+          <a href="#planner-week-board" onClick={(event) => { event.preventDefault(); routineBoardRef.current?.focus({ preventScroll: true }); routineBoardRef.current?.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth", block: "start" }); }} className="planner-jump-link">Go to weekly routine ↓</a>
           <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
             <div className="min-w-0">
               <h2 className="text-base font-bold text-slate-800">
                 Active Subjects
               </h2>
               <p
-                className="mt-0.5 text-xs text-slate-400"
+                className="mt-1 text-sm leading-relaxed text-slate-600"
                 role="status"
                 aria-live="polite"
               >
@@ -1577,8 +1666,7 @@ export default function StudyPlanner({
                   </>
                 ) : (
                   <>
-                    To add, open <span className="font-semibold text-slate-600">Add Routine Block</span>.
-                    To edit, select a routine card and choose <span className="font-semibold text-slate-600">Edit</span>.
+                    Choose a subject and chapter to start a draft. To replace a chapter, use the routine card’s <span className="font-semibold">Edit</span> action.
                   </>
                 )}
               </p>
@@ -1608,142 +1696,76 @@ export default function StudyPlanner({
         </div>
       </section>
 
-      {routineChapterPreview && createPortal(
-        <motion.button
-          ref={routinePreviewRef}
-          type="button"
-          aria-label={`${routineChapterPreview.chapter.banglaName}. Open this chapter.`}
-          onMouseEnter={clearRoutinePreviewCloseTimer}
-          onMouseLeave={scheduleRoutineChapterPreviewClose}
-          onFocus={clearRoutinePreviewCloseTimer}
-          onBlur={scheduleRoutineChapterPreviewClose}
-          initial={shouldReduceMotion ? false : {
-            opacity: 0,
-            scale: 0.96,
-            top: routineChapterPreview.top,
-            left: routineChapterPreview.left,
-            x: routineChapterPreview.placement === "left"
-              ? 6
-              : routineChapterPreview.placement === "right"
-                ? -6
-                : 0,
-            y: routineChapterPreview.placement === "above"
-              ? 6
-              : routineChapterPreview.placement === "below"
-                ? -6
-                : 0,
-          }}
-          animate={{
-            opacity: 1,
-            scale: 1,
-            x: 0,
-            y: 0,
-            top: routineChapterPreview.top,
-            left: routineChapterPreview.left,
-          }}
-          exit={shouldReduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
-          transition={{ duration: shouldReduceMotion ? 0 : 0.16, ease: [0.16, 1, 0.3, 1] }}
-          onClick={() => {
-            const { subject, chapter } = routineChapterPreview;
-            setRoutineChapterPreview(null);
-            onOpenRoutineChapter(subject.id, chapter.id);
-          }}
-          className="routine-chapter-preview planner-focus fixed z-[105] inline-flex max-w-[calc(100vw-16px)] cursor-pointer flex-col items-center rounded-xl border px-2.5 py-2.5 text-center shadow-xl transition hover:brightness-[0.98]"
-          style={{
-            width: routineChapterPreview.width,
-            transformOrigin:
-              routineChapterPreview.placement === "left"
-                ? "right center"
-                : routineChapterPreview.placement === "right"
-                  ? "left center"
-                  : routineChapterPreview.placement === "above"
-                    ? "center bottom"
-                    : "center top",
-            borderColor: `${getSubjectAccentColor(routineChapterPreview.subject.color)}66`,
-            background: `linear-gradient(135deg, ${getSubjectAccentColor(routineChapterPreview.subject.color)}20, #ffffff 78%)`,
-            boxShadow: `0 16px 28px -18px ${getSubjectAccentColor(routineChapterPreview.subject.color)}aa, inset 0 0 0 1px ${getSubjectAccentColor(routineChapterPreview.subject.color)}18`,
-          }}
-        >
-          <div className="flex w-fit max-w-full flex-col items-center gap-1 text-center">
-            <div
-              className="mx-auto w-fit rounded-md px-1.5 py-1 text-[10px] font-bold"
-              style={{
-                color: getSubjectAccentColor(routineChapterPreview.subject.color),
-                backgroundColor: `${getSubjectAccentColor(routineChapterPreview.subject.color)}18`,
-              }}
-            >
-              {formatFullChapterLabel(routineChapterPreview.chapter.chapterNumber)}
-            </div>
-            <p lang="bn" className="w-fit max-w-full text-xs font-semibold leading-relaxed text-slate-800">
-              {getBalancedRoutinePreviewLines(
-                routineChapterPreview.chapter.banglaName
-              ).map((line, index) => (
-                <React.Fragment key={`${line}-${index}`}>
-                  {index > 0 && <br />}
-                  {line}
-                </React.Fragment>
-              ))}
-            </p>
-          </div>
-        </motion.button>,
-        document.body
-      )}
-
-      {routineToDelete && createPortal(
-        <div
-          ref={routineMenuRef}
-          id="routine-actions-menu"
-          role="menu"
-          aria-label={`Actions for ${routineToDelete.title}`}
-          onKeyDown={handleRoutineMenuKeyDown}
-          className={`routine-dropdown fixed z-[110] overflow-x-hidden overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-xl ${
-            routineMenuPosition.placement === "above"
-              ? "routine-dropdown-above"
-              : ""
-          } ${
-            isRoutineMenuClosing
-              ? routineMenuPosition.placement === "above"
-                ? "routine-dropdown-closing-up"
-                : "routine-dropdown-closing"
-              : routineMenuPosition.placement === "above"
-                ? "routine-dropdown-opening-up"
-                : "routine-dropdown-opening"
-          }`}
-          style={{
-            top: routineMenuPosition.top,
-            left: routineMenuPosition.left,
-            width: routineMenuPosition.width,
-            maxHeight: routineMenuPosition.maxHeight,
-          }}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={startEditingRoutine}
-            className="planner-focus w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => closeRoutineMenu(() => onDeleteRoutineBlock(routineToDelete.id))}
-            className="planner-focus w-full rounded-md px-2.5 py-2 text-left text-xs font-bold text-rose-600 transition hover:bg-rose-50"
-          >
-            Delete
-          </button>
-        </div>,
+      {createPortal(
+        <AnimatePresence>
+          {routineToDelete && !isWideRoutineBoard && (() => {
+            const details = getRoutineBlockChapter(routineToDelete);
+            return (
+              <motion.div
+                key={`routine-sheet-${routineToDelete.id}`}
+                className="fixed inset-0 z-[120]"
+                initial="closed"
+                animate="open"
+                exit="closed"
+                variants={{
+                  open: { opacity: 1, transition: { duration: shouldReduceMotion ? 0 : 0.2 } },
+                  closed: { opacity: 0, transition: { duration: shouldReduceMotion ? 0 : 0.16 } },
+                }}
+              >
+                <button type="button" aria-label="Close routine details" className="routine-sheet-backdrop absolute inset-0 w-full cursor-default bg-slate-900/20" onClick={() => closeRoutineMenu()} />
+                <motion.div
+              ref={mobileRoutineSheetRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Details for ${routineToDelete.title}`}
+              className="routine-detail-sheet fixed inset-x-0 bottom-0 z-[121] mx-auto max-w-xl rounded-t-3xl border border-slate-200 bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-3 shadow-2xl"
+                variants={{
+                  open: { y: 0, transition: { duration: shouldReduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] } },
+                  closed: { y: "100%", transition: { duration: shouldReduceMotion ? 0 : 0.2, ease: [0.4, 0, 1, 1] } },
+                }}
+                onClick={(event) => event.stopPropagation()}
+              >
+              <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-slate-200" aria-hidden="true" />
+              <div className={`rounded-2xl border px-4 py-3 text-center ${getRoutineBlockCardStyle(routineToDelete)}`}>
+                <div className={`text-xs font-semibold tabular-nums ${getRoutineBlockTimeStyle(routineToDelete)}`}>{formatCompactTimeRange(routineToDelete.startTime, routineToDelete.endTime)}</div>
+                <div className="mt-1 text-base font-semibold text-slate-800">{renderRoutineTitle(routineToDelete.title)}</div>
+              </div>
+              {details && (
+                <button type="button" lang="bn" className="planner-focus routine-sheet-chapter mt-4 w-full rounded-xl px-3 py-3 text-center font-semibold text-slate-800"
+                  onClick={() => { closeRoutineMenu(); onOpenRoutineChapter(details.subject.id, details.chapter.id); }}>
+                  {details.chapter.banglaName}
+                </button>
+              )}
+              <div className={`${details ? "mt-2" : "mt-3"} grid grid-cols-2 gap-2 border-t border-slate-100 pt-3`}>
+                <button type="button" onClick={startEditingRoutine} className="planner-focus routine-sheet-action">Edit</button>
+                <button type="button" onClick={deleteRoutineWithUndo} className="planner-focus routine-sheet-action routine-card-delete">Delete</button>
+              </div>
+              <button type="button" onClick={() => closeRoutineMenu()} className="planner-focus mt-3 w-full rounded-lg py-2 text-sm font-medium text-slate-500">Close</button>
+                </motion.div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>,
         document.body
       )}
 
         {/* Weekly Routine Board */}
-        <div className="mt-5 sm:mt-6 lg:mt-8">
+        <div id="planner-week-board" ref={routineBoardRef} tabIndex={-1} className="planner-board">
+          <div className="planner-board-heading">
+            <div>
+              <h3 className="text-base font-semibold text-slate-800">Weekly routine</h3>
+              <p className="text-xs leading-relaxed text-slate-600">Week of {visibleWeek[0].date.toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"})} · current repeating plan, not a history log</p>
+            </div>
+            <button type="button" className="planner-focus planner-text-action" onClick={() => {
+              const today = toDayStart(new Date()); setWeekAnchorDate(today); setMobileRoutineDay(today.getDay());
+            }}>This week</button>
+          </div>
 
           {/* Mobile day selector */}
-          <div className="flex snap-x gap-2 overflow-x-auto pb-2 xl:hidden">
-            {getWeekDates().map((day) => {
+          <div ref={dayTabsRef} className="planner-day-tabs flex snap-x gap-2 overflow-x-auto pb-2">
+            {visibleWeek.map((day) => {
               const isSelected = mobileRoutineDay === day.value;
-              const isToday = day.value === new Date().getDay();
+              const isToday = isSameCalendarDate(day.date, new Date());
 
               return (
                 <button
@@ -1764,25 +1786,19 @@ export default function StudyPlanner({
                     {day.label.slice(0, 3)}
                   </div>
 
-                  <div className="text-[10px] text-slate-400">
-                    {day.date.toLocaleDateString("en-US", {
+                  <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
+                    {isToday ? "Today" : day.date.toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                     })}
                   </div>
-
-                  {isToday && (
-                    <div className="mt-0.5 text-[9px] font-semibold uppercase text-blue-600">
-                      Today
-                    </div>
-                  )}
                 </button>
               );
             })}
           </div>
 
-          <div className="hidden gap-3 xl:grid xl:grid-cols-7">
-            {getWeekDates().map((day) => {
+          <div className="planner-week-grid">
+            {visibleWeek.map((day) => {
               const dayBlocks = routineBlocks
                 .filter((block) => block.dayOfWeek === day.value)
                 .sort(
@@ -1790,94 +1806,102 @@ export default function StudyPlanner({
                     timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
                 );
 
-              const isToday = day.value === new Date().getDay();
+              const isToday = isSameCalendarDate(day.date, new Date());
+              const isSelectedDate = isSameCalendarDate(day.date, weekAnchorDate);
 
               return (
                 <div
                   key={day.value}
-                  className={`min-h-[180px] rounded-xl border p-3 text-center shadow-sm ${isToday
-                    ? "border-indigo-400 bg-[#eef1ff]"
+                  className={`planner-day-column min-h-[180px] rounded-xl border p-2.5 text-center ${isSelectedDate
+                    ? "border-indigo-300 bg-[#f5f6ff]"
+                    : isToday
+                    ? "border-sky-300 bg-sky-50/60"
                     : "border-[#dbe4f6] bg-[#f4f7fc]"
                     }`}
                 >
                   {/* Day header */}
                   <div
-                    className={`mb-3 border-b pb-2 ${isToday ? "border-indigo-200" : "border-[#dce5f4]"
+                    className={`mb-3 border-b pb-2 ${isSelectedDate ? "border-indigo-200" : isToday ? "border-sky-200" : "border-[#dce5f4]"
                       }`}
                   >
                     <div
-                      className={`text-sm font-bold ${isToday ? "text-indigo-700" : "text-slate-800"
+                      className={`text-sm font-bold ${isSelectedDate ? "text-indigo-700" : isToday ? "text-sky-700" : "text-slate-800"
                         }`}
                     >
                       {day.label}
                     </div>
 
-                    <div className="text-xs text-slate-500">
-                      {day.date.toLocaleDateString("en-US", {
+                    <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
+                      {isToday ? "Today" : day.date.toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                       })}
                     </div>
 
                   </div>
-
                   {/* Routine blocks */}
                   <div className="space-y-2">
                     {dayBlocks.length > 0 ? (
-                      dayBlocks.map((block) => (
-                        <div
+                      dayBlocks.map((block) => {
+                        const details = getRoutineBlockChapter(block);
+                        const isOpen = routineToDelete?.id === block.id;
+                        const isEditing = editingRoutineId === block.id;
+                        return <motion.div
+                                    layout
                           data-routine-card-id={block.id}
                           key={block.id}
-                          role={editingRoutineId === block.id ? "group" : "button"}
-                          tabIndex={editingRoutineId === block.id ? -1 : 0}
-                          aria-haspopup={editingRoutineId === block.id ? undefined : "menu"}
-                          aria-controls={editingRoutineId === block.id ? undefined : "routine-actions-menu"}
-                          aria-expanded={editingRoutineId === block.id ? undefined : routineToDelete?.id === block.id}
-                          aria-label={
-                            editingRoutineId === block.id
-                              ? `${block.title} is being edited.`
-                              : `${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. Open routine actions.`
-                          }
-                          onClick={(event) => {
-                            if (editingRoutineId !== block.id) {
-                              openRoutineMenu(event.currentTarget, block);
-                            }
-                          }}
-                          onMouseEnter={(event) =>
-                            showRoutineChapterPreview(event.currentTarget, block)
-                          }
-                          onMouseLeave={scheduleRoutineChapterPreviewClose}
-                          onFocus={(event) =>
-                            showRoutineChapterPreview(event.currentTarget, block)
-                          }
-                          onBlur={scheduleRoutineChapterPreviewClose}
-                          onKeyDown={(event) => {
-                            if (
-                              editingRoutineId !== block.id &&
-                              event.target === event.currentTarget &&
-                              (event.key === "Enter" || event.key === " ")
-                            ) {
-                              event.preventDefault();
-                              openRoutineMenu(event.currentTarget, block);
-                            }
-                          }}
-                          className={`planner-focus group cursor-pointer rounded-lg border p-2.5 text-center shadow-sm transition ${getRoutineBlockCardStyle(block)} ${
-                            editingRoutineId === block.id
-                              ? "routine-card-editing relative z-10 scale-[1.03] ring-2 ring-indigo-400 ring-offset-2"
+                          transition={{ layout: { duration: shouldReduceMotion ? 0 : 0.26, ease: [0.22, 1, 0.36, 1] } }}
+                          className={`routine-card group relative overflow-hidden rounded-lg border text-center shadow-sm ${getRoutineBlockCardStyle(block)} ${
+                            isEditing
+                              ? "routine-card-editing relative z-10 ring-2 ring-indigo-300 ring-offset-2"
                               : ""
                             }`}
                         >
-                          <div
-                            className={`whitespace-nowrap text-[9px] font-semibold tracking-tight tabular-nums ${getRoutineBlockTimeStyle(block)}`}
+                          <button
+                            type="button"
+                            disabled={isEditing}
+                            aria-expanded={isOpen}
+                            aria-controls={isOpen ? `routine-details-${block.id}` : undefined}
+                            aria-label={`${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. ${isOpen ? "Close details" : "Open details"}.`}
+                            onClick={(event) => openRoutineMenu(event.currentTarget.parentElement as HTMLDivElement, block)}
+                            className="planner-focus routine-card-trigger relative flex w-full flex-col items-center justify-center px-2.5 py-2.5 text-center disabled:cursor-default"
                           >
-                            {formatCompactTimeRange(block.startTime, block.endTime)}
-                          </div>
+                            <span className={`whitespace-nowrap text-[11px] font-semibold tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
+                              {formatCompactTimeRange(block.startTime, block.endTime)}
+                            </span>
+                            <span className="routine-card-title mt-1 min-w-0 text-[13px] font-semibold text-slate-800">{renderRoutineTitle(block.title)}</span>
+                            <MoreHorizontal aria-hidden="true" className="routine-card-more absolute right-2 top-2 h-3.5 w-3.5 text-slate-400" />
+                          </button>
 
-                          <div className="mt-1 pr-1 text-sm font-semibold text-slate-800">
-                            {renderRoutineTitle(block.title)}
-                          </div>
+                          <AnimatePresence initial={false}>
+                            {isOpen && (
+                              <motion.div
+                                id={`routine-details-${block.id}`}
+                                data-routine-details
+                                initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: shouldReduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+                                className="routine-card-details overflow-hidden"
+                              >
+                                <div className="routine-card-details-inner">
+                                  {details && (
+                                    <button type="button" lang="bn" className="planner-focus routine-card-chapter"
+                                      aria-label={`Open ${details.chapter.banglaName}`}
+                                      onClick={() => onOpenRoutineChapter(details.subject.id, details.chapter.id)}>
+                                      {details.chapter.banglaName}
+                                    </button>
+                                  )}
+                                  <div className="routine-card-actions">
+                                    <button type="button" onClick={startEditingRoutine} className="planner-focus routine-card-action">Edit</button>
+                                    <button type="button" onClick={deleteRoutineWithUndo} className="planner-focus routine-card-action routine-card-delete">Delete</button>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
 
-                          {editingRoutineId === block.id && (
+                          {isEditing && (
                             <div className="mt-1 flex justify-center">
                               <button
                                 type="button"
@@ -1892,11 +1916,11 @@ export default function StudyPlanner({
                             </div>
                           )}
 
-                        </div>
-                      ))
+                        </motion.div>;
+                      })
                     ) : (
-                      <div className="rounded-lg border border-dashed border-[#dce5f4] bg-[#f8faff] py-5 text-center text-[11px] text-slate-400">
-                        No routine blocks
+                      <div className="rounded-lg border border-dashed border-[#dce5f4] bg-[#f8faff] py-5 text-center text-xs text-slate-500">
+                        No sessions
                       </div>
                     )}
                   </div>
@@ -1905,9 +1929,9 @@ export default function StudyPlanner({
             })}
           </div>
           {/* Mobile selected-day routine */}
-          <div className="xl:hidden">
+          <div className="planner-selected-day">
             {(() => {
-              const selectedDay = getWeekDates().find(
+              const selectedDay = visibleWeek.find(
                 (day) => day.value === mobileRoutineDay
               );
 
@@ -1940,80 +1964,34 @@ export default function StudyPlanner({
 
                   {selectedDayBlocks.length > 0 ? (
                     <div className="space-y-3">
-                      {selectedDayBlocks.map((block) => (
-                        <div
-                          data-routine-card-id={block.id}
-                          key={block.id}
-                          role={editingRoutineId === block.id ? "group" : "button"}
-                          tabIndex={editingRoutineId === block.id ? -1 : 0}
-                          aria-haspopup={editingRoutineId === block.id ? undefined : "menu"}
-                          aria-controls={editingRoutineId === block.id ? undefined : "routine-actions-menu"}
-                          aria-expanded={editingRoutineId === block.id ? undefined : routineToDelete?.id === block.id}
-                          aria-label={
-                            editingRoutineId === block.id
-                              ? `${block.title} is being edited.`
-                              : `${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. Open routine actions.`
-                          }
-                          onClick={(event) => {
-                            if (editingRoutineId !== block.id) {
-                              openRoutineMenu(event.currentTarget, block);
-                            }
-                          }}
-                          onMouseEnter={(event) =>
-                            showRoutineChapterPreview(event.currentTarget, block)
-                          }
-                          onMouseLeave={scheduleRoutineChapterPreviewClose}
-                          onFocus={(event) =>
-                            showRoutineChapterPreview(event.currentTarget, block)
-                          }
-                          onBlur={scheduleRoutineChapterPreviewClose}
-                          onKeyDown={(event) => {
-                            if (
-                              editingRoutineId !== block.id &&
-                              event.target === event.currentTarget &&
-                              (event.key === "Enter" || event.key === " ")
-                            ) {
-                              event.preventDefault();
-                              openRoutineMenu(event.currentTarget, block);
-                            }
-                          }}
-                          className={`planner-focus cursor-pointer rounded-xl border p-3 text-center ${getRoutineBlockCardStyle(block)} ${
-                            editingRoutineId === block.id
-                              ? "routine-card-editing relative z-10 scale-[1.03] ring-2 ring-indigo-400 ring-offset-2"
-                              : ""
-                            }`}
-                        >
-                          <div
-                            className={`whitespace-nowrap text-[10px] font-medium tracking-tight tabular-nums ${getRoutineBlockTimeStyle(block)}`}
-                          >
-                            {formatCompactTimeRange(block.startTime, block.endTime)}
+                      {selectedDayBlocks.map((block) => {
+                        const editing = editingRoutineId === block.id;
+                        return (
+                          <div key={block.id} data-routine-card-id={block.id}
+                            role="group" tabIndex={-1}
+                            aria-label={editing ? `${block.title} is being edited.` : block.title}
+                            className={`planner-focus rounded-xl border p-3 text-center ${getRoutineBlockCardStyle(block)} ${editing ? "routine-card-editing ring-2 ring-indigo-300 ring-offset-2" : ""}`}>
+                            <button type="button" disabled={editing}
+                              aria-haspopup="dialog" aria-expanded={routineToDelete?.id === block.id}
+                              aria-label={`${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. Open details.`}
+                              onClick={(event) => openRoutineMenu(event.currentTarget.parentElement as HTMLDivElement, block)}
+                              className="planner-focus block w-full cursor-pointer rounded-lg p-1 disabled:cursor-default">
+                              <span className={`block whitespace-nowrap text-xs font-medium tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
+                                {formatCompactTimeRange(block.startTime, block.endTime)}
+                              </span>
+                              <span className="relative mt-1 block text-[13px] font-semibold text-slate-800">{renderRoutineTitle(block.title)}<MoreHorizontal aria-hidden="true" className="absolute right-0 top-0 h-3.5 w-3.5 text-slate-400" /></span>
+                            </button>
+                            {editing && <button type="button" onClick={() => {
+                              setEditingRoutineId(null);
+                              requestAnimationFrame(() => focusVisibleRoutineCard(block.id));
+                            }} className="planner-focus mt-2 rounded px-2 py-1 text-xs font-semibold text-rose-600 underline underline-offset-2">Cancel edit</button>}
                           </div>
-
-                          <div className="mt-1 text-sm font-semibold text-slate-800">
-                            {renderRoutineTitle(block.title)}
-                          </div>
-
-                          {editingRoutineId === block.id && (
-                            <div className="mt-1 flex justify-center">
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setEditingRoutineId(null);
-                                }}
-                                className="planner-focus text-[10px] font-bold text-rose-600 underline underline-offset-2 hover:text-rose-700"
-                              >
-                                Cancel edit
-                              </button>
-                            </div>
-                          )}
-
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-xs text-slate-400">
-                      No routine blocks for this day.
+                      No sessions for this day.
                     </div>
                   )}
                 </div>
@@ -2023,6 +2001,26 @@ export default function StudyPlanner({
 
         </div>
       </section>
+
+      {createPortal(
+        <AnimatePresence>
+          {deletedRoutine && (
+            <motion.div
+              role="status"
+              aria-live="polite"
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="routine-undo fixed bottom-5 left-1/2 z-[130] flex w-[min(360px,calc(100vw-32px))] -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl"
+            >
+              <span className="min-w-0 text-sm font-medium text-slate-700">Routine deleted.</span>
+              <button type="button" onClick={undoRoutineDelete} className="planner-focus shrink-0 rounded-lg px-2 py-1 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">Undo</button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
 

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import usePlannerPopup from "../hooks/usePlannerPopup";
 import { Clock } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { getVerticalFloatingPosition } from "../utils/floatingPosition";
@@ -105,12 +106,16 @@ export default function TimePicker({
     });
   }, []);
 
+  const claimPopup = usePlannerPopup(closePicker);
+
   const togglePicker = () => {
-    if (open) {
+    if (open && !isClosing) {
       closePicker();
       return;
     }
 
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    claimPopup();
     updateDropdownPosition();
     setIsClosing(false);
     setOpen(true);
@@ -155,7 +160,7 @@ export default function TimePicker({
         ?.querySelector<HTMLButtonElement>(
           '[data-time-option="hour"][aria-pressed="true"]'
         )
-        ?.focus();
+        ?.focus({ preventScroll: true });
     });
 
     return () => window.cancelAnimationFrame(frame);
@@ -177,11 +182,12 @@ export default function TimePicker({
       closeTimerRef.current = null;
     }
 
+    claimPopup();
     updateDropdownPosition();
     setIsClosing(false);
     setOpen(true);
     onOpenRequestHandled?.();
-  }, [onOpenRequestHandled, openRequest, updateDropdownPosition]);
+  }, [onOpenRequestHandled, openRequest, updateDropdownPosition, claimPopup]);
 
   const updateTime = (
     hour: number,
@@ -251,7 +257,7 @@ export default function TimePicker({
         aria-expanded={open}
         aria-controls={`time-picker-${pickerId}`}
         data-state={open ? "open" : "closed"}
-        className="planner-focus planner-selector flex h-11 w-full items-center rounded-xl border px-3 text-sm text-slate-800 focus:outline-none"
+        className="planner-time-trigger planner-focus planner-selector flex h-11 w-full items-center rounded-xl border px-3 text-sm text-slate-800 focus:outline-none"
       >
         {label && (
           <span className="font-semibold text-slate-600 shrink-0">
@@ -265,7 +271,7 @@ export default function TimePicker({
 
         <span className="mx-3 h-5 w-px bg-[#e2e8f0]" />
 
-        <span className="min-w-0 flex-1 text-left font-medium">
+        <span className="min-w-0 flex-1 whitespace-nowrap text-left font-medium">
           {formatTime12Hour(value)}
         </span>
       </button>
@@ -273,6 +279,9 @@ export default function TimePicker({
       {open && createPortal(
         <div
           ref={dropdownRef}
+          inert={isClosing}
+          data-planner-popup
+          data-placement={dropdownPosition.placement}
           id={`time-picker-${pickerId}`}
           role="dialog"
           aria-label={`Choose ${label?.toLowerCase() ?? "a"} time`}

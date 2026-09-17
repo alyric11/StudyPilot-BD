@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     UserProfile,
     StudentProgress,
@@ -6,9 +6,11 @@ import {
     AdditionalSubject,
     DiaryEntry,
     ChapterProgress,
-    RoutineBlock
+    RoutineBlock,
+    DailyRoutineTask
 } from "../types";
 import { NCTB_CURRICULUM } from "../data/curriculum";
+import { parseDailyRoutineTasks, setDailyRoutineCompletion } from "../utils/routineTasks";
 
 export default function useStudentData(
     showToast: (
@@ -21,6 +23,8 @@ export default function useStudentData(
         useState<StudentProgress>({});
     const [homeworks, setHomeworks] = useState<Homework[]>([]);
     const [routineBlocks, setRoutineBlocks] = useState<RoutineBlock[]>([]);
+    const [dailyRoutineTasks, setDailyRoutineTasks] = useState<DailyRoutineTask[]>([]);
+    const dailyRoutineTasksRef = useRef<DailyRoutineTask[]>([]);
     const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
     const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
     const [additionalSubjects, setAdditionalSubjects] = useState<AdditionalSubject[]>([]);
@@ -157,6 +161,15 @@ export default function useStudentData(
                 err
             );
             localStorage.removeItem("sp_routine");
+        }
+
+        // Dated sessions are stored separately from the recurring schedule.
+        try {
+            const records = parseDailyRoutineTasks(localStorage.getItem("sp_daily_routine_tasks"));
+            dailyRoutineTasksRef.current = records;
+            setDailyRoutineTasks(records);
+        } catch (err) {
+            console.error("Failed to load daily routine tasks:", err);
         }
 
         // Load study diary
@@ -377,6 +390,16 @@ export default function useStudentData(
         showToast("Routine block deleted.", "info");
     };
 
+    // Restore the exact saved block after an immediate Undo. Keeping its ID
+    // preserves its connection to recorded daily routine sessions.
+    const handleRestoreRoutineBlock = (block: RoutineBlock) => {
+        if (routineBlocks.some((item) => item.id === block.id)) return;
+        const updated = [...routineBlocks, block];
+        setRoutineBlocks(updated);
+        localStorage.setItem("sp_routine", JSON.stringify(updated));
+        showToast("Routine block restored.", "success");
+    };
+
     const handleUpdateRoutineBlock = (
         id: string,
         updatedBlock: Omit<RoutineBlock, "id">
@@ -388,6 +411,20 @@ export default function useStudentData(
         setRoutineBlocks(updated);
         localStorage.setItem("sp_routine", JSON.stringify(updated));
         showToast("Routine updated successfully!", "success");
+    };
+
+    const handleSetDailyRoutineCompletion = (task: DailyRoutineTask, completed: boolean) => {
+        const updated = setDailyRoutineCompletion(dailyRoutineTasksRef.current, task, completed);
+        try {
+            localStorage.setItem("sp_daily_routine_tasks", JSON.stringify(updated));
+            dailyRoutineTasksRef.current = updated;
+            setDailyRoutineTasks(updated);
+            return true;
+        } catch (err) {
+            console.error("Failed to save task completion:", err);
+            showToast("Could not save this task. Please try again.", "error");
+            return false;
+        }
     };
 
     const handleAddHomework = (
@@ -570,7 +607,6 @@ export default function useStudentData(
         const subject: AdditionalSubject = {
             id: `additional_subject_${Date.now()}`,
             name: trimmedName,
-            active: true,
             createdAt: new Date().toISOString()
         };
 
@@ -580,17 +616,6 @@ export default function useStudentData(
 
         showToast(`"${trimmedName}" added to Additional Subjects.`, "success");
         return true;
-    };
-
-    const toggleAdditionalSubject = (id: string) => {
-        const updated = additionalSubjects.map((subject) =>
-            subject.id === id
-                ? { ...subject, active: !subject.active }
-                : subject
-        );
-
-        setAdditionalSubjects(updated);
-        localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
     };
 
     const handleDeleteAdditionalSubject = (id: string) => {
@@ -609,6 +634,8 @@ export default function useStudentData(
         setStudentProgress({});
         setHomeworks([]);
         setRoutineBlocks([]);
+        dailyRoutineTasksRef.current = [];
+        setDailyRoutineTasks([]);
         setDiaryEntries([]);
         setSelectedSubjectIds([]);
         setAdditionalSubjects([]);
@@ -619,6 +646,7 @@ export default function useStudentData(
         studentProgress,
         homeworks,
         routineBlocks,
+        dailyRoutineTasks,
         diaryEntries,
         selectedSubjectIds,
         loaded,
@@ -628,7 +656,9 @@ export default function useStudentData(
 
         handleAddRoutineBlock,
         handleDeleteRoutineBlock,
+        handleRestoreRoutineBlock,
         handleUpdateRoutineBlock,
+        handleSetDailyRoutineCompletion,
 
         handleAddHomework,
         handleToggleHomework,
@@ -642,7 +672,6 @@ export default function useStudentData(
 
         additionalSubjects,
         handleAddAdditionalSubject,
-        toggleAdditionalSubject,
         handleDeleteAdditionalSubject,
 
         resetStudentData

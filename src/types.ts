@@ -41,7 +41,6 @@ export type StudentProgress = Record<string, SubjectProgressMap>;
 export interface AdditionalSubject {
   id: string;
   name: string;
-  active: boolean;
   createdAt: string;
 }
 
@@ -68,6 +67,23 @@ export interface RoutineBlock {
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
   color?: string;
+}
+
+// One dated study session, independent of the editable weekly routine.
+export interface DailyRoutineTask {
+  date: string; // Local YYYY-MM-DD (not UTC).
+  block: RoutineBlock;
+  subjectKey: string | null;
+  subjectName: string;
+  chapterBanglaName: string;
+  paletteColor: string;
+  completed: boolean;
+}
+
+export interface RoutineEditRequest {
+  routineId: string;
+  occurrenceDate: string;
+  requestId: string;
 }
 
 // Searchable diary, equation or study notebook entry
