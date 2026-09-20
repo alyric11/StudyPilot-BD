@@ -2,14 +2,14 @@
  * STUDYPILOT BD - Interactive Chapter Learning Hub
  * 
  * Purpose:
- * Renders the study canvas for any selected textbook chapter. It combines:
- * 1. Active AI Tutor Chat: Interactive chat box styled in Bangla/English (Banglish) to answer student doubts and explain concepts.
- * 2. Syllabus Checklists: An interactive checklist (textbooks, lectures, notes, CQs) to track active completion.
+ * Renders the study canvas for any selected textbook chapter.
+ * Includes the AI-generated chapter guide, progress tracking,
+ * video lessons, and recommended study resources.
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { ChapterOverviewData, ChapterProgress, UserProfile } from "../types";
-import { BookOpen, AlertTriangle, Play, CheckCircle, Send, Sparkles, Compass, FileText, ChevronRight, MessageSquare, ArrowLeft, ExternalLink, GraduationCap } from "lucide-react";
+import { BookOpen, CheckCircle, Sparkles, ArrowLeft } from "lucide-react";
 import { NCTB_CURRICULUM } from "../data/curriculum";
 import { STUDY_RESOURCES } from '../data/resources';
 
@@ -26,12 +26,6 @@ interface ChapterPageProps {
   onWatchVideoLessons: () => void;
 }
 
-interface ChatMessage {
-  sender: 'student' | 'ai';
-  text: string;
-  timestamp: string;
-}
-
 export default function ChapterPage({
   subjectId,
   subjectName,
@@ -44,7 +38,6 @@ export default function ChapterPage({
   onBack,
   onWatchVideoLessons,
 }: ChapterPageProps) {
-  const [activeTab, setActiveTab] = useState<'guide' | 'tutor'>('guide');
   const [guideData, setGuideData] = useState<ChapterOverviewData | null>(null);
   const [loadingGuide, setLoadingGuide] = useState(false);
   const [apiWarning, setApiWarning] = useState<string | null>(null);
@@ -60,24 +53,7 @@ export default function ChapterPage({
     return activeSubject?.chapters.find(c => c.id === chapterId || c.name === chapterName) || null;
   })();
 
-  // Chat States
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      sender: 'ai',
-      text: `Hi, ${profile.name}! I am your StudyPilot academic assistant for **${subjectName}: ${chapterBanglaName} (${chapterName})**. Ask me anything about this chapter, or click one of the quick study prompts below!`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ]);
-  const [userInput, setUserInput] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to bottom of chat
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Handle checklist checkbox toggling
+  // Generate the AI chapter overview
   const generateChapterGuide = async () => {
     setShowChapterOverview(true);
     setLoadingGuide(true);
@@ -117,117 +93,6 @@ export default function ChapterPage({
       [key]: !chapterProgress[key]
     };
     onUpdateProgress(updated);
-  };
-
-  // Quick Action Chat prompts
-  const triggerQuickPrompt = async (queryType: string, label: string) => {
-    const newMsg: ChatMessage = {
-      sender: 'student',
-      text: label,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setMessages((prev) => [...prev, newMsg]);
-    setSendingMessage(true);
-
-    try {
-      const res = await fetch("/api/tutor-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: label,
-          queryType,
-          subject: subjectName,
-          chapter: chapterName,
-          classLevel: profile.classLevel,
-          history: messages
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error(`Tutor request failed: ${res.status}`);
-      }
-
-      const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: data.text || "Lyritalk is temporarily unavailable. Please try again shortly.",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-
-    } catch (err) {
-      console.error(err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: "System offline. Here is a study tip: Make sure to read the NCTB textbook summary and formulate a mind map!",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
-  // Submit manual chat text
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userInput.trim() || sendingMessage) return;
-
-    const studentText = userInput;
-    setUserInput("");
-
-    const newMsg: ChatMessage = {
-      sender: 'student',
-      text: studentText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setMessages((prev) => [...prev, newMsg]);
-    setSendingMessage(true);
-
-    try {
-      const res = await fetch("/api/tutor-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: studentText,
-          subject: subjectName,
-          chapter: chapterName,
-          classLevel: profile.classLevel,
-          history: messages
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error(`Tutor request failed: ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: data.text || "Lyritalk is temporarily unavailable. Please try again shortly.",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-    } catch (err) {
-      console.error(err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: "My connection fluctuated. Let's continue talking! Could you repeat or ask another NCTB curriculum question?",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-    } finally {
-      setSendingMessage(false);
-    }
   };
 
   const percentProgress = () => {
@@ -324,35 +189,8 @@ export default function ChapterPage({
 
       </div>
 
-      {/* Primary Navigation Tabs */}
-      <div className="flex border border-slate-250 bg-slate-50 p-1 rounded-xl" id="chapter-tab-bar">
-        <button
-          onClick={() => setActiveTab('guide')}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === 'guide'
-            ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm"
-            : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
-            }`}
-        >
-          <Compass className="w-4 h-4 shrink-0" />
-          <span className="hidden sm:inline">Intelligent Chapter Guide</span>
-          <span className="inline sm:hidden">Chapter Guide</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('tutor')}
-          className={`flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === 'tutor'
-            ? "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-sm"
-            : "text-slate-500 hover:text-slate-800 hover:bg-slate-100/60"
-            }`}
-        >
-          <MessageSquare className="w-4 h-4 shrink-0" />
-          <span className="hidden sm:inline">AI Co-Pilot Tutor</span>
-          <span className="inline sm:hidden">AI Tutor</span>
-        </button>
-      </div>
-
-      {/* Tab: Intelligent Chapter Guide */}
-      {activeTab === 'guide' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Intelligent Chapter Guide */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
 
             {/* Intelligent Chapter Guide / Chapter Overview */}
@@ -424,90 +262,8 @@ export default function ChapterPage({
               </div>
             )}
 
-            {/* Study Plan */}
-            <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">
-                Study Plan
-              </h3>
 
-              <div className="space-y-4 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-                {[
-                  "Read NCTB textbook",
-                  "Watch video lectures",
-                  "Solve textbook exercises",
-                  "Solve board questions",
-                  "Test yourself"
-                ].map((step, idx) => (
-                  <button
-                    key={step}
-                    type="button"
-                    onClick={() => {
-                      if (idx === 1) {
-                        onWatchVideoLessons();
-                      }
-                    }}
-                    disabled={idx !== 1}
-                    className={`w-full flex items-center gap-4 relative text-left rounded-lg p-1 -m-1 ${idx === 1
-                      ? "cursor-pointer hover:bg-slate-50"
-                      : "cursor-default"
-                      } transition-colors`}
-                  >
-                    <div className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center text-xs font-bold shrink-0">
-                      {idx + 1}
-                    </div>
 
-                    <h4 className="text-xs font-bold text-slate-700">
-                      {step}
-                    </h4>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Recommended Resources */}
-            <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider mb-4">
-                Recommended Resources
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {STUDY_RESOURCES.map((resource) => (
-                  <a
-                    key={resource.name}
-                    href={resource.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-3.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white hover:border-indigo-200 transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
-                        {resource.logoUrl ? (
-                          <img
-                            src={resource.logoUrl}
-                            alt={`${resource.name} logo`}
-                            className="w-8 h-8 object-contain"
-                          />
-                        ) : (
-                          <BookOpen className="w-5 h-5 text-indigo-500" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
-                          {resource.name}
-                        </h4>
-
-                        <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">
-                          {resource.description}
-                        </p>
-                      </div>
-
-                      <ExternalLink className="w-4 h-4 text-slate-400 shrink-0 group-hover:text-indigo-500 transition-colors" />
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
 
           </div>
 
@@ -516,23 +272,22 @@ export default function ChapterPage({
             {/* Learning Checklist */}
             <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">Mastery Checklist</h3>
-                <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-lg border border-indigo-150">
-                  {percentProgress()}% Done
-                </span>
+                <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">Study Plan</h3>
+
               </div>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                Check off items as you complete them to update your subject dashboard progress.
-              </p>
+
               <div className="space-y-3">
                 {[
-                  { key: "readTextbook", label: "Read standard textbook" },
+                  { key: "readOverview", label: "Read overview here" },
+                  { key: "readTextbook", label: "Read textbook chapter" },
                   { key: "watchedLectures", label: "Watch lecture videos" },
-                  { key: "solvedExercises", label: "Solve end-of-chapter exercises" },
+                  { key: "solvedExercises", label: "Solve chapter exercises" },
                   { key: "solvedBoardQuestions", label: "Practice past board questions" },
                   { key: "madeNotes", label: "Create formula/concept notes" },
+                  { key: "timedExams", label: "Sit for timed exams" },
                   { key: "revisionCompleted", label: "Complete revision session" }
                 ].map((item) => (
+
                   <button
                     key={item.key}
                     onClick={() => handleChecklistToggle(item.key as keyof ChapterProgress)}
@@ -551,129 +306,80 @@ export default function ChapterPage({
               </div>
             </div>
 
-          </div>
-        </div>
-      )}
+            {/* Study Plan */}
+            <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={onWatchVideoLessons}
+                  className="w-full flex items-center gap-4 relative text-left rounded-lg p-1 -m-1 cursor-pointer hover:bg-slate-50 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                    <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden="true">
+                      <path fill="#FF0000" d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.6 4.6 12 4.6 12 4.6s-5.6 0-7.5.5a3 3 0 0 0-2.1 2.1A31 31 0 0 0 2 12a31 31 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.9.5 7.5.5 7.5.5s5.6 0 7.5-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 22 12a31 31 0 0 0-.4-4.8Z" />
+                      <path fill="white" d="m10 15.5 5-3.5-5-3.5v7Z" />
+                    </svg>
+                  </div>
 
-      {/* Tab: AI Co-Pilot Tutor Chat */}
-      {activeTab === 'tutor' && (
-        <div className="bg-white rounded-xl border border-slate-200/65 shadow-sm flex flex-col md:grid md:grid-cols-4 md:h-[600px] overflow-hidden" id="tutor-split-pane">
-          {/* Action Prompts Sidebar */}
-          <div className="p-4 border-b md:border-b-0 md:border-r border-slate-100 bg-slate-50/50 md:col-span-1 flex flex-col justify-between">
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                Quick Actions
-              </h3>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Click a directive to trigger a pre-mapped curriculum lesson or oral testing exercise.
-              </p>
-              <div className="space-y-2">
-                {[
-                  { type: "explain_bangla", label: "Explain in Bangla 🇧🇩", desc: "Get details in simple code-switched Bangla" },
-                  { type: "explain_12", label: "Explain Like I'm 12 🧒", desc: "Super friendly, simple analogies" },
-                  { type: "summarize", label: "Generate Summary 📝", desc: "Definitions & formulas sheet" },
-                  { type: "examples", label: "Show Formula Examples 🧮", desc: "Step-by-step solved numeric problems" },
-                  { type: "viva", label: "Take Oral Viva 🎤", desc: "Interactively test conceptual recall" }
-                ].map((action) => (
-                  <button
-                    key={action.type}
-                    onClick={() => triggerQuickPrompt(action.type, action.label)}
-                    disabled={sendingMessage}
-                    className="w-full p-2.5 text-left bg-white border border-slate-200 hover:border-indigo-300 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-800 transition-all flex flex-col gap-0.5 cursor-pointer disabled:opacity-50 hover:bg-indigo-50/20"
-                  >
-                    <span className="font-semibold text-indigo-700">{action.label}</span>
-                    <span className="text-[10px] text-slate-400">{action.desc}</span>
-                  </button>
-                ))}
+                  <h4 className="text-xs font-bold text-slate-700">
+                    Watch video lectures
+                  </h4>
+                </button>
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-slate-200 text-[10px] text-slate-400">
-              Co-Pilot stores context of active chapter milestones & parameters.
-            </div>
-          </div>
+            {/* Recommended Resources */}
+            <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider mb-4">
+                Recommended Resources
+              </h3>
 
-          {/* Chat Pane */}
-          <div className="md:col-span-3 flex flex-col min-h-0 h-[500px] md:h-full bg-white">
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full animate-pulse" />
-              <span className="text-xs font-bold text-slate-600">Active Study Session: NCTB Assistant</span>
-            </div>
+              <div className="grid grid-cols-1 gap-3">
+                {[...STUDY_RESOURCES]
+                  .sort(
+                    (a, b) =>
+                      ["NCTB", "10 Minute School", "Shikho", "Khan Academy"].indexOf(a.name) -
+                      ["NCTB", "10 Minute School", "Shikho", "Khan Academy"].indexOf(b.name)
+                  )
+                  .map((resource) => (
+                    <a
+                      key={resource.name}
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white hover:border-indigo-200 transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                          {resource.logoUrl ? (
+                            <img
+                              src={resource.logoUrl}
+                              alt={`${resource.name} logo`}
+                              className="w-7 h-7 object-contain"
+                            />
+                          ) : (
+                            <BookOpen className="w-4 h-4 text-indigo-500" />
+                          )}
+                        </div>
 
-            {/* Logs */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-              {messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${msg.sender === 'student'
-                    ? "bg-indigo-600 text-white rounded-br-none shadow-xs"
-                    : "bg-slate-50 text-slate-800 border border-slate-150 rounded-bl-none shadow-xs"
-                    }`}>
-                    {msg.sender === 'ai' ? (
-                      <div className="whitespace-pre-wrap leading-relaxed prose prose-sm text-slate-700">
-                        {/* Custom visual parsing of bullet highlights */}
-                        {msg.text.split("\n").map((line, lidx) => {
-                          if (line.startsWith("- ") || line.startsWith("* ")) {
-                            return <li key={lidx} className="ml-3 my-1 text-slate-700">{line.substring(2)}</li>;
-                          }
-                          if (line.startsWith("**") && line.endsWith("**")) {
-                            return <h4 key={lidx} className="font-bold text-indigo-800 mt-2 mb-1">{line.replace(/\*\*/g, "")}</h4>;
-                          }
-                          return <p key={lidx} className="my-1.5">{line}</p>;
-                        })}
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
+                            {resource.name}
+                          </h4>
+                          <p className="text-xs text-slate-500 leading-snug">
+                            {resource.description}
+                          </p>
+                        </div>
                       </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                    )}
-                    <span className={`block text-[10px] mt-2 ${msg.sender === 'student' ? 'text-indigo-100 text-right' : 'text-slate-400'
-                      }`}>
-                      {msg.timestamp}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {sendingMessage && (
-                <div className="flex justify-start">
-                  <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl rounded-bl-none text-xs text-slate-400 flex items-center gap-2">
-                    <span className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </span>
-                    AI Tutor is drafting academic feedback...
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+                    </a>
+                  ))}
+              </div>
             </div>
 
-            {/* Input Bar */}
-            <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-100 flex gap-2">
-              <input
-                type="text"
-                placeholder="Ask your tutor (e.g. explain chemical bonds in Bangla, or give formula review...)"
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                disabled={sendingMessage}
-                className="flex-1 px-4 py-2 bg-slate-50 text-slate-800 rounded-xl text-sm border border-slate-200 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                id="tutor-chat-input"
-              />
-              <button
-                type="submit"
-                disabled={!userInput.trim() || sendingMessage}
-                className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shrink-0 cursor-pointer disabled:opacity-50"
-                id="tutor-send-btn"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+
           </div>
         </div>
-      )}
+
     </div>
   );
 }

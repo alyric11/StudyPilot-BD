@@ -10,7 +10,11 @@ import {
     DailyRoutineTask
 } from "../types";
 import { NCTB_CURRICULUM } from "../data/curriculum";
-import { parseDailyRoutineTasks, setDailyRoutineCompletion } from "../utils/routineTasks";
+import {
+    parseDailyRoutineTasks,
+    setDailyRoutineCompletion,
+    snapshotDailyRoutineTasks,
+} from "../utils/routineTasks";
 
 export default function useStudentData(
     showToast: (
@@ -295,7 +299,7 @@ export default function useStudentData(
         if (classConfig) {
             const activeGroup =
                 newProfile.group &&
-                classConfig.subjects[newProfile.group]
+                    classConfig.subjects[newProfile.group]
                     ? newProfile.group
                     : "None";
 
@@ -413,16 +417,66 @@ export default function useStudentData(
         showToast("Routine updated successfully!", "success");
     };
 
-    const handleSetDailyRoutineCompletion = (task: DailyRoutineTask, completed: boolean) => {
-        const updated = setDailyRoutineCompletion(dailyRoutineTasksRef.current, task, completed);
+    const handleSetDailyRoutineCompletion = (
+        task: DailyRoutineTask,
+        completed: boolean
+    ) => {
+        const updated = setDailyRoutineCompletion(
+            dailyRoutineTasksRef.current,
+            task,
+            completed
+        );
+
         try {
-            localStorage.setItem("sp_daily_routine_tasks", JSON.stringify(updated));
+            localStorage.setItem(
+                "sp_daily_routine_tasks",
+                JSON.stringify(updated)
+            );
+
             dailyRoutineTasksRef.current = updated;
             setDailyRoutineTasks(updated);
+
             return true;
         } catch (err) {
             console.error("Failed to save task completion:", err);
-            showToast("Could not save this task. Please try again.", "error");
+
+            showToast(
+                "Could not save this task. Please try again.",
+                "error"
+            );
+
+            return false;
+        }
+    };
+
+    const handleSnapshotDailyRoutineTasks = (
+        tasks: DailyRoutineTask[]
+    ) => {
+        const updated = snapshotDailyRoutineTasks(
+            dailyRoutineTasksRef.current,
+            tasks
+        );
+
+        if (updated === dailyRoutineTasksRef.current) {
+            return true;
+        }
+
+        try {
+            localStorage.setItem(
+                "sp_daily_routine_tasks",
+                JSON.stringify(updated)
+            );
+
+            dailyRoutineTasksRef.current = updated;
+            setDailyRoutineTasks(updated);
+
+            return true;
+        } catch (err) {
+            console.error(
+                "Failed to save daily routine snapshot:",
+                err
+            );
+
             return false;
         }
     };
@@ -541,8 +595,8 @@ export default function useStudentData(
     const toggleSubjectSelection = (subjectId: string) => {
         const updated = selectedSubjectIds.includes(subjectId)
             ? selectedSubjectIds.filter(
-                  (id) => id !== subjectId
-              )
+                (id) => id !== subjectId
+            )
             : [...selectedSubjectIds, subjectId];
 
         setSelectedSubjectIds(updated);
@@ -562,15 +616,15 @@ export default function useStudentData(
 
         const updated = anySelected
             ? selectedSubjectIds.filter(
-                  (id) => !subjectIds.includes(id)
-              )
+                (id) => !subjectIds.includes(id)
+            )
             : [
-                  ...selectedSubjectIds,
-                  ...subjectIds.filter(
-                      (id) =>
-                          !selectedSubjectIds.includes(id)
-                  )
-              ];
+                ...selectedSubjectIds,
+                ...subjectIds.filter(
+                    (id) =>
+                        !selectedSubjectIds.includes(id)
+                )
+            ];
 
         setSelectedSubjectIds(updated);
 
@@ -659,6 +713,7 @@ export default function useStudentData(
         handleRestoreRoutineBlock,
         handleUpdateRoutineBlock,
         handleSetDailyRoutineCompletion,
+        handleSnapshotDailyRoutineTasks,
 
         handleAddHomework,
         handleToggleHomework,

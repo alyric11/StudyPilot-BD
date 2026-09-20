@@ -144,3 +144,60 @@ export const parseDailyRoutineTasks = (raw: string | null): DailyRoutineTask[] =
       [block.subjectId, block.chapterId, block.color].every((item) => item === undefined || typeof item === "string");
   });
 };
+
+export const getStudyLogTasks = (
+  date: string,
+  blocks: RoutineBlock[],
+  records: DailyRoutineTask[],
+  subjects: Subject[],
+  additionalSubjects: AdditionalSubject[],
+  todayKey = localDateKey(new Date())
+): DailyRoutineTask[] => {
+  // Today and future dates may use the current recurring routine.
+  if (date >= todayKey) {
+    return getDailyRoutineTasks(
+      date,
+      blocks,
+      records,
+      subjects,
+      additionalSubjects
+    );
+  }
+
+  // Past dates must come only from saved dated records.
+  // Never reconstruct history from the student's current routine.
+  return records
+    .filter((record) => record.date === date)
+    .sort(
+      (a, b) =>
+        a.block.startTime.localeCompare(b.block.startTime) ||
+        a.block.id.localeCompare(b.block.id)
+    );
+};
+
+export const snapshotDailyRoutineTasks = (
+  records: DailyRoutineTask[],
+  tasks: DailyRoutineTask[]
+): DailyRoutineTask[] => {
+  const savedKeys = new Set(
+    records.map(
+      (record) => `${record.date}:${record.block.id}`
+    )
+  );
+
+  const missingTasks = tasks
+    .filter(
+      (task) =>
+        !savedKeys.has(`${task.date}:${task.block.id}`)
+    )
+    .map((task) => ({
+      ...task,
+      block: { ...task.block },
+    }));
+
+  if (missingTasks.length === 0) {
+    return records;
+  }
+
+  return [...records, ...missingTasks];
+};

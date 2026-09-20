@@ -6,6 +6,18 @@ const CHECKLIST_KEYS = [
   "solvedBoardQuestions", "madeNotes", "revisionCompleted",
 ] as const satisfies readonly (keyof ChapterProgress)[];
 
+export function getChapterProgressPercentage(progress?: ChapterProgress) {
+  if (!progress) {
+    return 0;
+  }
+
+  const checked = CHECKLIST_KEYS.filter(
+    (key) => progress[key] === true
+  ).length;
+
+  return Math.round((checked / CHECKLIST_KEYS.length) * 100);
+}
+
 // Count current curriculum entries, including those without saved progress.
 // Old chapter records must not inflate the displayed percentage.
 export function getStudyProgress(subject: Subject, progress: Record<string, ChapterProgress> = {}) {

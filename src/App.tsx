@@ -16,6 +16,10 @@ import { NCTB_CURRICULUM } from "./data/curriculum";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import DashboardSubjectCard from "./components/DashboardSubjectCard";
 import { getStudyProgress } from "./utils/studyProgress";
+import {
+  getDailyRoutineTasks,
+  localDateKey,
+} from "./utils/routineTasks";
 import useDialogFocus from "./hooks/useDialogFocus";
 import VideoLessonsPage from "./components/VideoLessonsPage";
 
@@ -27,6 +31,7 @@ import TodaysTasks from "./components/TodaysTasks";
 import HomeworkManager from "./components/HomeworkManager";
 import StudyDiary from "./components/StudyDiary";
 import SubjectPaperPage from "./components/SubjectPaperPage";
+import AITutor from "./components/AITutor";
 
 // Vector Icons
 import {
@@ -137,6 +142,7 @@ export default function App() {
     routineBlocks,
     dailyRoutineTasks,
     handleSetDailyRoutineCompletion,
+    handleSnapshotDailyRoutineTasks,
     diaryEntries,
     selectedSubjectIds,
     loaded,
@@ -279,6 +285,30 @@ export default function App() {
   };
 
   const activeSubjects = getActiveSubjects();
+  useEffect(() => {
+    if (!loaded || !profile) {
+      return;
+    }
+
+    const today = localDateKey(new Date());
+
+    const todayTasks = getDailyRoutineTasks(
+      today,
+      routineBlocks,
+      dailyRoutineTasks,
+      activeSubjects,
+      additionalSubjects
+    );
+
+    handleSnapshotDailyRoutineTasks(todayTasks);
+  }, [
+    loaded,
+    profile,
+    routineBlocks,
+    dailyRoutineTasks,
+    additionalSubjects,
+    selectedSubjectIds,
+  ]);
 
   // Subjects available for the student to choose
   const getAvailableSelectableSubjects = () => {
@@ -536,7 +566,13 @@ export default function App() {
                     (sub) => sub.id === selectedSubjectPaper
                   )!
                 }
+                subjects={activeSubjects}
+                additionalSubjects={additionalSubjects}
+                routineBlocks={routineBlocks}
+                dailyRoutineTasks={dailyRoutineTasks}
                 mastery={subjectMasteries[selectedSubjectPaper] || 0}
+                chapterProgress={studentProgress[selectedSubjectPaper] || {}}
+                onSetRoutineCompletion={handleSetDailyRoutineCompletion}
                 onBack={() => setSelectedSubjectPaper(null)}
                 onSelectChapter={(chapter) =>
                   setSelectedChapter({
@@ -547,10 +583,11 @@ export default function App() {
                       )!.name,
                     chapterId: chapter.id,
                     chapterName: chapter.name,
-                    chapterBanglaName: chapter.banglaName
+                    chapterBanglaName: chapter.banglaName,
                   })
                 }
               />
+              
             ) : (
               <>
                 {/* Cockpit - Dashboard view */}
@@ -968,6 +1005,37 @@ export default function App() {
         <footer className="lg:ml-[260px] bg-white border-t border-slate-100 py-3 text-center text-[10px] text-slate-400 font-mono">
           StudyPilot BD • NCTB Core MVP • Ready for Action
         </footer>
+
+        {/* Global AI Tutor */}
+        <AITutor
+          profile={profile}
+          context={
+            selectedChapter
+              ? {
+                  page: showVideoLessons ? "Video Lessons" : "Chapter Guide",
+                  subjectName: selectedChapter.subjectName,
+                  chapterName: selectedChapter.chapterName,
+                  chapterBanglaName: selectedChapter.chapterBanglaName,
+                }
+              : selectedSubjectPaper
+                ? {
+                    page: "Subject Chapters",
+                    subjectName: activeSubjects.find(
+                      (subject) => subject.id === selectedSubjectPaper
+                    )?.name,
+                  }
+                : {
+                    page:
+                      activeSection === "dashboard"
+                        ? "Study Cockpit"
+                        : activeSection === "planner"
+                          ? "Daily Planner"
+                          : activeSection === "homework"
+                            ? "Homework Board"
+                            : "Personal Notebook",
+                  }
+          }
+        />
 
         {/* Toast Notification Container */}
         <div className="fixed bottom-4 right-4 z-50 pointer-events-none w-[calc(100%-2rem)] max-w-sm">
