@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import usePlannerPopup from "../hooks/usePlannerPopup";
 import { Clock } from "lucide-react";
-import { useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { getVerticalFloatingPosition } from "../utils/floatingPosition";
 import { formatTime12Hour } from "../utils/time";
 
@@ -277,8 +277,27 @@ export default function TimePicker({
       </button>
 
       {open && createPortal(
-        <div
+        <motion.div
           ref={dropdownRef}
+          initial={
+            shouldReduceMotion
+              ? false
+              : dropdownPosition.placement === "above"
+                ? { opacity: 0, clipPath: "inset(100% 0 0 0 round 12px)" }
+                : { opacity: 0, clipPath: "inset(0 0 100% 0 round 12px)" }
+          }
+          animate={
+            isClosing
+              ? dropdownPosition.placement === "above"
+                ? { opacity: 0, clipPath: "inset(100% 0 0 0 round 12px)" }
+                : { opacity: 0, clipPath: "inset(0 0 100% 0 round 12px)" }
+              : { opacity: 1, clipPath: "inset(0 0 0 0 round 12px)" }
+          }
+          transition={
+            isClosing
+              ? { duration: shouldReduceMotion ? 0 : 0.2, ease: [0.4, 0, 1, 1] }
+              : { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }
+          }
           inert={isClosing}
           data-planner-popup
           data-placement={dropdownPosition.placement}
@@ -300,14 +319,6 @@ export default function TimePicker({
           }}
           className={`routine-dropdown planner-selector-menu fixed z-[100] overflow-x-hidden overflow-y-auto rounded-xl border bg-white ${
             dropdownPosition.placement === "above" ? "routine-dropdown-above" : ""
-          } ${
-            isClosing
-              ? dropdownPosition.placement === "above"
-                ? "routine-dropdown-closing-up"
-                : "routine-dropdown-closing"
-              : dropdownPosition.placement === "above"
-                ? "routine-dropdown-opening-up"
-                : "routine-dropdown-opening"
           }`}
         >
           <div className="grid grid-cols-3 divide-x divide-[#edf1f7]">
@@ -401,7 +412,7 @@ export default function TimePicker({
             </div>
 
           </div>
-        </div>,
+        </motion.div>,
         document.body
       )}
     </div>

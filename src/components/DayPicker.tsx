@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import usePlannerPopup from "../hooks/usePlannerPopup";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { getVerticalFloatingPosition } from "../utils/floatingPosition";
 
 interface DayOption {
@@ -16,6 +16,7 @@ interface DayPickerProps {
   days: DayOption[];
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
+  openDaysRequest?: number;
 }
 
 const toDayStart = (date: Date) =>
@@ -41,7 +42,7 @@ const calendarDays = (month: Date) => {
 };
 
 export default function DayPicker({
-  value, onChange, days, selectedDate, onDateSelect,
+  value, onChange, days, selectedDate, onDateSelect, openDaysRequest,
 }: DayPickerProps) {
   const shouldReduceMotion = useReducedMotion();
   const pickerId = useId();
@@ -134,6 +135,12 @@ export default function DayPicker({
   };
 
   useEffect(() => {
+    if (!openDaysRequest) return;
+    togglePicker("days");
+  }, [openDaysRequest]);
+
+
+  useEffect(() => {
     if (!openMenu || isClosing) return;
     const frame = requestAnimationFrame(() => {
       const selected = dropdownRef.current?.querySelector<HTMLButtonElement>('[aria-selected="true"], [data-calendar-date][aria-pressed="true"]');
@@ -220,8 +227,27 @@ export default function DayPicker({
       </div>
 
       {openMenu && createPortal(
-        <div
+        <motion.div
           ref={dropdownRef}
+          initial={
+            shouldReduceMotion
+              ? false
+              : dropdownPosition.placement === "above"
+                ? { opacity: 0, clipPath: "inset(100% 0 0 0 round 12px)" }
+                : { opacity: 0, clipPath: "inset(0 0 100% 0 round 12px)" }
+          }
+          animate={
+            isClosing
+              ? dropdownPosition.placement === "above"
+                ? { opacity: 0, clipPath: "inset(100% 0 0 0 round 12px)" }
+                : { opacity: 0, clipPath: "inset(0 0 100% 0 round 12px)" }
+              : { opacity: 1, clipPath: "inset(0 0 0 0 round 12px)" }
+          }
+          transition={
+            isClosing
+              ? { duration: shouldReduceMotion ? 0 : 0.2, ease: [0.4, 0, 1, 1] }
+              : { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }
+          }
           inert={isClosing}
           data-planner-popup
           data-placement={dropdownPosition.placement}
@@ -247,10 +273,6 @@ export default function DayPicker({
           }}
           className={`routine-dropdown planner-selector-menu fixed z-[100] overflow-x-hidden overflow-y-auto rounded-xl border bg-white p-1.5 ${
             dropdownPosition.placement === "above" ? "routine-dropdown-above" : ""
-          } ${
-            isClosing
-              ? dropdownPosition.placement === "above" ? "routine-dropdown-closing-up" : "routine-dropdown-closing"
-              : dropdownPosition.placement === "above" ? "routine-dropdown-opening-up" : "routine-dropdown-opening"
           }`}
           style={{
             top: dropdownPosition.top,
@@ -302,7 +324,7 @@ export default function DayPicker({
               })}
             </div>
           )}
-        </div>,
+        </motion.div>,
         document.body
       )}
     </div>

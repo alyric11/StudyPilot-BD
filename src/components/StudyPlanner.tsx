@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import TimePicker from "./TimePicker";
 import DayPicker from "./DayPicker";
+import SubjectPicker, { SubjectPickerOption } from "./SubjectPicker";
 import usePlannerPopup from "../hooks/usePlannerPopup";
 import useDialogFocus from "../hooks/useDialogFocus";
 import { dateInViewedWeek, durationDescription, firstSixRowsHeight, popupOffset, routineDuration } from "../utils/plannerPresentation";
@@ -224,6 +225,9 @@ export default function StudyPlanner({
   const [routineStart, setRoutineStart] = useState("17:00");
   const [routineEnd, setRoutineEnd] = useState("18:00");
   const [endPickerOpenRequest, setEndPickerOpenRequest] = useState(0);
+  const [dayPickerOpenRequest, setDayPickerOpenRequest] = useState(0);
+  const [subjectPickerOpenRequest, setSubjectPickerOpenRequest] = useState(0);
+  const [startPickerOpenRequest, setStartPickerOpenRequest] = useState(0);
   const [routineError, setRoutineError] = useState<string | null>(null);
   const routineErrorRef = React.useRef<HTMLDivElement>(null);
   const routineMenuRef = React.useRef<HTMLDivElement>(null);
@@ -391,6 +395,7 @@ export default function StudyPlanner({
     // A recurring routine can be prepared for today or a future weekday.
     // A past date is only for viewing its week, so reset the form to today.
     setRoutineDay(String(isPastDate ? today.getDay() : date.getDay()));
+    setSubjectPickerOpenRequest((request) => request + 1);
 
     if (isPastDate) {
       window.requestAnimationFrame(() => {
@@ -654,6 +659,7 @@ export default function StudyPlanner({
       setRoutineDay(String(today.getDay()));
       setWeekAnchorDate(today);
       setMobileRoutineDay(today.getDay());
+      setDayPickerOpenRequest((request) => request + 1);
     }
 
     setShowRoutineForm(nextOpenState);
@@ -1177,6 +1183,45 @@ export default function StudyPlanner({
       .join("");
   };
 
+  const routineSubjectOptions: SubjectPickerOption[] = [
+    ...subjects.map((subject) => ({
+      key: `subject:${subject.id}`,
+      label: subject.name,
+    })),
+    ...safeAdditionalSubjects.map((subject) => ({
+      key: `additional:${subject.id}`,
+      label: subject.name,
+      secondaryLabel: "Additional subject",
+    })),
+  ];
+
+  const selectedRoutineSubjectKey = routineSubjectId
+    ? `subject:${routineSubjectId}`
+    : safeAdditionalSubjects.find(
+        (subject) => formatRoutineSubjectName(subject.name) === routineTitle
+      )
+      ? `additional:${
+          safeAdditionalSubjects.find(
+            (subject) => formatRoutineSubjectName(subject.name) === routineTitle
+          )!.id
+        }`
+      : "";
+
+  const handleRoutineSubjectSelect = (option: SubjectPickerOption) => {
+    const [kind, id] = option.key.split(":");
+
+    setRoutineTitle(formatRoutineSubjectName(option.label));
+    setRoutineChapterId(null);
+
+    if (kind === "subject") {
+      setRoutineSubjectId(id);
+    } else {
+      setRoutineSubjectId(null);
+    }
+
+    setStartPickerOpenRequest((request) => request + 1);
+  };
+
   const scrollRoutineCardIntoView = (routineId: string) => {
     window.setTimeout(() => {
       const routineCard = Array.from(
@@ -1538,37 +1583,22 @@ export default function StudyPlanner({
                   setRoutineDay(value);
                   setWeekAnchorDate(dateInViewedWeek(weekAnchorDate, Number(value)));
                   setMobileRoutineDay(Number(value));
+                  setSubjectPickerOpenRequest((request) => request + 1);
                 }}
                 days={DAYS}
                 selectedDate={weekAnchorDate}
                 onDateSelect={handleRoutineDateSelect}
+                openDaysRequest={dayPickerOpenRequest}
               />
 
-              {/* Activity */}
-              <div className="planner-activity-field flex min-w-0 h-11 items-center rounded-xl border border-slate-200 bg-white px-3">
-                <span className="text-sm font-semibold text-slate-600">
-                  Activity
-                </span>
-
-                <span className="mx-3 h-5 w-px bg-slate-200" />
-
-                <BookOpen className="h-4 w-4 shrink-0 text-purple-500" />
-
-                <span className="mx-3 h-5 w-px bg-slate-200" />
-
-                <input
-                  type="text"
-                  value={routineTitle}
-                  onChange={(e) => {
-                    setRoutineTitle(e.target.value);
-                    setRoutineSubjectId(null);
-                    setRoutineChapterId(null);
-                  }}
-                  placeholder="e.g. Chemistry"
-                  aria-label="Routine activity"
-                  className="planner-focus min-w-0 flex-1 rounded-sm bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
-                />
-              </div>
+              {/* Subject */}
+              <SubjectPicker
+                value={selectedRoutineSubjectKey}
+                options={routineSubjectOptions}
+                onChange={handleRoutineSubjectSelect}
+                openRequest={subjectPickerOpenRequest}
+                onOpenRequestHandled={() => setSubjectPickerOpenRequest(0)}
+              />
 
               {/* Start */}
               <TimePicker
@@ -1577,6 +1607,8 @@ export default function StudyPlanner({
                 label="Start"
                 onPeriodChange={handleStartPeriodChange}
                 closeOnPeriodChange
+                openRequest={startPickerOpenRequest}
+                onOpenRequestHandled={() => setStartPickerOpenRequest(0)}
               />
 
               {/* End */}
@@ -1637,66 +1669,7 @@ export default function StudyPlanner({
           )}
         </AnimatePresence>
 
-        {/* ------------------------------------------------------ */}
-      {/* Subjects & Chapters */}
-      {/* ------------------------------------------------------ */}
-
-      <section className="planner-subject-section">
-        <div className="planner-subject-panel">
-          <a href="#planner-week-board" onClick={(event) => { event.preventDefault(); routineBoardRef.current?.focus({ preventScroll: true }); routineBoardRef.current?.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth", block: "start" }); }} className="planner-jump-link">Go to weekly routine ↓</a>
-          <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
-            <div className="min-w-0">
-              <h2 className="text-base font-bold text-slate-800">
-                Active Subjects
-              </h2>
-              <p
-                className="mt-1 text-sm leading-relaxed text-slate-600"
-                role="status"
-                aria-live="polite"
-              >
-                {editingRoutineId ? (
-                  <>
-                    <span className="font-semibold text-indigo-600">Editing:</span>{" "}
-                    choose a subject and chapter. The saved day and time will not change.
-                  </>
-                ) : showRoutineForm ? (
-                  <>
-                    <span className="font-semibold text-slate-600">Adding:</span>{" "}
-                    choose a subject and chapter, or type an activity above.
-                  </>
-                ) : (
-                  <>
-                    Choose a subject and chapter to start a draft. To replace a chapter, use the routine card’s <span className="font-semibold">Edit</span> action.
-                  </>
-                )}
-              </p>
-            </div>
-
-            <span className="shrink-0 rounded-full border border-[#dce5f4] bg-[#f4f7fc] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-700">
-              {subjects.length + safeAdditionalSubjects.length} subjects
-            </span>
-          </div>
-
-          {subjects.length + safeAdditionalSubjects.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {subjects.map((subject, index) =>
-                renderSubjectCard(subject, index)
-              )}
-
-              {safeAdditionalSubjects.map((subject, index) =>
-                renderAdditionalSubjectCard(subject, index)
-              )}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 p-5 text-center text-xs text-slate-400">
-              No active subjects available.
-            </div>
-          )}
-
-        </div>
-      </section>
-
-      {createPortal(
+              {createPortal(
         <AnimatePresence>
           {routineToDelete && !isWideRoutineBoard && (() => {
             const details = getRoutineBlockChapter(routineToDelete);
