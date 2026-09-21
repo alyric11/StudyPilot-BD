@@ -62,8 +62,11 @@ export interface RoutineBlock {
   title: string;
   // Links a curriculum routine to its subject, so its theme never depends on the title text.
   subjectId?: string;
-  // Links a curriculum routine to its exact chapter for previews and chapter navigation.
+  // Links a curriculum routine to its exact chapter for previews, homework, and chapter navigation.
   chapterId?: string;
+  // Student-written homework instruction for this routine slot.
+  // Optional so existing saved routines continue to load unchanged.
+  homeworkText?: string;
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
   color?: string;

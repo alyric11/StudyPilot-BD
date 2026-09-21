@@ -80,7 +80,25 @@ export const getDailyRoutineTasks = (
   const dayOfWeek = dateFromKey(date).getDay();
   for (const block of blocks) {
     if (block.dayOfWeek === dayOfWeek && !tasks.has(block.id)) {
-      tasks.set(block.id, { date, block: { ...block }, ...describeRoutineTask(block, subjects, additionalSubjects), completed: false });
+      // Homework belongs to a specific calendar date, not to the recurring
+      // Mother Routine. Legacy chapter/homework fields on a weekly block are
+      // deliberately excluded when a new dated session is materialized.
+      const datedBlock: RoutineBlock = {
+        id: block.id,
+        dayOfWeek: block.dayOfWeek,
+        title: block.title,
+        subjectId: block.subjectId,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        color: block.color,
+      };
+
+      tasks.set(block.id, {
+        date,
+        block: datedBlock,
+        ...describeRoutineTask(datedBlock, subjects, additionalSubjects),
+        completed: false,
+      });
     }
   }
   return [...tasks.values()].sort((a, b) => a.block.startTime.localeCompare(b.block.startTime) || a.block.id.localeCompare(b.block.id));
@@ -141,7 +159,7 @@ export const parseDailyRoutineTasks = (raw: string | null): DailyRoutineTask[] =
       block && typeof block.id === "string" && typeof block.title === "string" &&
       Number.isInteger(block.dayOfWeek) && block.dayOfWeek >= 0 && block.dayOfWeek <= 6 &&
       [block.startTime, block.endTime].every((time) => typeof time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(time)) &&
-      [block.subjectId, block.chapterId, block.color].every((item) => item === undefined || typeof item === "string");
+      [block.subjectId, block.chapterId, block.color, block.homeworkText].every((item) => item === undefined || typeof item === "string");
   });
 };
 

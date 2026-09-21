@@ -14,7 +14,7 @@ import {
     parseDailyRoutineTasks,
     setDailyRoutineCompletion,
     snapshotDailyRoutineTasks,
-} from "../utils/routineTasks";
+} from "../utils/routineTasks.ts";
 
 export default function useStudentData(
     showToast: (
@@ -481,6 +481,51 @@ export default function useStudentData(
         }
     };
 
+    // Save or replace one date-specific routine task.
+    // This keeps homework attached to a single calendar date instead of
+    // changing the recurring weekly Mother Routine.
+    const handleSaveDatedRoutineTask = (
+        task: DailyRoutineTask
+    ) => {
+        const updated = [
+            ...dailyRoutineTasksRef.current.filter(
+                (record) =>
+                    !(
+                        record.date === task.date &&
+                        record.block.id === task.block.id
+                    )
+            ),
+            {
+                ...task,
+                block: { ...task.block }
+            }
+        ];
+
+        try {
+            localStorage.setItem(
+                "sp_daily_routine_tasks",
+                JSON.stringify(updated)
+            );
+
+            dailyRoutineTasksRef.current = updated;
+            setDailyRoutineTasks(updated);
+
+            return true;
+        } catch (err) {
+            console.error(
+                "Failed to save dated routine task:",
+                err
+            );
+
+            showToast(
+                "Could not save this homework. Please try again.",
+                "error"
+            );
+
+            return false;
+        }
+    };
+
     const handleAddHomework = (
         newHw: Omit<Homework, "id" | "completed">
     ) => {
@@ -714,6 +759,7 @@ export default function useStudentData(
         handleUpdateRoutineBlock,
         handleSetDailyRoutineCompletion,
         handleSnapshotDailyRoutineTasks,
+        handleSaveDatedRoutineTask,
 
         handleAddHomework,
         handleToggleHomework,

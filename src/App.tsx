@@ -19,7 +19,7 @@ import { getStudyProgress } from "./utils/studyProgress";
 import {
   getDailyRoutineTasks,
   localDateKey,
-} from "./utils/routineTasks";
+} from "./utils/routineTasks.ts";
 import useDialogFocus from "./hooks/useDialogFocus";
 import VideoLessonsPage from "./components/VideoLessonsPage";
 
@@ -143,6 +143,7 @@ export default function App() {
     dailyRoutineTasks,
     handleSetDailyRoutineCompletion,
     handleSnapshotDailyRoutineTasks,
+    handleSaveDatedRoutineTask,
     diaryEntries,
     selectedSubjectIds,
     loaded,
@@ -587,7 +588,7 @@ export default function App() {
                   })
                 }
               />
-              
+
             ) : (
               <>
                 {/* Cockpit - Dashboard view */}
@@ -950,6 +951,8 @@ export default function App() {
                     subjects={activeSubjects}
                     additionalSubjects={additionalSubjects}
                     routineBlocks={routineBlocks}
+                    dailyRoutineTasks={dailyRoutineTasks}
+                    onSaveDatedRoutineTask={handleSaveDatedRoutineTask}
                     onAddRoutineBlock={handleAddRoutineBlock}
                     onDeleteRoutineBlock={handleDeleteRoutineBlock}
                     onRestoreRoutineBlock={handleRestoreRoutineBlock}
@@ -1012,28 +1015,28 @@ export default function App() {
           context={
             selectedChapter
               ? {
-                  page: showVideoLessons ? "Video Lessons" : "Chapter Guide",
-                  subjectName: selectedChapter.subjectName,
-                  chapterName: selectedChapter.chapterName,
-                  chapterBanglaName: selectedChapter.chapterBanglaName,
-                }
+                page: showVideoLessons ? "Video Lessons" : "Chapter Guide",
+                subjectName: selectedChapter.subjectName,
+                chapterName: selectedChapter.chapterName,
+                chapterBanglaName: selectedChapter.chapterBanglaName,
+              }
               : selectedSubjectPaper
                 ? {
-                    page: "Subject Chapters",
-                    subjectName: activeSubjects.find(
-                      (subject) => subject.id === selectedSubjectPaper
-                    )?.name,
-                  }
+                  page: "Subject Chapters",
+                  subjectName: activeSubjects.find(
+                    (subject) => subject.id === selectedSubjectPaper
+                  )?.name,
+                }
                 : {
-                    page:
-                      activeSection === "dashboard"
-                        ? "Study Cockpit"
-                        : activeSection === "planner"
-                          ? "Daily Planner"
-                          : activeSection === "homework"
-                            ? "Homework Board"
-                            : "Personal Notebook",
-                  }
+                  page:
+                    activeSection === "dashboard"
+                      ? "Study Cockpit"
+                      : activeSection === "planner"
+                        ? "Daily Planner"
+                        : activeSection === "homework"
+                          ? "Homework Board"
+                          : "Personal Notebook",
+                }
           }
         />
 
