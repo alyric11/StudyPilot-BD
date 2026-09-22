@@ -14,7 +14,7 @@ import type {
 import {
     getStudyLogTasks,
     localDateKey,
-} from "../utils/routineTasks";
+} from "../utils/routineTasks.ts";
 import { formatTime12Hour } from "../utils/time";
 
 interface SubjectStudyLogProps {

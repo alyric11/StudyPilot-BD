@@ -4,7 +4,7 @@ import { CalendarDays, Check } from "lucide-react";
 import { getSubjectAccentColor, getSubjectCardStyles } from "../colorPalettes";
 import type { Subject } from "../data/curriculum";
 import type { AdditionalSubject, DailyRoutineTask, RoutineBlock } from "../types";
-import { findNextRoutineTask, getDailyRoutineTasks, localDateKey, resolveRoutineChapter } from "../utils/routineTasks";
+import { findNextRoutineTask, getDailyRoutineTasks, localDateKey, resolveRoutineChapter } from "../utils/routineTasks.ts";
 import { formatTime12Hour, formatTimeRange } from "../utils/time";
 
 interface TodaysTasksProps {

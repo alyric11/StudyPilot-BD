@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Subject } from "../data/curriculum";
 import type { DailyRoutineTask, RoutineBlock } from "../types";
-import { describeRoutineTask, findNextRoutineTask, getDailyRoutineTasks, localDateKey, parseDailyRoutineTasks, resolveRoutineChapter, setDailyRoutineCompletion } from "./routineTasks";
+import { describeRoutineTask, findNextRoutineTask, getDailyRoutineTasks, localDateKey, parseDailyRoutineTasks, resolveRoutineChapter, setDailyRoutineCompletion } from "./routineTasks.ts";
 
 const subjects: Subject[] = [1, 2].map((paper) => ({
   id: `physics${paper}`, name: `Physics ${paper === 1 ? "1st" : "2nd"} Paper`, banglaName: "পদার্থবিজ্ঞান", color: "cyan",
