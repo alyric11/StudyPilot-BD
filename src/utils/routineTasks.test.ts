@@ -23,7 +23,7 @@ test("legacy chapter labels and exact paper identity resolve without guessing", 
   assert.equal(resolveRoutineChapter({ ...source, subjectId: undefined, chapterId: undefined }, [...subjects, duplicate]), null);
 });
 
-test("completion survives reload and routine edits, and undo preserves today's original task", () => {
+test("completion survives reload and routine edits, and new sessions start without dated homework details", () => {
   const records = parseDailyRoutineTasks(JSON.stringify(setDailyRoutineCompletion([], task, true)));
   const edited = { ...source, chapterId: "p1c1", title: "Physics-1: Ch-1", startTime: "21:00" };
   const displayed = getDailyRoutineTasks(today, [edited], records, subjects, []);
@@ -36,7 +36,7 @@ test("completion survives reload and routine edits, and undo preserves today's o
   assert.equal(setDailyRoutineCompletion(undone, task, true).length, 1);
   const nextWeek = getDailyRoutineTasks("2026-09-23", [edited], records, subjects, []);
   assert.equal(nextWeek[0].completed, false);
-  assert.equal(nextWeek[0].block.chapterId, "p1c1");
+  assert.equal(nextWeek[0].block.chapterId, undefined);
 });
 
 test("deleting or moving a recurring block retains its recorded session only on the original date", () => {

@@ -12,6 +12,8 @@ import {
 
 import {
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Plus,
   X,
   BookOpen,
@@ -80,9 +82,6 @@ const DAYS = [
   { value: 4, label: "Thursday" },
   { value: 5, label: "Friday" }
 ];
-
-const getDetailedWindowStart = (dayIndex: number) =>
-  Math.min(Math.max(dayIndex - 2, 0), 2);
 
 const ROUTINE_COLORS = [
   "blue",
@@ -200,11 +199,11 @@ export default function StudyPlanner({
   const [mobileRoutineDay, setMobileRoutineDay] = useState(
     new Date().getDay()
   );
+  const [expandedRoutineDay, setExpandedRoutineDay] = useState<number | null>(
+    () => new Date().getDay()
+  );
+  const [weekMotionDirection, setWeekMotionDirection] = useState<"previous" | "next">("next");
   const [weekAnchorDate, setWeekAnchorDate] = useState(() => toDayStart(new Date()));
-  const [detailedWeekStartIndex, setDetailedWeekStartIndex] = useState(() => {
-    const todayIndex = DAYS.findIndex((day) => day.value === new Date().getDay());
-    return getDetailedWindowStart(todayIndex);
-  });
   const routineBoardRef = React.useRef<HTMLDivElement>(null);
   const dayTabsRef = React.useRef<HTMLDivElement>(null);
   const formHeadingRef = React.useRef<HTMLHeadingElement>(null);
@@ -236,13 +235,8 @@ export default function StudyPlanner({
   const [routineChapterId, setRoutineChapterId] = useState<string | null>(null);
   const [routineStart, setRoutineStart] = useState("17:00");
   const [routineEnd, setRoutineEnd] = useState("18:00");
-  const [endPickerOpenRequest, setEndPickerOpenRequest] = useState(0);
-  const [dayPickerOpenRequest, setDayPickerOpenRequest] = useState(0);
-  const [subjectPickerOpenRequest, setSubjectPickerOpenRequest] = useState(0);
-  const [startPickerOpenRequest, setStartPickerOpenRequest] = useState(0);
   const [routineError, setRoutineError] = useState<string | null>(null);
   const routineErrorRef = React.useRef<HTMLDivElement>(null);
-  const routineMenuRef = React.useRef<HTMLDivElement>(null);
   const [routineToDelete, setRoutineToDelete] =
     useState<RoutineBlock | null>(null);
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
@@ -251,19 +245,10 @@ export default function StudyPlanner({
   const [deletedRoutine, setDeletedRoutine] = useState<RoutineBlock | null>(null);
   const deletedRoutineTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const mobileRoutineSheetRef = React.useRef<HTMLDivElement>(null);
-  const [routineMenuPosition, setRoutineMenuPosition] = useState({
-    top: 0,
-    left: 0,
-    width: 72,
-    maxHeight: 72,
-    placement: "right" as FloatingPlacement,
-  });
-  const [isRoutineMenuClosing, setIsRoutineMenuClosing] = useState(false);
   const [routineChapterPreview, setRoutineChapterPreview] =
     useState<RoutineChapterPreview | null>(null);
   const routinePreviewCloseTimer = React.useRef<number | null>(null);
   const routinePreviewRef = React.useRef<HTMLButtonElement>(null);
-  const [showMotherRoutine, setShowMotherRoutine] = useState(true);
   const [homeworkEditorBlockId, setHomeworkEditorBlockId] = useState<string | null>(null);
   const [homeworkDateKey, setHomeworkDateKey] = useState<string | null>(null);
   const [routineMenuDateKey, setRoutineMenuDateKey] = useState<string | null>(null);
@@ -298,7 +283,7 @@ export default function StudyPlanner({
   useEffect(() => {
     const board = routineBoardRef.current;
     if (!board) return;
-    const updateWidth = () => setIsWideRoutineBoard(board.clientWidth >= 1170);
+    const updateWidth = () => setIsWideRoutineBoard(board.clientWidth >= 760);
     updateWidth();
     const observer = new ResizeObserver(updateWidth);
     observer.observe(board);
@@ -423,8 +408,6 @@ export default function StudyPlanner({
     // A recurring routine can be prepared for today or a future weekday.
     // A past date is only for viewing its week, so reset the form to today.
     setRoutineDay(String(isPastDate ? today.getDay() : date.getDay()));
-    setSubjectPickerOpenRequest((request) => request + 1);
-
     if (isPastDate) {
       window.requestAnimationFrame(() => {
         routineBoardRef.current?.scrollIntoView({
@@ -564,17 +547,12 @@ export default function StudyPlanner({
 
   const getDetailedRoutineInfo = (block: RoutineBlock) => {
     const details = getRoutineBlockChapter(block);
-    const subject = details?.subject ?? getRoutineBlockSubject(block);
-    const subjectLabel = subject
-      ? formatRoutineSubjectName(subject.name)
-      : getMotherRoutineTitle(block);
 
     return {
       details,
-      subjectLabel,
-      curriculumLabel: details
-        ? `${subjectLabel}: ${formatChapterNumber(details.chapter.chapterNumber)}`
-        : subjectLabel,
+      chapterLabel: details
+        ? formatChapterNumber(details.chapter.chapterNumber)
+        : null,
       homeworkText: block.homeworkText?.trim() || "",
     };
   };
@@ -720,25 +698,159 @@ export default function StudyPlanner({
 
   const getRoutineBlockTimeStyle = (_block: RoutineBlock) => "text-slate-600";
 
-  const toggleRoutineForm = () => {
-    const nextOpenState = !showRoutineForm;
+  const renderDatedRoutineCard = (block: RoutineBlock, date: Date) => {
+    const info = getDetailedRoutineInfo(getDatedRoutineBlock(block, date));
+    const isOpen = routineToDelete?.id === block.id;
+    const isEditing = editingRoutineId === block.id;
+    const draftChapter =
+      isEditing && homeworkEditorBlockId === block.id
+        ? getRoutineBlockSubject(block)?.chapters.find(
+            (chapter) => chapter.id === homeworkChapterId
+          )
+        : undefined;
+    const showInlineHomeworkDraft =
+      isEditing &&
+      homeworkEditorBlockId === block.id &&
+      !isHomeworkChapterPickerOpen &&
+      !!draftChapter;
+
+    return (
+      <motion.div
+        layout
+        data-routine-card-id={block.id}
+        key={block.id}
+        transition={{ layout: { duration: shouldReduceMotion ? 0 : 0.26, ease: [0.22, 1, 0.36, 1] } }}
+        className={`routine-card relative overflow-hidden rounded-lg border text-center shadow-sm ${getRoutineBlockCardStyle(block)} ${isEditing ? "routine-card-editing relative z-10 ring-2 ring-indigo-300 ring-offset-2" : ""}`}
+      >
+        <button
+          type="button"
+          disabled={isEditing}
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? `routine-details-${block.id}` : undefined}
+          aria-label={`${getMotherRoutineTitle(block)}, ${formatTimeRange(block.startTime, block.endTime)}. ${isOpen ? "Close actions" : "Open actions"}.`}
+          onClick={(event) =>
+            openRoutineMenu(
+              event.currentTarget.parentElement as HTMLDivElement,
+              block,
+              date
+            )
+          }
+          className="planner-focus routine-card-trigger relative flex w-full flex-col items-center justify-center px-2.5 py-2.5 text-center disabled:cursor-default"
+        >
+          <span className={`whitespace-nowrap text-xs font-semibold tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
+            {formatCompactTimeRange(block.startTime, block.endTime)}
+          </span>
+          <span className="routine-card-title mt-1 min-w-0 text-[13px] font-semibold text-slate-800">
+            {getMotherRoutineTitle(block)}
+          </span>
+          <MoreHorizontal aria-hidden="true" className="routine-card-more absolute right-2 top-2 h-3.5 w-3.5 text-slate-400" />
+        </button>
+
+        <div className="planner-card-details-copy border-t border-slate-200/70 px-3 pb-2.5 pt-2 text-center">
+          {info.chapterLabel && (
+            <div className="text-[13px] font-semibold text-slate-800">
+              {info.chapterLabel}
+            </div>
+          )}
+          {info.details ? (
+            <button
+              type="button"
+              lang="bn"
+              onClick={() => onOpenRoutineChapter(info.details!.subject.id, info.details!.chapter.id)}
+              className="planner-focus routine-card-chapter-link mt-0.5 w-full rounded-md py-0.5 text-center text-[13px] font-medium leading-snug text-indigo-700 underline decoration-indigo-200 underline-offset-2 hover:text-indigo-800"
+              aria-label={`Open ${info.details.chapter.banglaName}`}
+            >
+              {info.details.chapter.banglaName}
+            </button>
+          ) : (
+            <div className="text-xs font-medium text-slate-500">No homework assigned</div>
+          )}
+          {info.details && (
+            <div
+              lang="bn"
+              className={`mt-0.5 text-xs leading-snug ${info.homeworkText ? "text-slate-700" : "italic text-slate-500"}`}
+            >
+              {info.homeworkText || "No homework detail added"}
+            </div>
+          )}
+        </div>
+
+        <AnimatePresence initial={false}>
+          {isOpen && (
+            <motion.div
+              id={`routine-details-${block.id}`}
+              data-routine-details
+              initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="routine-card-details overflow-hidden"
+            >
+              <div className="routine-card-details-inner">
+                <div className="routine-card-actions">
+                  <button type="button" onClick={startEditingRoutine} className="planner-focus routine-card-action">Edit</button>
+                  <button type="button" onClick={deleteRoutineWithUndo} className="planner-focus routine-card-action routine-card-delete">Delete</button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {showInlineHomeworkDraft && draftChapter && (
+          <div className="border-t border-slate-200/70 px-3 pb-3 pt-2.5 text-left">
+            <div className="text-center text-xs font-semibold leading-snug text-slate-700">
+              {formatChapterNumber(draftChapter.chapterNumber)}: <span lang="bn">{draftChapter.banglaName}</span>
+            </div>
+            <textarea
+              data-homework-input-for={block.id}
+              value={homeworkDraft}
+              onChange={(event) => setHomeworkDraft(event.target.value)}
+              rows={2}
+              placeholder="Add homework details"
+              aria-label="Add homework details"
+              className="planner-focus mt-2 w-full resize-none rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs leading-relaxed text-slate-800 shadow-sm outline-none placeholder:text-slate-500"
+            />
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <button type="button" onClick={() => closeHomeworkEditor(true)} className="planner-focus rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button
+                type="button"
+                onClick={saveRoutineHomework}
+                disabled={!homeworkDraft.trim()}
+                className="planner-focus rounded-lg bg-indigo-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
+
+  const openRoutineFormForDate = (date: Date, shouldScroll = false) => {
     claimChapterPopup();
     setExpandedSubjectId(null);
     setRoutineChapterPreview(null);
-
     setRoutineError(null);
-    setEndPickerOpenRequest(0);
+    setEditingRoutineId(null);
 
-    if (nextOpenState) {
-      setEditingRoutineId(null);
-      const today = toDayStart(new Date());
-      setRoutineDay(String(today.getDay()));
-      setWeekAnchorDate(today);
-      setMobileRoutineDay(today.getDay());
-      setDayPickerOpenRequest((request) => request + 1);
+    const selectedDate = toDayStart(date);
+    setRoutineDay(String(selectedDate.getDay()));
+    setWeekAnchorDate(selectedDate);
+    setMobileRoutineDay(selectedDate.getDay());
+    setExpandedRoutineDay(selectedDate.getDay());
+    draftNeedsScroll.current = shouldScroll;
+    setShowRoutineForm(true);
+  };
+
+  const toggleRoutineForm = () => {
+    if (showRoutineForm) {
+      setRoutineError(null);
+      setShowRoutineForm(false);
+      return;
     }
 
-    setShowRoutineForm(nextOpenState);
+    openRoutineFormForDate(new Date());
   };
 
   const handleAddRoutine = () => {
@@ -747,7 +859,7 @@ export default function StudyPlanner({
     const title = routineTitle.trim();
 
     if (!title) {
-      setRoutineError("Enter an activity.");
+      setRoutineError("Choose a subject first.");
       return;
     }
 
@@ -829,7 +941,6 @@ export default function StudyPlanner({
     setRoutineTitle("");
     setRoutineSubjectId(null);
     setRoutineChapterId(null);
-    setEndPickerOpenRequest(0);
     setShowRoutineForm(false);
   };
 
@@ -1151,16 +1262,50 @@ export default function StudyPlanner({
       setRoutineTitle("");
       setRoutineSubjectId(null);
       setRoutineChapterId(null);
-      setEndPickerOpenRequest(0);
       setRoutineToDelete(null);
       setRoutineChapterPreview(null);
       setExpandedSubjectId(null);
       setMobileRoutineDay(block.dayOfWeek);
-      setEditingRoutineId(block.id);
-      setRoutineToFocus(block.id);
+      // The next-task action must reveal the editable recurring card, not the
+      // read-only expanded day details. The date-specific editor below still
+      // receives the requested future occurrence date.
+      setExpandedRoutineDay(null);
+      window.requestAnimationFrame(() => {
+        const card = Array.from(
+          document.querySelectorAll<HTMLElement>("[data-routine-card-id]")
+        ).find(
+          (element) =>
+            element.dataset.routineCardId === block.id &&
+            element.offsetParent !== null
+        );
+
+        card?.focus({ preventScroll: true });
+        card?.scrollIntoView({
+          behavior: shouldReduceMotion ? "auto" : "smooth",
+          block: "center",
+        });
+
+        // Wait for the single page scroll to settle before measuring the card
+        // and showing its editor. This prevents the popup from jumping away
+        // from its card during a dashboard-to-planner handoff.
+        window.setTimeout(() => {
+          const settledCard = Array.from(
+            document.querySelectorAll<HTMLElement>("[data-routine-card-id]")
+          ).find(
+            (element) =>
+              element.dataset.routineCardId === block.id &&
+              element.offsetParent !== null
+          );
+          openHomeworkEditor(
+            block,
+            settledCard ?? null,
+            editRoutineRequest.occurrenceDate
+          );
+        }, shouldReduceMotion ? 0 : 340);
+      });
     }
     onEditRequestHandled?.();
-  }, [editRoutineRequest, routineBlocks, onEditRequestHandled]);
+  }, [editRoutineRequest, routineBlocks, onEditRequestHandled, shouldReduceMotion]);
 
   useEffect(() => {
     if (!routineToFocus) return;
@@ -1206,25 +1351,25 @@ export default function StudyPlanner({
     }
   );
   const visibleWeek = getWeekDates(weekAnchorDate);
-  const detailedVisibleWeek = visibleWeek.slice(
-    detailedWeekStartIndex,
-    detailedWeekStartIndex + 5
+  const routineDurationMinutes = getRoutineDurationMinutes(
+    routineStart,
+    routineEnd
   );
-
-  useEffect(() => {
-    const today = toDayStart(new Date());
-    const todayIndex = visibleWeek.findIndex((day) =>
-      isSameCalendarDate(day.date, today)
-    );
-    const anchorIndex = visibleWeek.findIndex((day) =>
-      isSameCalendarDate(day.date, weekAnchorDate)
-    );
-    const focusIndex = todayIndex >= 0 ? todayIndex : Math.max(anchorIndex, 0);
-
-    setDetailedWeekStartIndex(getDetailedWindowStart(focusIndex));
-  }, [weekAnchorDate]);
-
-
+  const routineCanBeSaved =
+    routineTitle.trim().length > 0 && routineDurationMinutes >= 30;
+  const expandedRoutineDayIndex = visibleWeek.findIndex(
+    (day) => day.value === expandedRoutineDay
+  );
+  const weeklyGridTemplate =
+    expandedRoutineDayIndex === -1
+      ? visibleWeek.map(() => "minmax(120px, 1fr)").join(" ")
+      : visibleWeek
+          .map((_, index) =>
+            index === expandedRoutineDayIndex
+              ? "minmax(250px, 1.9fr)"
+              : "minmax(100px, 1fr)"
+          )
+          .join(" ");
   // ------------------------------------------------------------
   // Subjects & Chapters
   // ------------------------------------------------------------
@@ -1244,7 +1389,6 @@ export default function StudyPlanner({
     setRoutineChapterPreview(null);
     if (menuCloseTimer.current) clearTimeout(menuCloseTimer.current);
     setRoutineToDelete(null);
-    setIsRoutineMenuClosing(false);
   });
   const [chapterPopoverPosition, setChapterPopoverPosition] = useState({
     top: 0,
@@ -1518,7 +1662,6 @@ export default function StudyPlanner({
       setRoutineSubjectId(null);
     }
 
-    setStartPickerOpenRequest((request) => request + 1);
   };
 
   const scrollRoutineCardIntoView = (routineId: string) => {
@@ -1813,24 +1956,16 @@ export default function StudyPlanner({
 
             <div>
               <h2 className="text-xl font-display font-bold text-slate-800 tracking-tight">
-                Weekly Routine
+                Weekly study plan
               </h2>
 
               <p className="text-slate-600 text-sm leading-relaxed">
-                Repeats every week. Changing a chapter keeps its saved day and time.
+                First, add your weekly study times. Then select a day’s study card to set its chapter and homework.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowMotherRoutine((visible) => !visible)}
-              className="planner-focus planner-secondary min-h-10 rounded-xl px-3 text-sm font-semibold"
-              aria-pressed={showMotherRoutine}
-            >
-              {showMotherRoutine ? "Hide Mother Routine" : "Show Mother Routine"}
-            </button>
             <button
               ref={addButtonRef}
               type="button"
@@ -1840,7 +1975,7 @@ export default function StudyPlanner({
               className={`planner-focus planner-form-toggle ${showRoutineForm ? "planner-secondary" : "planner-primary"}`}
             >
               {showRoutineForm ? <X size={16} /> : <Plus size={16} />}
-              <span>{showRoutineForm ? "Close" : "Add Routine Block"}</span>
+              <span>{showRoutineForm ? "Close" : "Add study time"}</span>
             </button>
           </div>
         </div>
@@ -1860,9 +1995,9 @@ export default function StudyPlanner({
               animate={{ height: "auto", marginTop: 20, opacity: 1 }}
               exit={{ height: 0, marginTop: 0, opacity: 0 }}
               transition={{
-                height: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] },
-                marginTop: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] },
-                opacity: { duration: shouldReduceMotion ? 0 : 0.18, ease: "linear" },
+                height: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] },
+                marginTop: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] },
+                opacity: { duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] },
               }}
               className="overflow-hidden"
               onAnimationComplete={() => {
@@ -1883,7 +2018,7 @@ export default function StudyPlanner({
               >
                 <div className="flex items-center justify-between">
                   <h3 ref={formHeadingRef} tabIndex={-1} className="text-sm font-semibold text-slate-700 outline-none">
-                    Add an activity to your schedule
+                    Add a weekly study time
                   </h3>
                 </div>
 
@@ -1896,12 +2031,10 @@ export default function StudyPlanner({
                       setRoutineDay(value);
                       setWeekAnchorDate(dateInViewedWeek(weekAnchorDate, Number(value)));
                       setMobileRoutineDay(Number(value));
-                      setSubjectPickerOpenRequest((request) => request + 1);
                     }}
                     days={DAYS}
                     selectedDate={weekAnchorDate}
                     onDateSelect={handleRoutineDateSelect}
-                    openDaysRequest={dayPickerOpenRequest}
                   />
 
                   {/* Subject */}
@@ -1909,23 +2042,14 @@ export default function StudyPlanner({
                     value={selectedRoutineSubjectKey}
                     options={routineSubjectOptions}
                     onChange={handleRoutineSubjectSelect}
-                    openRequest={subjectPickerOpenRequest}
-                    onOpenRequestHandled={() => setSubjectPickerOpenRequest(0)}
                   />
 
                   {/* Start */}
                   <TimePicker
                     value={routineStart}
                     onChange={handleStartTimeChange}
-                    onPeriodChange={() => {
-                      window.setTimeout(() => {
-                        setEndPickerOpenRequest((request) => request + 1);
-                      }, 200);
-                    }}
                     label="Start"
                     closeOnPeriodChange
-                    openRequest={startPickerOpenRequest}
-                    onOpenRequestHandled={() => setStartPickerOpenRequest(0)}
                   />
 
                   {/* End */}
@@ -1933,13 +2057,11 @@ export default function StudyPlanner({
                     value={routineEnd}
                     onChange={setRoutineEnd}
                     label="End"
-                    openRequest={endPickerOpenRequest}
-                    onOpenRequestHandled={() => setEndPickerOpenRequest(0)}
                   />
                 </div>
 
                 <div className="planner-form-context" aria-live="polite">
-                  <span>Repeats every {getDayName(Number(routineDay))} · not a one-time booking</span>
+                  <span>Repeats every {getDayName(Number(routineDay))}</span>
                   <span>{durationDescription(routineStart, routineEnd)}</span>
                 </div>
 
@@ -1948,11 +2070,19 @@ export default function StudyPlanner({
                   <button
                     type="button"
                     onClick={handleAddRoutine}
-                    className="planner-focus planner-primary flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-colors md:w-auto"
+                    disabled={!routineCanBeSaved}
+                    aria-describedby={!routineCanBeSaved ? "routine-save-hint" : undefined}
+                    className="planner-focus planner-primary flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 md:w-auto"
                   >
                     <Plus className="w-4 h-4" />
-                    Add to Weekly Routine
+                    Save weekly study time
                   </button>
+
+                  {!routineCanBeSaved && !routineError && (
+                    <p id="routine-save-hint" className="pt-2 text-center text-xs text-slate-500 md:pt-0 md:text-left">
+                      Choose a subject and at least 30 minutes.
+                    </p>
+                  )}
 
                   <AnimatePresence initial={false}>
                     {routineError && (
@@ -2019,11 +2149,14 @@ export default function StudyPlanner({
                       <div className={`text-xs font-semibold tabular-nums ${getRoutineBlockTimeStyle(routineToDelete)}`}>{formatCompactTimeRange(routineToDelete.startTime, routineToDelete.endTime)}</div>
                       <div className="mt-1 text-base font-semibold text-slate-800">{getMotherRoutineTitle(routineToDelete)}</div>
                     </div>
+                    <p className="mt-3 text-center text-xs leading-relaxed text-slate-500">
+                      Details apply to this date. Removing the study time affects every week.
+                    </p>
                     <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
                       <button type="button" onClick={startEditingRoutine} className="planner-focus routine-sheet-action">Edit</button>
                       <button type="button" onClick={deleteRoutineWithUndo} className="planner-focus routine-sheet-action routine-card-delete">Delete</button>
                     </div>
-                    <button type="button" onClick={() => closeRoutineMenu()} className="planner-focus mt-3 w-full rounded-lg py-2 text-sm font-medium text-slate-500">Close</button>
+                    <button type="button" onClick={() => closeRoutineMenu()} className="planner-focus planner-sheet-close mt-3 w-full rounded-lg py-2 text-sm font-medium text-slate-500">Close</button>
                   </motion.div>
                 </motion.div>
               );
@@ -2045,10 +2178,10 @@ export default function StudyPlanner({
                   ref={homeworkEditorRef}
                   role="dialog"
                   aria-label={`Choose homework chapter for ${getMotherRoutineTitle(block)}`}
-                  initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 6, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.985 }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
                   className="planner-popup fixed z-[125] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
                   style={{
                     top: homeworkEditorPosition.top,
@@ -2125,15 +2258,56 @@ export default function StudyPlanner({
         )}
 
         {/* Weekly Routine Board */}
-        <div id="planner-week-board" ref={routineBoardRef} tabIndex={-1} className={`planner-board ${showMotherRoutine ? "" : "hidden"}`}>
+        <div id="planner-week-board" ref={routineBoardRef} tabIndex={-1} className="planner-board">
           <div className="planner-board-heading">
-            <div>
-              <h3 className="text-base font-semibold text-slate-800">Mother routine</h3>
-              <p className="text-xs leading-relaxed text-slate-600">Week of {visibleWeek[0].date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · set homework for each repeating study slot</p>
+            <p className="text-xs leading-relaxed text-slate-600">Open a day to see its chapter and homework.</p>
+            <div className="planner-week-controls flex items-center gap-1.5">
+              <button
+                type="button"
+                className="planner-focus planner-text-action"
+                onClick={() => {
+                  const today = toDayStart(new Date());
+                  setWeekAnchorDate(today);
+                  setMobileRoutineDay(today.getDay());
+                  setExpandedRoutineDay(today.getDay());
+                }}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                className="planner-focus planner-week-nav-button"
+                aria-label="Previous week"
+                onClick={() => {
+                  const previousWeek = new Date(weekAnchorDate);
+                  previousWeek.setDate(previousWeek.getDate() - 7);
+                  setWeekMotionDirection("previous");
+                  setWeekAnchorDate(previousWeek);
+                  setMobileRoutineDay(previousWeek.getDay());
+                  setExpandedRoutineDay(previousWeek.getDay());
+                }}
+              >
+                <ChevronLeft size={17} aria-hidden="true" />
+              </button>
+              <span aria-live="polite" className="whitespace-nowrap text-xs font-semibold text-slate-600">
+                {visibleWeek[0].date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}–{visibleWeek[6].date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+              <button
+                type="button"
+                className="planner-focus planner-week-nav-button"
+                aria-label="Next week"
+                onClick={() => {
+                  const nextWeek = new Date(weekAnchorDate);
+                  nextWeek.setDate(nextWeek.getDate() + 7);
+                  setWeekMotionDirection("next");
+                  setWeekAnchorDate(nextWeek);
+                  setMobileRoutineDay(nextWeek.getDay());
+                  setExpandedRoutineDay(nextWeek.getDay());
+                }}
+              >
+                <ChevronRight size={17} aria-hidden="true" />
+              </button>
             </div>
-            <button type="button" className="planner-focus planner-text-action" onClick={() => {
-              const today = toDayStart(new Date()); setWeekAnchorDate(today); setMobileRoutineDay(today.getDay());
-            }}>This week</button>
           </div>
 
           {/* Mobile day selector */}
@@ -2152,9 +2326,11 @@ export default function StudyPlanner({
                     month: "long",
                     day: "numeric",
                   })}${isToday ? ", today" : ""}`}
-                  className={`planner-focus min-w-20 shrink-0 snap-start rounded-lg border px-3 py-2 text-center transition ${isSelected
+                  className={`planner-focus planner-day-option min-w-20 shrink-0 snap-start rounded-lg border px-3 py-2 text-center transition ${isSelected
                     ? "border-indigo-500 bg-[#eef1ff] text-indigo-700"
-                    : "border-[#dce5f4] bg-[#fcfdfe] text-slate-600"
+                    : isToday
+                      ? "border-sky-200 bg-sky-50/70 text-slate-700"
+                      : "border-[#dce5f4] bg-[#fcfdfe] text-slate-600"
                     }`}
                 >
                   <div className="text-xs font-semibold">
@@ -2162,17 +2338,28 @@ export default function StudyPlanner({
                   </div>
 
                   <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
-                    {isToday ? "Today" : day.date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    {isToday ? (
+                      <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" aria-hidden="true" />Today</span>
+                    ) : day.date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
                   </div>
                 </button>
               );
             })}
           </div>
 
-          <div className="planner-week-grid">
+          <AnimatePresence initial={false} mode="popLayout">
+          <motion.div
+            key={localDateKey(visibleWeek[0].date)}
+            initial={shouldReduceMotion ? false : { opacity: 0, x: weekMotionDirection === "next" ? 12 : -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={shouldReduceMotion ? undefined : { opacity: 0, x: weekMotionDirection === "next" ? -8 : 8 }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="planner-week-grid"
+            style={{ gridTemplateColumns: weeklyGridTemplate }}
+          >
             {visibleWeek.map((day) => {
               const dayBlocks = routineBlocks
                 .filter((block) => block.dayOfWeek === day.value)
@@ -2183,38 +2370,68 @@ export default function StudyPlanner({
 
               const isToday = isSameCalendarDate(day.date, new Date());
               const isSelectedDate = isSameCalendarDate(day.date, weekAnchorDate);
+              const isExpanded = expandedRoutineDay === day.value;
 
               return (
-                <div
+                <motion.div
                   key={day.value}
+                  data-expanded={isExpanded}
                   className={`planner-day-column min-h-[180px] rounded-xl border p-2.5 text-center ${isSelectedDate
-                    ? "border-indigo-300 bg-[#f5f6ff]"
+                    ? "border-indigo-300 bg-[#eef2ff]"
                     : isToday
-                      ? "border-sky-300 bg-sky-50/60"
-                      : "border-[#dbe4f6] bg-[#f4f7fc]"
+                      ? "border-sky-200 bg-sky-50/60"
+                      : "border-slate-200 bg-[#fbfcfe]"
                     }`}
                 >
                   {/* Day header */}
-                  <div
-                    className={`mb-3 border-b pb-2 ${isSelectedDate ? "border-indigo-200" : isToday ? "border-sky-200" : "border-[#dce5f4]"
-                      }`}
+                  <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    aria-label={`${isExpanded ? "Collapse" : "Expand"} ${day.label}, ${day.date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`}
+                    onClick={() => {
+                      setExpandedRoutineDay(isExpanded ? null : day.value);
+                      setMobileRoutineDay(day.value);
+                      setWeekAnchorDate(day.date);
+                    }}
+                    className={`mb-3 border-b pb-2 ${isSelectedDate ? "border-indigo-200" : isToday ? "border-sky-100" : "border-slate-200"
+                      } planner-day-header`}
                   >
                     <div
-                      className={`text-sm font-bold ${isSelectedDate ? "text-indigo-700" : isToday ? "text-sky-700" : "text-slate-800"
+                      className={`text-sm font-semibold tracking-tight ${isSelectedDate ? "text-indigo-700" : isToday ? "text-sky-800" : "text-slate-800"
                         }`}
                     >
                       {day.label}
                     </div>
 
                     <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
-                      {isToday ? "Today" : day.date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      {isToday ? (
+                        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" aria-hidden="true" />Today</span>
+                      ) : day.date.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
                     </div>
 
-                  </div>
+                  </button>
                   {/* Routine blocks */}
+                  {isExpanded ? (
+                    <motion.div
+                      initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: shouldReduceMotion ? 0 : 0.22, delay: shouldReduceMotion ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}
+                      className="space-y-2"
+                    >
+                      {dayBlocks.length > 0 ? (
+                        dayBlocks.map((block) => renderDatedRoutineCard(block, day.date))
+                      ) : (
+                        <div className="planner-empty-day rounded-lg border border-dashed border-[#dce5f4] bg-[#f8faff] px-2 py-4 text-center">
+                          <CalendarDays className="mx-auto h-4 w-4 text-slate-400" aria-hidden="true" />
+                          <p className="mt-1.5 text-xs leading-relaxed text-slate-600">No study time planned for {day.label}.</p>
+                          <button type="button" onClick={() => openRoutineFormForDate(day.date, true)} className="planner-focus mt-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">Add study time</button>
+                        </div>
+                      )}
+                    </motion.div>
+                  ) : (
                   <div className="space-y-2">
                     {dayBlocks.length > 0 ? (
                       dayBlocks.map((block) => {
@@ -2250,7 +2467,7 @@ export default function StudyPlanner({
                             onClick={(event) => openRoutineMenu(event.currentTarget.parentElement as HTMLDivElement, block, day.date)}
                             className="planner-focus routine-card-trigger relative flex w-full flex-col items-center justify-center px-2.5 py-2.5 text-center disabled:cursor-default"
                           >
-                            <span className={`whitespace-nowrap text-[11px] font-semibold tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
+                            <span className={`whitespace-nowrap text-xs font-medium tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
                               {formatCompactTimeRange(block.startTime, block.endTime)}
                             </span>
                             <span className="routine-card-title mt-1 min-w-0 text-[13px] font-semibold text-slate-800">{getMotherRoutineTitle(block)}</span>
@@ -2289,9 +2506,9 @@ export default function StudyPlanner({
                                 value={homeworkDraft}
                                 onChange={(event) => setHomeworkDraft(event.target.value)}
                                 rows={2}
-                                placeholder="Set your Homework"
-                                aria-label="Set your homework"
-                                className="planner-focus mt-2 w-full resize-none rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs leading-relaxed text-slate-800 shadow-sm outline-none placeholder:text-indigo-500"
+                                placeholder="Add homework details"
+                                aria-label="Add homework details"
+                                className="planner-focus mt-2 w-full resize-none rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs leading-relaxed text-slate-800 shadow-sm outline-none placeholder:text-slate-500"
                               />
                               <div className="mt-2 grid grid-cols-2 gap-1.5">
                                 <button
@@ -2321,16 +2538,18 @@ export default function StudyPlanner({
                       </div>
                     )}
                   </div>
-                </div>
+                  )}
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
+          </AnimatePresence>
           {/* Mobile selected-day routine */}
           <div className="planner-selected-day">
             {(() => {
-              const selectedDay = visibleWeek.find(
-                (day) => day.value === mobileRoutineDay
-              );
+              const selectedDay =
+                visibleWeek.find((day) => day.value === mobileRoutineDay) ??
+                visibleWeek[0];
 
               const selectedDayBlocks = routineBlocks
                 .filter((block) => block.dayOfWeek === mobileRoutineDay)
@@ -2339,18 +2558,20 @@ export default function StudyPlanner({
                     timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
                 );
 
-              if (!selectedDay) {
-                return null;
-              }
-
               return (
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <motion.div
+                  key={localDateKey(selectedDay.date)}
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  className="rounded-xl border border-slate-200 bg-white p-4"
+                >
                   <div className="mb-4">
                     <div className="text-base font-semibold text-slate-800">
                       {selectedDay.label}
                     </div>
 
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-500">
                       {selectedDay.date.toLocaleDateString("en-US", {
                         weekday: "long",
                         month: "long",
@@ -2362,6 +2583,7 @@ export default function StudyPlanner({
                   {selectedDayBlocks.length > 0 ? (
                     <div className="space-y-3">
                       {selectedDayBlocks.map((block) => {
+                        const info = getDetailedRoutineInfo(getDatedRoutineBlock(block, selectedDay.date));
                         const editing = editingRoutineId === block.id;
                         const draftChapter =
                           editing && homeworkEditorBlockId === block.id
@@ -2378,7 +2600,7 @@ export default function StudyPlanner({
                           <div key={block.id} data-routine-card-id={block.id}
                             role="group" tabIndex={-1}
                             aria-label={editing ? `${block.title} is being edited.` : block.title}
-                            className={`planner-focus rounded-xl border p-3 text-center ${getRoutineBlockCardStyle(block)} ${editing ? "routine-card-editing ring-2 ring-indigo-300 ring-offset-2" : ""}`}>
+                            className={`planner-focus routine-card rounded-xl border p-3 text-center ${getRoutineBlockCardStyle(block)} ${editing ? "routine-card-editing ring-2 ring-indigo-300 ring-offset-2" : ""}`}>
                             <button type="button" disabled={editing}
                               aria-haspopup="dialog" aria-expanded={routineToDelete?.id === block.id}
                               aria-label={`${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. Open details.`}
@@ -2389,6 +2611,30 @@ export default function StudyPlanner({
                               </span>
                               <span className="relative mt-1 block text-[13px] font-semibold text-slate-800">{getMotherRoutineTitle(block)}<MoreHorizontal aria-hidden="true" className="absolute right-0 top-0 h-3.5 w-3.5 text-slate-400" /></span>
                             </button>
+                            <div className="planner-card-details-copy mt-2 border-t border-slate-200/70 pt-2 text-center">
+                              {info.chapterLabel && (
+                                <div className="text-sm font-semibold text-slate-800">
+                                  {info.chapterLabel}
+                                </div>
+                              )}
+                              {info.details ? (
+                                <button
+                                  type="button"
+                                  lang="bn"
+                                  onClick={() => onOpenRoutineChapter(info.details!.subject.id, info.details!.chapter.id)}
+                                  className="planner-focus routine-card-chapter-link mt-0.5 w-full rounded-lg py-0.5 text-center text-sm font-medium leading-snug text-indigo-700 underline decoration-indigo-200 underline-offset-2"
+                                >
+                                  {info.details.chapter.banglaName}
+                                </button>
+                              ) : (
+                                <div className="text-xs text-slate-500">No homework assigned</div>
+                              )}
+                              {info.details && (
+                                <div lang="bn" className={`mt-0.5 text-sm leading-snug ${info.homeworkText ? "text-slate-700" : "italic text-slate-500"}`}>
+                                  {info.homeworkText || "No homework detail added"}
+                                </div>
+                              )}
+                            </div>
                             {showInlineHomeworkDraft && draftChapter && (
                               <div className="mt-3 border-t border-slate-200/70 pt-3 text-left">
                                 <div className="text-center text-sm font-semibold leading-snug text-slate-700">
@@ -2400,9 +2646,9 @@ export default function StudyPlanner({
                                   value={homeworkDraft}
                                   onChange={(event) => setHomeworkDraft(event.target.value)}
                                   rows={2}
-                                  placeholder="Set your Homework"
-                                  aria-label="Set your homework"
-                                  className="planner-focus mt-2 w-full resize-none rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm leading-relaxed text-slate-800 shadow-sm outline-none placeholder:text-indigo-500"
+                                  placeholder="Add homework details"
+                                  aria-label="Add homework details"
+                                  className="planner-focus mt-2 w-full resize-none rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm leading-relaxed text-slate-800 shadow-sm outline-none placeholder:text-slate-500"
                                 />
                                 <div className="mt-2 grid grid-cols-2 gap-2">
                                   <button
@@ -2428,289 +2674,25 @@ export default function StudyPlanner({
                       })}
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-xs text-slate-400">
-                      No sessions for this day.
+                    <div className="planner-empty-day rounded-lg border border-dashed border-slate-200 px-4 py-7 text-center">
+                      <CalendarDays className="mx-auto h-5 w-5 text-slate-400" aria-hidden="true" />
+                      <p className="mt-2 text-sm text-slate-600">No study time planned for {selectedDay.label}.</p>
+                      <button
+                        type="button"
+                        onClick={() => openRoutineFormForDate(selectedDay.date, true)}
+                        className="planner-focus mt-3 rounded-lg px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
+                      >
+                        Add study time
+                      </button>
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })()}
           </div>
 
         </div>
 
-        {/* Weekly Routine Board - second copy */}
-        <div id="planner-week-board-secondary" tabIndex={-1} className="planner-board mt-6">
-          <div className="planner-board-heading">
-            <div>
-              <h3 className="text-base font-semibold text-slate-800">Detailed routine</h3>
-              <p className="text-xs leading-relaxed text-slate-600">Week of {visibleWeek[0].date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · homework details for each study slot</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-1 md:flex" aria-label="Detailed routine day window">
-                <button
-                  type="button"
-                  className="planner-focus flex h-8 w-8 items-center justify-center rounded-lg border border-[#dce5f4] bg-white text-lg font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
-                  onClick={() =>
-                    setDetailedWeekStartIndex((current) => Math.max(0, current - 1))
-                  }
-                  disabled={detailedWeekStartIndex === 0}
-                  aria-label="Show earlier days"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="planner-focus flex h-8 w-8 items-center justify-center rounded-lg border border-[#dce5f4] bg-white text-lg font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
-                  onClick={() =>
-                    setDetailedWeekStartIndex((current) => Math.min(2, current + 1))
-                  }
-                  disabled={detailedWeekStartIndex === 2}
-                  aria-label="Show later days"
-                >
-                  ›
-                </button>
-              </div>
-              <button type="button" className="planner-focus planner-text-action" onClick={() => {
-                const today = toDayStart(new Date());
-                const todayIndex = DAYS.findIndex((day) => day.value === today.getDay());
-                setWeekAnchorDate(today);
-                setMobileRoutineDay(today.getDay());
-                setDetailedWeekStartIndex(getDetailedWindowStart(todayIndex));
-              }}>This week</button>
-            </div>
-          </div>
-
-          {/* Mobile day selector */}
-          <div className="planner-day-tabs flex snap-x gap-2 overflow-x-auto pb-2">
-            {visibleWeek.map((day) => {
-              const isSelected = mobileRoutineDay === day.value;
-              const isToday = isSameCalendarDate(day.date, new Date());
-
-              return (
-                <button
-                  key={day.value}
-                  type="button"
-                  onClick={() => setMobileRoutineDay(day.value)}
-                  aria-pressed={isSelected}
-                  aria-label={`${day.label}, ${day.date.toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                  })}${isToday ? ", today" : ""}`}
-                  className={`planner-focus min-w-20 shrink-0 snap-start rounded-lg border px-3 py-2 text-center transition ${isSelected
-                    ? "border-indigo-500 bg-[#eef1ff] text-indigo-700"
-                    : "border-[#dce5f4] bg-[#fcfdfe] text-slate-600"
-                    }`}
-                >
-                  <div className="text-xs font-semibold">
-                    {day.label.slice(0, 3)}
-                  </div>
-
-                  <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
-                    {isToday ? "Today" : day.date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="planner-week-grid planner-detailed-week-grid">
-            {detailedVisibleWeek.map((day) => {
-              const dayBlocks = routineBlocks
-                .filter((block) => block.dayOfWeek === day.value)
-                .sort(
-                  (a, b) =>
-                    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-                );
-
-              const isToday = isSameCalendarDate(day.date, new Date());
-              const isSelectedDate = isSameCalendarDate(day.date, weekAnchorDate);
-
-              return (
-                <div
-                  key={day.value}
-                  className={`planner-day-column min-h-[180px] rounded-xl border p-2.5 text-center ${isSelectedDate
-                    ? "border-indigo-300 bg-[#f5f6ff]"
-                    : isToday
-                      ? "border-sky-300 bg-sky-50/60"
-                      : "border-[#dbe4f6] bg-[#f4f7fc]"
-                    }`}
-                >
-                  {/* Day header */}
-                  <div
-                    className={`mb-3 border-b pb-2 ${isSelectedDate ? "border-indigo-200" : isToday ? "border-sky-200" : "border-[#dce5f4]"
-                      }`}
-                  >
-                    <div
-                      className={`text-sm font-bold ${isSelectedDate ? "text-indigo-700" : isToday ? "text-sky-700" : "text-slate-800"
-                        }`}
-                    >
-                      {day.label}
-                    </div>
-
-                    <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
-                      {isToday ? "Today" : day.date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </div>
-
-                  </div>
-                  {/* Routine blocks */}
-                  <div className="space-y-2">
-                    {dayBlocks.length > 0 ? (
-                      dayBlocks.map((block) => {
-                        const info = getDetailedRoutineInfo(getDatedRoutineBlock(block, day.date));
-                        return (
-                          <motion.div
-                            layout
-                            key={block.id}
-                            transition={{ layout: { duration: shouldReduceMotion ? 0 : 0.26, ease: [0.22, 1, 0.36, 1] } }}
-                            className={`rounded-lg border px-2.5 py-3 text-center shadow-sm ${getRoutineBlockCardStyle(block)}`}
-                          >
-                            <div className={`whitespace-nowrap text-[11px] font-semibold tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
-                              {formatCompactTimeRange(block.startTime, block.endTime)}
-                            </div>
-                            <div className="mt-1 text-[13px] font-semibold text-slate-800">
-                              {info.curriculumLabel}
-                            </div>
-                            {info.details ? (
-                              <button
-                                type="button"
-                                lang="bn"
-                                onClick={() =>
-                                  onOpenRoutineChapter(
-                                    info.details!.subject.id,
-                                    info.details!.chapter.id
-                                  )
-                                }
-                                className="planner-focus mt-1 w-full rounded-md px-1 py-1 text-[13px] font-semibold text-indigo-700 underline decoration-indigo-200 underline-offset-2 hover:text-indigo-800"
-                                aria-label={`Open ${info.details.chapter.banglaName}`}
-                              >
-                                {info.details.chapter.banglaName}
-                              </button>
-                            ) : (
-                              <div className="mt-1 text-xs text-slate-500">No homework assigned</div>
-                            )}
-                            {info.details && (
-                              <div
-                                lang="bn"
-                                className={`mt-1 text-xs leading-relaxed ${
-                                  info.homeworkText ? "text-slate-700" : "italic text-slate-400"
-                                }`}
-                              >
-                                {info.homeworkText || "No homework detail added"}
-                              </div>
-                            )}
-                          </motion.div>
-                        );
-                      })
-                    ) : (
-                      <div className="rounded-lg border border-dashed border-[#dce5f4] bg-[#f8faff] py-5 text-center text-xs text-slate-500">
-                        No sessions
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {/* Mobile selected-day routine */}
-          <div className="planner-selected-day">
-            {(() => {
-              const selectedDay = visibleWeek.find(
-                (day) => day.value === mobileRoutineDay
-              );
-
-              const selectedDayBlocks = routineBlocks
-                .filter((block) => block.dayOfWeek === mobileRoutineDay)
-                .sort(
-                  (a, b) =>
-                    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-                );
-
-              if (!selectedDay) {
-                return null;
-              }
-
-              return (
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="mb-4">
-                    <div className="text-base font-semibold text-slate-800">
-                      {selectedDay.label}
-                    </div>
-
-                    <div className="text-xs text-slate-400">
-                      {selectedDay.date.toLocaleDateString("en-US", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </div>
-                  </div>
-
-                  {selectedDayBlocks.length > 0 ? (
-                    <div className="space-y-3">
-                      {selectedDayBlocks.map((block) => {
-                        const info = getDetailedRoutineInfo(getDatedRoutineBlock(block, selectedDay.date));
-                        return (
-                          <div
-                            key={block.id}
-                            role="group"
-                            aria-label={`${info.curriculumLabel}, ${formatTimeRange(block.startTime, block.endTime)}`}
-                            className={`rounded-xl border p-3 text-center ${getRoutineBlockCardStyle(block)}`}
-                          >
-                            <div className={`whitespace-nowrap text-xs font-medium tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
-                              {formatCompactTimeRange(block.startTime, block.endTime)}
-                            </div>
-                            <div className="mt-1 text-sm font-semibold text-slate-800">
-                              {info.curriculumLabel}
-                            </div>
-                            {info.details ? (
-                              <button
-                                type="button"
-                                lang="bn"
-                                onClick={() =>
-                                  onOpenRoutineChapter(
-                                    info.details!.subject.id,
-                                    info.details!.chapter.id
-                                  )
-                                }
-                                className="planner-focus mt-2 w-full rounded-lg px-2 py-1.5 text-sm font-semibold text-indigo-700 underline decoration-indigo-200 underline-offset-2"
-                              >
-                                {info.details.chapter.banglaName}
-                              </button>
-                            ) : (
-                              <div className="mt-2 text-xs text-slate-500">No homework assigned</div>
-                            )}
-                            {info.details && (
-                              <div
-                                lang="bn"
-                                className={`mt-1.5 text-sm leading-relaxed ${
-                                  info.homeworkText ? "text-slate-700" : "italic text-slate-400"
-                                }`}
-                              >
-                                {info.homeworkText || "No homework detail added"}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-xs text-slate-400">
-                      No sessions for this day.
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-
-        </div>
       </section>
 
       {createPortal(

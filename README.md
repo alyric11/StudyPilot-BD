@@ -26,6 +26,7 @@ Many students in Bangladesh struggle to structure their daily self-study routine
 * **Intelligent Daily Study Planner**: Distributes available study time (e.g., 2 hours) into tailored focus sessions with realistic timelines and an amber motivation quote.
 * **Homework Log Board**: Organizer to record school assignments, priorities (High, Medium, Low), deadlines, focus chapters, and teachers' notes.
 * **Searchable Study Notebook & Formula Diary**: Searchable notebook to log formulas, vocabulary definitions, conceptual notes, and reflections.
+* **In-App Video Lessons**: Searches and presents relevant YouTube lessons from the selected chapter without leaving the study flow.
 
 ---
 
@@ -51,7 +52,6 @@ This project is built using a modern **Full-Stack JavaScript/TypeScript** Single
 ```text
 ├── .env.example              # Sample configuration for environment keys.
 ├── .gitignore                # Lists files/folders ignored by git (like node_modules/).
-├── assets/                   # Static media, icons, and illustrations.
 ├── index.html                # HTML mount point where React injects components.
 ├── metadata.json             # Applet metadata (name, permissions, capabilities).
 ├── package.json              # List of dependencies (libraries) and shell scripts.
@@ -65,12 +65,15 @@ This project is built using a modern **Full-Stack JavaScript/TypeScript** Single
 │   ├── types.ts              # Global TypeScript interfaces.
 │   ├── data/                 # Static datasets.
 │   │   └── curriculum.ts     # Reference NCTB syllabus mapping for Classes IX-XII.
+│   ├── hooks/                # Reusable state and accessibility hooks.
+│   ├── utils/                # Pure study-progress and routine helpers with tests.
 │   └── components/           # Reusable user-interface components:
 │       ├── ProfileSetup.tsx       # Onboarding form to capture student properties.
 │       ├── ChapterPage.tsx        # Chapter learning center, guide tracker, and chat tutor.
 │       ├── StudyPlanner.tsx       # Daily hours-based study routine generator.
 │       ├── HomeworkManager.tsx    # Daily homework and priority task log.
-│       └── StudyDiary.tsx         # Searchable study diary, formula sheet, and vocabulary notebook.
+│       ├── StudyDiary.tsx         # Searchable study diary, formula sheet, and vocabulary notebook.
+│       └── VideoLessonsPage.tsx   # Chapter-specific YouTube lesson browser.
 ```
 
 ---
@@ -163,13 +166,13 @@ Here is how data passes between the frontend, backend, and the Gemini AI API:
 
 In React, **State** represents any information that can change over time and affects how components look. This application uses simple, straightforward React Hooks:
 
-1. **State Lifting**: Since multiple tabs need to share and sync the same data (for example, the Dashboard needs to read chapter checklist percentages), all core states are defined at the very top inside `/src/App.tsx`:
+1. **Shared State Hook**: Since multiple tabs need to share and sync the same data (for example, the Dashboard needs to read chapter checklist percentages), the persistent student data is managed by `/src/hooks/useStudentData.ts` and used by `/src/App.tsx`:
    * `profile`: holds student onboarding details.
    * `studentProgress`: holds checklist completions.
    * `homeworks`: holds logged assignments.
    * `diaryEntries`: holds formulas and logs.
 2. **Props**: These states are passed down as **Props** (properties) to components (e.g. `<StudyDiary entries={diaryEntries} onAddEntry={handleAddEntry} ... />`).
-3. **Browser LocalStorage**: To ensure offline-first safety, any handler (like `handleToggleHomework`) updates the React state to change the UI instantly, and converts the data into a JSON string to back up in `localStorage` in one atomic flow:
+3. **Browser LocalStorage**: To ensure offline-first safety, each data handler updates the React state to change the UI instantly and backs the change up in `localStorage`:
    ```typescript
    localStorage.setItem("sp_homeworks", JSON.stringify(updatedHomeworks));
    ```
@@ -195,14 +198,13 @@ Run the following command to download all dependencies into the `node_modules` f
 npm install
 ```
 
-### Step 4: Add Gemini API Key (Optional but Recommended)
-1. Get a free API key from Google AI Studio: [https://aistudio.google.com/](https://aistudio.google.com/).
-2. Create a file named `.env` in the project root directory.
-3. Write your key inside:
+### Step 4: Configure optional API keys
+1. Copy `.env.example` to a new `.env` file in the project root.
+2. Add a Gemini API key from [Google AI Studio](https://aistudio.google.com/) to enable AI study features:
    ```env
    GEMINI_API_KEY="AIzaSyYourActualAPIKeyHere"
    ```
-*If you skip this step, don't worry! The application detects when a key is missing and automatically loads offline mock responses, allowing you to fully test every feature of the app without any API fees.*
+3. Optionally add `YOUTUBE_API_KEY` to enable live video-lesson search. Without it, the study planner and all non-AI features remain usable; Gemini features use offline fallback responses when no Gemini key is configured.
 
 ### Step 5: Start the Server
 Run the development command:
@@ -211,36 +213,21 @@ npm run dev
 ```
 Open your web browser and go to: **`http://localhost:3000`**
 
+### Step 6: Validate changes
+Run the checks before committing code changes:
+```cmd
+npm run lint
+npm test
+npm run build
+```
+
 ---
 
-## 🧭 Developer Roadmap (For You to Build!)
+## 🧭 Future Enhancements
 
-Now that the codebase is simplified and robust, here is your personal roadmap of features you can implement next using your knowledge of React, JavaScript, HTML, and SQL!
-
-### 🗺️ Feature 1: Build the Interactive Quiz Section
-**Goal**: Add a tab where students can generate and answer Multiple Choice Questions (MCQs), practice Creative Questions (CQs), and write short answers using Gemini.
-* **Where to code**:
-  1. Create a file called `/src/components/QuizSection.tsx`.
-  2. Implement a selection form for Subject and Chapter.
-  3. When clicking "Generate Quiz", make a fetch POST request to the existing server route `/api/generate-quiz` (which is already configured in `/server.ts`!).
-  4. Parse the returned question array, show MCQs with interactive buttons, and check if the student picked the correct answer.
-  5. In `/src/App.tsx`, import your new `QuizSection` component, add a `"quiz"` tab in the sidebar navigation, and render it when selected!
-
-### 🗺️ Feature 2: Connect to a Real NoSQL Cloud Database (Firebase Firestore)
-**Goal**: Sync study progress, diary entries, and profiles to Google Firestore so students can log in from other devices without losing their data.
-* **Where to code**:
-  1. Read the provided **firebase-integration** skill (`/skills/system_skills/firebase-skill/SKILL.md`) to understand firestore schemas and security rules.
-  2. Run `set_up_firebase` in the AI Studio UI to provision your database.
-  3. Modify `/src/App.tsx`: Replace the `localStorage` loading and saving logic inside `useEffect` with Firebase Firestore `setDoc()` and `getDoc()` calls using the standard Firebase Web SDK.
-  4. Ensure you check for authenticated user sessions using Firebase Authentication!
-
-### 🗺️ Feature 3: Embed Video Lectures Directly on the Chapter Page
-**Goal**: Allow students to watch animated textbook videos (from YouTube) inside the app instead of clicking external links.
-* **Where to code**:
-  1. Open `/src/components/ChapterPage.tsx`.
-  2. Find where `guideData.recommendedResources` is mapped (around line 380).
-  3. Replace the plain `<a>` tags for video links with a responsive HTML `<iframe>` container pointing to YouTube embed codes (e.g., `https://www.youtube.com/embed/VIDEO_ID`), styled with Tailwind.
-  4. This allows the video to play cleanly in-app without navigating away!
+* Add a learner-facing quiz screen that uses the existing `/api/generate-quiz` endpoint.
+* Add authenticated cloud sync only after defining the data model, privacy policy, and database security rules.
+* Add focused component tests alongside new utility logic, then keep `npm test` in the pre-commit routine.
 
 ---
 

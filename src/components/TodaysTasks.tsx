@@ -78,7 +78,22 @@ export default function TodaysTasks({
     };
   }, [prompt]);
 
-  const tasks = getDailyRoutineTasks(today, routineBlocks, records, subjects, additionalSubjects);
+  const [year, month, day] = today.split("-").map(Number);
+  const todayDayOfWeek = new Date(year, month - 1, day).getDay();
+  const currentTodayBlockIds = new Set(
+    routineBlocks
+      .filter((block) => block.dayOfWeek === todayDayOfWeek)
+      .map((block) => block.id)
+  );
+  // Saved date details remain safely in storage, but the landing page should
+  // mirror the sessions that are actually present in today's study plan.
+  const tasks = getDailyRoutineTasks(
+    today,
+    routineBlocks,
+    records,
+    subjects,
+    additionalSubjects
+  ).filter((task) => currentTodayBlockIds.has(task.block.id));
   const setNextTask = () => {
     if (!prompt) return;
     if (promptError) { closePrompt(); onOpenPlanner(); return; }
@@ -102,6 +117,13 @@ export default function TodaysTasks({
             const { block } = task;
             const overnight = block.endTime <= block.startTime;
             const chapterLink = resolveRoutineChapter(block, subjects);
+            // `block` is today's saved, date-specific routine when one exists.
+            // Keep the dashboard card tied to the same chapter and homework the
+            // student sees in today's expanded study-plan card.
+            const homeworkText = block.homeworkText?.trim();
+            const detailText = homeworkText
+              ? `${task.chapterBanglaName} — ${homeworkText}`
+              : task.chapterBanglaName;
             const isOpen = prompt?.block.id === block.id;
             const promptId = `next-task-${block.id}`;
             return (
@@ -117,14 +139,14 @@ export default function TodaysTasks({
                     <div className="today-task-title">{block.title}</div>
                     {chapterLink ? (
                       <button type="button" lang="bn" onClick={() => onOpenChapter(chapterLink.subject.id, chapterLink.chapter.id)}
-                        className="today-chapter-link" aria-label={`Open ${chapterLink.chapter.banglaName}`}>
-                        {task.chapterBanglaName}
+                        className="today-chapter-link" aria-label={`Open ${chapterLink.chapter.banglaName}${homeworkText ? `. Today's homework: ${homeworkText}` : ""}`}>
+                        {detailText}
                       </button>
-                    ) : <div className="today-chapter-name">{task.chapterBanglaName}</div>}
+                    ) : <div className="today-chapter-name">{detailText}</div>}
                   </div>
                   <label data-task-checkbox className="task-checkbox-target">
                     <input type="checkbox" checked={task.completed}
-                      aria-label={`${task.completed ? "Mark incomplete" : "Mark done"}: ${block.title}, ${task.chapterBanglaName}, ${formatTimeRange(block.startTime, block.endTime)}`}
+                      aria-label={`${task.completed ? "Mark incomplete" : "Mark done"}: ${block.title}, ${detailText}, ${formatTimeRange(block.startTime, block.endTime)}`}
                       aria-controls={isOpen ? promptId : undefined}
                       onChange={(event) => {
                         const completed = event.currentTarget.checked;

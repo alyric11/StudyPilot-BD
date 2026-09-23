@@ -8,7 +8,7 @@
  * 3. Persistence: Automatically reads and writes state data to the browser's 'localStorage' for seamless offline use.
  */
 
-import { useState, useEffect, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { getSubjectCardStyles } from "./colorPalettes";
 import { ChapterProgress, RoutineEditRequest } from "./types";
 import useStudentData from "./hooks/useStudentData";
@@ -21,17 +21,39 @@ import {
   localDateKey,
 } from "./utils/routineTasks.ts";
 import useDialogFocus from "./hooks/useDialogFocus";
-import VideoLessonsPage from "./components/VideoLessonsPage";
-
-// Component Imports
 import ProfileSetup from "./components/ProfileSetup";
-import ChapterPage from "./components/ChapterPage";
-import StudyPlanner from "./components/StudyPlanner";
 import TodaysTasks from "./components/TodaysTasks";
-import HomeworkManager from "./components/HomeworkManager";
-import StudyDiary from "./components/StudyDiary";
-import SubjectPaperPage from "./components/SubjectPaperPage";
-import AITutor from "./components/AITutor";
+
+// These screens are only needed after a student navigates away from the dashboard.
+// Loading them on demand keeps the initial dashboard responsive without changing
+// their props, state, or API behavior.
+const VideoLessonsPage = lazy(() => import("./components/VideoLessonsPage"));
+const ChapterPage = lazy(() => import("./components/ChapterPage"));
+const StudyPlanner = lazy(() => import("./components/StudyPlanner"));
+const HomeworkManager = lazy(() => import("./components/HomeworkManager"));
+const StudyDiary = lazy(() => import("./components/StudyDiary"));
+const SubjectPaperPage = lazy(() => import("./components/SubjectPaperPage"));
+const AITutor = lazy(() => import("./components/AITutor"));
+
+const LoadingStudyScreen = () => (
+  <div className="min-h-[24rem] rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm" role="status" aria-label="Loading your study space">
+    <div className="animate-pulse space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-5 w-44 rounded bg-slate-200" />
+          <div className="h-3 w-64 max-w-full rounded bg-slate-100" />
+        </div>
+        <div className="h-10 w-32 rounded-xl bg-indigo-100" />
+      </div>
+      <div className="flex gap-2 overflow-hidden">
+        {Array.from({ length: 7 }, (_, index) => (
+          <div key={index} className="h-14 min-w-16 flex-1 rounded-xl border border-slate-100 bg-slate-50" />
+        ))}
+      </div>
+      <div className="h-40 rounded-2xl border border-slate-100 bg-slate-50" />
+    </div>
+  </div>
+);
 
 // Vector Icons
 import {
@@ -82,6 +104,7 @@ export default function App() {
   // Navigation Section (MVP includes only these 4 views)
   const [activeSection, setActiveSection] = useState<'dashboard' | 'planner' | 'homework' | 'diary'>('dashboard');
   const [routineEditRequest, setRoutineEditRequest] = useState<RoutineEditRequest | null>(null);
+  const plannerHandoffRef = useRef(false);
 
   // Currently studied textbook chapter
   const [selectedSubjectPaper, setSelectedSubjectPaper] = useState<string | null>(null);
@@ -189,6 +212,12 @@ export default function App() {
 
   useEffect(() => {
     if (!loaded || !profile) return;
+    if (plannerHandoffRef.current && activeSection === "planner") {
+      // A next-task handoff scrolls to its own destination card. Avoid a
+      // competing snap-to-top animation from the general page navigation.
+      plannerHandoffRef.current = false;
+      return;
+    }
     const frame = window.requestAnimationFrame(() => {
       document.getElementById("dynamic-flight-window")?.focus({ preventScroll: true });
       window.scrollTo({ top: 0, behavior: "instant" });
@@ -465,7 +494,7 @@ export default function App() {
             aria-modal={mobileNavigation && sidebarOpen ? true : undefined}
             aria-label="Main navigation"
             tabIndex={-1}
-            className={`fixed top-[58px] bottom-0 left-0 z-40 bg-[#15213a] border-r border-[#24324a] w-[260px] p-4 shadow-lg lg:shadow-none transition-transform duration-300 transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+            className={`fixed top-[58px] bottom-0 left-0 z-40 bg-[#15213a] border-r border-[#24324a] w-[260px] p-4 transition-transform duration-300 transform ${sidebarOpen ? "translate-x-0 shadow-lg" : "-translate-x-full shadow-none lg:translate-x-0 lg:shadow-none"
               }`}
             id="app-navigation-sidebar"
           >
@@ -527,8 +556,9 @@ export default function App() {
           )}
 
           {/* Study Workstation */}
-          <main className={`min-w-0 w-full lg:ml-[260px] lg:w-[calc(100%-260px)] p-3 sm:p-4 lg:p-6 overflow-x-hidden ${activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : activeSection === "planner" ? "bg-[#f5f7fb]" : ""}`} id="dynamic-flight-window" tabIndex={-1}>
-            {showVideoLessons ? (
+          <main className={`min-w-0 w-full lg:ml-[260px] lg:w-[calc(100%-260px)] p-3 pb-16 sm:p-4 sm:pb-16 lg:p-6 lg:pb-16 overflow-x-hidden ${activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : activeSection === "planner" ? "bg-[#f5f7fb]" : ""}`} id="dynamic-flight-window" tabIndex={-1}>
+            <Suspense fallback={<LoadingStudyScreen />}>
+              {showVideoLessons ? (
               <VideoLessonsPage
                 chapter={selectedChapter!}
                 classLevel={profile.classLevel}
@@ -666,6 +696,7 @@ export default function App() {
                           setSelectedChapter(null);
                           setSelectedSubjectPaper(null);
                           setShowVideoLessons(false);
+                          plannerHandoffRef.current = true;
                           setRoutineEditRequest({ routineId, occurrenceDate, requestId: crypto.randomUUID() });
                           setActiveSection("planner");
                         }}
@@ -1000,19 +1031,21 @@ export default function App() {
                   />
                 )}
               </>
-            )}
+              )}
+            </Suspense>
           </main>
         </div>
 
         {/* Footer bar */}
-        <footer className="lg:ml-[260px] bg-white border-t border-slate-100 py-3 text-center text-[10px] text-slate-400 font-mono">
-          StudyPilot BD • NCTB Core MVP • Ready for Action
+        <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 bg-white/95 py-2.5 text-center text-[10px] text-slate-400 backdrop-blur-sm lg:left-[260px]">
+          StudyPilot BD • Your study companion
         </footer>
 
         {/* Global AI Tutor */}
-        <AITutor
-          profile={profile}
-          context={
+        <Suspense fallback={null}>
+          <AITutor
+            profile={profile}
+            context={
             selectedChapter
               ? {
                 page: showVideoLessons ? "Video Lessons" : "Chapter Guide",
@@ -1037,8 +1070,9 @@ export default function App() {
                           ? "Homework Board"
                           : "Personal Notebook",
                 }
-          }
-        />
+            }
+          />
+        </Suspense>
 
         {/* Toast Notification Container */}
         <div className="fixed bottom-4 right-4 z-50 pointer-events-none w-[calc(100%-2rem)] max-w-sm">
