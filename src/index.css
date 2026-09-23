@@ -35,6 +35,11 @@
   background: #94a3b8;
 }
 
+/* Keep page width stable when expanding content adds a scrollbar. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background-color: #f8fafc;
   color: #1e293b;
@@ -133,14 +138,14 @@ body {
 }
 
 .routine-card {
-  transition: border-color 180ms var(--planner-ease), box-shadow 180ms var(--planner-ease), background-color 180ms var(--planner-ease), transform 180ms var(--planner-ease);
+  scroll-margin-block: 88px 56px;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
 
 @media (hover: hover) {
   .routine-card:hover {
     border-color: color-mix(in srgb, currentColor 14%, #cbd5e1);
     box-shadow: 0 10px 22px -16px rgb(51 65 85 / 42%);
-    transform: translateY(-1px);
   }
 }
 
@@ -746,10 +751,10 @@ body {
 .planner-shell {
   container: planner / inline-size;
   min-width: 0;
-  --planner-ink: #172033;
-  --planner-muted: #667085;
-  --planner-line: #e7eaf0;
-  --planner-tint: #eef2ff;
+  --planner-ink: #1e293b;
+  --planner-muted: #526178;
+  --planner-line: #e2e8f0;
+  --planner-tint: #eef0fa;
   --planner-action: #5b57b7;
   --planner-ease: cubic-bezier(.22, 1, .36, 1);
 }
@@ -766,7 +771,7 @@ body {
   padding: 16px;
   border: 1px solid #e5e8f2;
   border-radius: 16px;
-  background: #fafbfe;
+  background: #f8fafc;
 }
 
 .planner-form-fields {
@@ -946,13 +951,50 @@ body {
 }
 
 .planner-day-column {
+  min-width: 0;
+  background: #f8fafc;
+  border-color: var(--planner-line);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   box-shadow: 0 8px 20px -20px rgb(30 41 59 / 32%);
 }
 
 .planner-day-column[data-expanded="true"] {
-  border-color: #a5b4fc;
+  border-color: #b6b5d9;
   background: #fff;
-  box-shadow: 0 18px 36px -26px rgb(67 56 202 / 42%);
+  box-shadow: 0 10px 24px -22px rgb(51 65 85 / 30%);
+}
+
+/* Animate natural content height without replacing cards or scaling their text.
+   Padding and borders live inside the clipped child, so no pixel jumps first. */
+.planner-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 420ms cubic-bezier(.25, .1, .25, 1), opacity 200ms ease;
+}
+
+.planner-reveal[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.planner-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.planner-day-header[aria-expanded="true"] {
+  color: var(--planner-action);
+}
+
+@media (hover: hover) {
+  .planner-day-header:hover {
+    background-color: var(--planner-tint);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planner-reveal { transition: none; }
 }
 
 .planner-card-details-copy {
@@ -1021,6 +1063,7 @@ body {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow-wrap: anywhere;
 }
 

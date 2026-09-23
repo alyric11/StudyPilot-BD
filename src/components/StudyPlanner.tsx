@@ -16,29 +16,25 @@ import {
   ChevronRight,
   Plus,
   X,
-  BookOpen,
   AlertTriangle,
   MoreHorizontal
 } from "lucide-react";
 import TimePicker from "./TimePicker";
+import PlannerReveal from "./PlannerReveal";
 import DayPicker from "./DayPicker";
 import SubjectPicker, { SubjectPickerOption } from "./SubjectPicker";
 import usePlannerPopup from "../hooks/usePlannerPopup";
 import useDialogFocus from "../hooks/useDialogFocus";
-import { dateInViewedWeek, durationDescription, firstSixRowsHeight, popupOffset, routineDuration } from "../utils/plannerPresentation";
+import { dateInViewedWeek, durationDescription, routineDuration } from "../utils/plannerPresentation";
 
 import { Subject } from "../data/curriculum";
-import {
-  getSubjectCardStyles,
-  getSubjectRoutineStyles,
-  getSubjectAccentColor,
-} from "../colorPalettes";
+import { getSubjectRoutineStyles } from "../colorPalettes";
 import {
   FloatingPlacement,
   getSideAwareFloatingPosition,
 } from "../utils/floatingPosition";
 import { formatCompactTimeRange, formatTimeRange } from "../utils/time";
-import { describeRoutineTask, localDateKey, resolveRoutineChapter, resolveRoutineSubject } from "../utils/routineTasks";
+import { formatRoutineSubjectName, formatRoutineChapterNumber as formatChapterNumber, getScheduledRoutineTasks, updateDatedHomework, localDateKey, resolveRoutineChapter, resolveRoutineSubject } from "../utils/routineTasks";
 
 interface StudyPlannerProps {
   profile: UserProfile;
@@ -60,17 +56,6 @@ interface StudyPlannerProps {
   editRoutineRequest?: RoutineEditRequest | null;
   onEditRequestHandled?: () => void;
   onBackToDashboard?: () => void;
-}
-
-interface RoutineChapterPreview {
-  block: RoutineBlock;
-  subject: Subject;
-  chapter: Subject["chapters"][number];
-  anchor: Pick<DOMRect, "top" | "right" | "bottom" | "left" | "height">;
-  top: number;
-  left: number;
-  width: number;
-  placement: "left" | "right" | "above" | "below";
 }
 
 const DAYS = [
@@ -210,8 +195,6 @@ export default function StudyPlanner({
   const addButtonRef = React.useRef<HTMLButtonElement>(null);
   const addedBlockRef = React.useRef<Omit<RoutineBlock, "id"> | null>(null);
   const draftNeedsScroll = React.useRef(false);
-  const suppressPreviewRef = React.useRef<string | null>(null);
-  const menuCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuAnchorRef = React.useRef<HTMLElement | null>(null);
   useEffect(() => {
     const tabs = dayTabsRef.current;
@@ -231,6 +214,8 @@ export default function StudyPlanner({
   const formOpenRef = React.useRef(showRoutineForm);
   formOpenRef.current = showRoutineForm;
   const [routineTitle, setRoutineTitle] = useState("");
+  const [weeklyEditingId, setWeeklyEditingId] = useState<string | null>(null);
+  const [homeworkUndo, setHomeworkUndo] = useState<DailyRoutineTask | null>(null);
   const [routineSubjectId, setRoutineSubjectId] = useState<string | null>(null);
   const [routineChapterId, setRoutineChapterId] = useState<string | null>(null);
   const [routineStart, setRoutineStart] = useState("17:00");
@@ -239,16 +224,16 @@ export default function StudyPlanner({
   const routineErrorRef = React.useRef<HTMLDivElement>(null);
   const [routineToDelete, setRoutineToDelete] =
     useState<RoutineBlock | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<
+    "homework" | "weekly-time" | null
+  >(null);
+  const deleteConfirmationRef = React.useRef<HTMLDivElement>(null);
   const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
   const [routineToFocus, setRoutineToFocus] = useState<string | null>(null);
   const [isWideRoutineBoard, setIsWideRoutineBoard] = useState(false);
   const [deletedRoutine, setDeletedRoutine] = useState<RoutineBlock | null>(null);
   const deletedRoutineTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const mobileRoutineSheetRef = React.useRef<HTMLDivElement>(null);
-  const [routineChapterPreview, setRoutineChapterPreview] =
-    useState<RoutineChapterPreview | null>(null);
-  const routinePreviewCloseTimer = React.useRef<number | null>(null);
-  const routinePreviewRef = React.useRef<HTMLButtonElement>(null);
   const [homeworkEditorBlockId, setHomeworkEditorBlockId] = useState<string | null>(null);
   const [homeworkDateKey, setHomeworkDateKey] = useState<string | null>(null);
   const [routineMenuDateKey, setRoutineMenuDateKey] = useState<string | null>(null);
@@ -265,112 +250,20 @@ export default function StudyPlanner({
     placement: "right" as FloatingPlacement,
   });
 
-  const clearRoutinePreviewCloseTimer = () => {
-    if (routinePreviewCloseTimer.current !== null) {
-      window.clearTimeout(routinePreviewCloseTimer.current);
-      routinePreviewCloseTimer.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      clearRoutinePreviewCloseTimer();
-      if (menuCloseTimer.current) clearTimeout(menuCloseTimer.current);
-      if (deletedRoutineTimer.current) clearTimeout(deletedRoutineTimer.current);
-    };
+  useEffect(() => () => {
+    if (deletedRoutineTimer.current) clearTimeout(deletedRoutineTimer.current);
   }, []);
 
   useEffect(() => {
     const board = routineBoardRef.current;
     if (!board) return;
-    const updateWidth = () => setIsWideRoutineBoard(board.clientWidth >= 760);
+    const shell = board.closest(".planner-shell");
+    const updateWidth = () => setIsWideRoutineBoard((shell?.clientWidth ?? board.clientWidth) >= 760);
     updateWidth();
     const observer = new ResizeObserver(updateWidth);
-    observer.observe(board);
+    observer.observe(shell ?? board);
     return () => observer.disconnect();
   }, []);
-
-  // Never leave a floating card detached from its trigger after scrolling.
-  useEffect(() => {
-    if (!routineChapterPreview) return;
-    const dismiss = () => {
-      if (routinePreviewRef.current?.contains(document.activeElement)) {
-        suppressPreviewRef.current = routineChapterPreview.block.id;
-        focusVisibleRoutineCard(routineChapterPreview.block.id);
-      }
-      setRoutineChapterPreview(null);
-    };
-    const onScroll = (event: Event) => {
-      if (!(event.target instanceof Node) || !routinePreviewRef.current?.contains(event.target)) dismiss();
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        suppressPreviewRef.current = routineChapterPreview.block.id;
-        dismiss();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("resize", dismiss);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", dismiss);
-    };
-  }, [routineChapterPreview]);
-
-  React.useLayoutEffect(() => {
-    if (!routineChapterPreview || !routinePreviewRef.current) return;
-
-    const preview = {
-      width: routinePreviewRef.current.offsetWidth,
-      height: routinePreviewRef.current.offsetHeight,
-    };
-    const { anchor } = routineChapterPreview;
-    const gap = 8;
-    const padding = 8;
-    const leftFits = anchor.left - preview.width - gap >= padding;
-    const rightFits = anchor.right + preview.width + gap <= window.innerWidth - padding;
-    const placement = leftFits
-      ? "left"
-      : rightFits
-        ? "right"
-        : window.innerHeight - anchor.bottom >= anchor.top
-          ? "below"
-          : "above";
-    const top =
-      placement === "below"
-        ? anchor.bottom + gap
-        : placement === "above"
-          ? Math.max(padding, anchor.top - preview.height - gap)
-          : Math.min(
-            Math.max(padding, anchor.top + (anchor.height - preview.height) / 2),
-            window.innerHeight - preview.height - padding
-          );
-    const left =
-      placement === "left"
-        ? anchor.left - preview.width - gap
-        : placement === "right"
-          ? anchor.right + gap
-          : Math.min(
-            Math.max(padding, anchor.left),
-            window.innerWidth - preview.width - padding
-          );
-
-    setRoutineChapterPreview((current) => {
-      if (!current || current.block.id !== routineChapterPreview.block.id) return current;
-      if (
-        current.placement === placement &&
-        Math.abs(current.top - top) < 1 &&
-        Math.abs(current.left - left) < 1
-      ) {
-        return current;
-      }
-
-      return { ...current, placement, top, left };
-    });
-  }, [routineChapterPreview]);
 
   useEffect(() => {
     if (!routineError) return;
@@ -520,31 +413,6 @@ export default function StudyPlanner({
     return block.title.split(":")[0]?.trim() || block.title;
   };
 
-  const getDatedRoutineBlock = (block: RoutineBlock, date: Date) => {
-    const dateKey = localDateKey(date);
-    const datedTask = dailyRoutineTasks.find(
-      (task) =>
-        task.date === dateKey &&
-        task.block.id === block.id
-    );
-
-    if (datedTask) {
-      return datedTask.block;
-    }
-
-    // The weekly Mother Routine is only a recurring schedule template.
-    // Homework/chapter details must come from a dated task.
-    return {
-      id: block.id,
-      dayOfWeek: block.dayOfWeek,
-      title: block.title,
-      subjectId: block.subjectId,
-      startTime: block.startTime,
-      endTime: block.endTime,
-      color: block.color,
-    } satisfies RoutineBlock;
-  };
-
   const getDetailedRoutineInfo = (block: RoutineBlock) => {
     const details = getRoutineBlockChapter(block);
 
@@ -555,117 +423,6 @@ export default function StudyPlanner({
         : null,
       homeworkText: block.homeworkText?.trim() || "",
     };
-  };
-
-  const getBalancedRoutinePreviewLines = (chapterName: string) => {
-    const normalizedName = chapterName.trim().replace(/\s+/g, " ");
-    const colonIndex = normalizedName.indexOf(":");
-
-    // A colon already gives the title a meaningful natural break.
-    if (colonIndex >= 0 && colonIndex < normalizedName.length - 1) {
-      return [
-        normalizedName.slice(0, colonIndex + 1).trim(),
-        normalizedName.slice(colonIndex + 1).trim(),
-      ];
-    }
-
-    const words = normalizedName.split(" ").filter(Boolean);
-    if (words.length <= 5) return [normalizedName];
-
-    // Choose the word boundary whose two lines have the closest character length.
-    let bestBreakIndex = 1;
-    let smallestDifference = Number.POSITIVE_INFINITY;
-
-    for (let index = 1; index < words.length; index += 1) {
-      const firstLineLength = words.slice(0, index).join(" ").length;
-      const secondLineLength = words.slice(index).join(" ").length;
-      const difference = Math.abs(firstLineLength - secondLineLength);
-
-      if (difference < smallestDifference) {
-        smallestDifference = difference;
-        bestBreakIndex = index;
-      }
-    }
-
-    return [
-      words.slice(0, bestBreakIndex).join(" "),
-      words.slice(bestBreakIndex).join(" "),
-    ];
-  };
-
-  // A stable popover footprint stops the weekly board from feeling uneven as
-  // students move across routines with short and long chapter titles.
-  const getRoutinePreviewWidth = () => Math.min(220, window.innerWidth - 16);
-
-  const getRoutinePreviewPosition = (card: DOMRect, width: number) => {
-    const height = 100;
-    const gap = 8;
-    const padding = 8;
-    const leftSpace = card.left - gap - padding;
-    const rightSpace = window.innerWidth - card.right - gap - padding;
-    const placement =
-      leftSpace >= width
-        ? "left"
-        : rightSpace >= width
-          ? "right"
-          : window.innerHeight - card.bottom >= card.top
-            ? "below"
-            : "above";
-    const top =
-      placement === "below"
-        ? card.bottom + gap
-        : placement === "above"
-          ? Math.max(padding, card.top - height - gap)
-          : Math.min(
-            Math.max(padding, card.top + (card.height - height) / 2),
-            window.innerHeight - height - padding
-          );
-    const left =
-      placement === "left"
-        ? card.left - width - gap
-        : placement === "right"
-          ? card.right + gap
-          : Math.min(Math.max(padding, card.left), window.innerWidth - width - padding);
-
-    return { top, left, width, placement } as const;
-  };
-
-  const showRoutineChapterPreview = (
-    cardElement: HTMLDivElement,
-    block: RoutineBlock
-  ) => {
-    if (editingRoutineId || routineToDelete || expandedSubjectId || showRoutineForm ||
-      suppressPreviewRef.current === block.id || !window.matchMedia("(hover: hover)").matches) return;
-
-    const chapterDetails = getRoutineBlockChapter(block);
-    if (!chapterDetails) {
-      setRoutineChapterPreview(null);
-      return;
-    }
-
-    clearRoutinePreviewCloseTimer();
-    const card = cardElement.getBoundingClientRect();
-    const previewWidth = getRoutinePreviewWidth();
-    setRoutineChapterPreview({
-      block,
-      ...chapterDetails,
-      anchor: {
-        top: card.top,
-        right: card.right,
-        bottom: card.bottom,
-        left: card.left,
-        height: card.height,
-      },
-      ...getRoutinePreviewPosition(card, previewWidth),
-    });
-  };
-
-  const scheduleRoutineChapterPreviewClose = () => {
-    clearRoutinePreviewCloseTimer();
-    routinePreviewCloseTimer.current = window.setTimeout(() => {
-      setRoutineChapterPreview(null);
-      routinePreviewCloseTimer.current = null;
-    }, shouldReduceMotion ? 0 : 110);
   };
 
   const getRoutineBlockCardStyle = (block: RoutineBlock) => {
@@ -698,141 +455,123 @@ export default function StudyPlanner({
 
   const getRoutineBlockTimeStyle = (_block: RoutineBlock) => "text-slate-600";
 
-  const renderDatedRoutineCard = (block: RoutineBlock, date: Date) => {
-    const info = getDetailedRoutineInfo(getDatedRoutineBlock(block, date));
-    const isOpen = routineToDelete?.id === block.id;
-    const isEditing = editingRoutineId === block.id;
-    const draftChapter =
-      isEditing && homeworkEditorBlockId === block.id
-        ? getRoutineBlockSubject(block)?.chapters.find(
-            (chapter) => chapter.id === homeworkChapterId
-          )
-        : undefined;
-    const showInlineHomeworkDraft =
-      isEditing &&
-      homeworkEditorBlockId === block.id &&
-      !isHomeworkChapterPickerOpen &&
-      !!draftChapter;
-
+  const renderRoutineActions = (block: RoutineBlock, _dateKey: string, mobile = false) => {
+    const actionClass = mobile ? "planner-focus routine-sheet-action" : "planner-focus routine-card-action";
+    const hasHomework = Boolean(
+      getRoutineBlockChapter(block) || block.homeworkText?.trim()
+    );
     return (
-      <motion.div
-        layout
+      <div className="routine-card-actions">
+        <button type="button" onClick={startEditingRoutine} className={`${actionClass} whitespace-nowrap text-[11px]`}>
+          {hasHomework ? "Edit HW" : "Add HW"}
+        </button>
+        <button type="button" onClick={() => setDeleteConfirmation("weekly-time")} className={`${actionClass} routine-card-delete`}>Delete</button>
+      </div>
+    );
+  };
+
+  const renderDatedRoutineCard = (block: RoutineBlock, date: Date, expanded = true, mobile = false) => {
+    const dateKey = localDateKey(date);
+    const info = getDetailedRoutineInfo(block);
+    const isOpen = routineToDelete?.id === block.id && routineMenuDateKey === dateKey;
+    const isEditing = editingRoutineId === block.id && homeworkDateKey === dateKey;
+    const subject = getRoutineBlockSubject(block);
+    const draftChapter = isEditing ? subject?.chapters.find(chapter => chapter.id === homeworkChapterId) : undefined;
+    const showDraft = isEditing;
+    const detailsId = `routine-details-${mobile ? "mobile" : "week"}-${dateKey}-${block.id}`;
+    return (
+      <div
         data-routine-card-id={block.id}
         key={block.id}
-        transition={{ layout: { duration: shouldReduceMotion ? 0 : 0.26, ease: [0.22, 1, 0.36, 1] } }}
-        className={`routine-card relative overflow-hidden rounded-lg border text-center shadow-sm ${getRoutineBlockCardStyle(block)} ${isEditing ? "routine-card-editing relative z-10 ring-2 ring-indigo-300 ring-offset-2" : ""}`}
+        tabIndex={-1}
+        onKeyDown={event => {
+          if (event.key !== "Escape") return;
+          event.stopPropagation();
+          if (isEditing) closeHomeworkEditor(true);
+          else { closeRoutineMenu(); focusVisibleRoutineCard(block.id); }
+        }}
+        className={`planner-focus routine-card relative overflow-hidden rounded-lg border text-center shadow-sm ${getRoutineBlockCardStyle(block)} ${isEditing ? "routine-card-editing relative z-10 ring-2 ring-indigo-300 ring-offset-2" : ""}`}
       >
         <button
           type="button"
           disabled={isEditing}
           aria-expanded={isOpen}
-          aria-controls={isOpen ? `routine-details-${block.id}` : undefined}
+          aria-haspopup={mobile ? "dialog" : undefined}
+          aria-controls={!mobile ? detailsId : undefined}
           aria-label={`${getMotherRoutineTitle(block)}, ${formatTimeRange(block.startTime, block.endTime)}. ${isOpen ? "Close actions" : "Open actions"}.`}
-          onClick={(event) =>
-            openRoutineMenu(
-              event.currentTarget.parentElement as HTMLDivElement,
-              block,
-              date
-            )
-          }
+          onClick={event => openRoutineMenu(event.currentTarget.parentElement as HTMLDivElement, block, date)}
           className="planner-focus routine-card-trigger relative flex w-full flex-col items-center justify-center px-2.5 py-2.5 text-center disabled:cursor-default"
         >
-          <span className={`whitespace-nowrap text-xs font-semibold tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
+          <span className="whitespace-nowrap text-xs font-medium tabular-nums text-slate-600">
             {formatCompactTimeRange(block.startTime, block.endTime)}
+            {block.endTime <= block.startTime && <sup title="Ends the next day"> +1</sup>}
           </span>
-          <span className="routine-card-title mt-1 min-w-0 text-[13px] font-semibold text-slate-800">
-            {getMotherRoutineTitle(block)}
-          </span>
+          <span className="routine-card-title mt-1 min-w-0 text-[13px] font-semibold text-slate-800">{getMotherRoutineTitle(block)}</span>
           <MoreHorizontal aria-hidden="true" className="routine-card-more absolute right-2 top-2 h-3.5 w-3.5 text-slate-400" />
         </button>
-
-        <div className="planner-card-details-copy border-t border-slate-200/70 px-3 pb-2.5 pt-2 text-center">
-          {info.chapterLabel && (
-            <div className="text-[13px] font-semibold text-slate-800">
-              {info.chapterLabel}
-            </div>
-          )}
-          {info.details ? (
-            <button
-              type="button"
-              lang="bn"
-              onClick={() => onOpenRoutineChapter(info.details!.subject.id, info.details!.chapter.id)}
-              className="planner-focus routine-card-chapter-link mt-0.5 w-full rounded-md py-0.5 text-center text-[13px] font-medium leading-snug text-indigo-700 underline decoration-indigo-200 underline-offset-2 hover:text-indigo-800"
-              aria-label={`Open ${info.details.chapter.banglaName}`}
-            >
-              {info.details.chapter.banglaName}
-            </button>
-          ) : (
-            <div className="text-xs font-medium text-slate-500">No homework assigned</div>
-          )}
-          {info.details && (
-            <div
-              lang="bn"
-              className={`mt-0.5 text-xs leading-snug ${info.homeworkText ? "text-slate-700" : "italic text-slate-500"}`}
-            >
-              {info.homeworkText || "No homework detail added"}
-            </div>
-          )}
-        </div>
-
-        <AnimatePresence initial={false}>
-          {isOpen && (
-            <motion.div
-              id={`routine-details-${block.id}`}
-              data-routine-details
-              initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="routine-card-details overflow-hidden"
-            >
-              <div className="routine-card-details-inner">
-                <div className="routine-card-actions">
-                  <button type="button" onClick={startEditingRoutine} className="planner-focus routine-card-action">Edit</button>
-                  <button type="button" onClick={deleteRoutineWithUndo} className="planner-focus routine-card-action routine-card-delete">Delete</button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {showInlineHomeworkDraft && draftChapter && (
-          <div className="border-t border-slate-200/70 px-3 pb-3 pt-2.5 text-left">
-            <div className="text-center text-xs font-semibold leading-snug text-slate-700">
-              {formatChapterNumber(draftChapter.chapterNumber)}: <span lang="bn">{draftChapter.banglaName}</span>
-            </div>
-            <textarea
-              data-homework-input-for={block.id}
-              value={homeworkDraft}
-              onChange={(event) => setHomeworkDraft(event.target.value)}
-              rows={2}
-              placeholder="Add homework details"
-              aria-label="Add homework details"
-              className="planner-focus mt-2 w-full resize-none rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs leading-relaxed text-slate-800 shadow-sm outline-none placeholder:text-slate-500"
-            />
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              <button type="button" onClick={() => closeHomeworkEditor(true)} className="planner-focus rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button
-                type="button"
-                onClick={saveRoutineHomework}
-                disabled={!homeworkDraft.trim()}
-                className="planner-focus rounded-lg bg-indigo-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Save
-              </button>
+        <PlannerReveal open={expanded && !showDraft}>
+          <div className="planner-card-details-copy border-t border-slate-200/70 px-3 pb-2.5 pt-2 text-center">
+            {info.chapterLabel && <div className="text-[13px] font-medium text-slate-800">{info.chapterLabel}</div>}
+            {info.details && (
+              <button type="button" lang="bn"
+                onClick={() => onOpenRoutineChapter(info.details!.subject.id, info.details!.chapter.id)}
+                className="planner-focus routine-card-chapter-link mt-0.5 w-full rounded-md py-0.5 text-center text-[13px] font-medium leading-snug text-indigo-700 underline decoration-indigo-200 underline-offset-2"
+              >{info.details.chapter.banglaName}</button>
+            )}
+            <div className="mt-0.5 whitespace-pre-wrap text-xs leading-snug text-slate-600">
+              {info.homeworkText || "No homework assigned"}
             </div>
           </div>
+        </PlannerReveal>
+        {!mobile && (
+          <div id={detailsId} data-routine-details>
+            <PlannerReveal open={isOpen}>
+              <div className="routine-card-details-inner border-t border-slate-200/70">
+                {renderRoutineActions(block, dateKey)}
+              </div>
+            </PlannerReveal>
+          </div>
         )}
-      </motion.div>
+        <PlannerReveal open={showDraft}>
+          <div className="border-t border-slate-200/70 px-3 pb-3 pt-2.5 text-left">
+            <p className="mb-2 text-center text-xs text-slate-500">HW for {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+            {draftChapter && (
+              <div className="text-center text-xs font-medium leading-snug text-slate-700">
+                {formatChapterNumber(draftChapter.chapterNumber)}: <span lang="bn">{draftChapter.banglaName}</span>
+              </div>
+            )}
+            {!!subject?.chapters.length && (
+              <button type="button" onClick={event => {
+                homeworkEditorAnchorRef.current = event.currentTarget.closest("[data-routine-card-id]") as HTMLElement;
+                setIsHomeworkChapterPickerOpen(true);
+              }} className="planner-focus planner-text-action block w-full">{draftChapter ? "Change chapter" : "Choose chapter"}</button>
+            )}
+            <textarea data-homework-input-for={block.id} value={isEditing ? homeworkDraft : ""}
+              onChange={event => setHomeworkDraft(event.target.value)} rows={2}
+              placeholder="e.g. Read pages 12–15 and solve questions 1–3"
+              aria-label="Homework for this date"
+              className="planner-focus mt-2 w-full resize-y rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
+            />
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <button type="button" onClick={saveRoutineHomework} disabled={!homeworkDraft.trim() && !homeworkChapterId}
+                className="planner-focus planner-primary min-h-10 rounded-lg px-2 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45">Save</button>
+              <button type="button" onClick={() => setDeleteConfirmation("homework")}
+                className="planner-focus routine-card-action routine-card-delete border border-rose-200 bg-rose-50">Delete HW</button>
+            </div>
+          </div>
+        </PlannerReveal>
+      </div>
     );
   };
 
   const openRoutineFormForDate = (date: Date, shouldScroll = false) => {
-    claimChapterPopup();
-    setExpandedSubjectId(null);
-    setRoutineChapterPreview(null);
+    claimRoutinePopup();
     setRoutineError(null);
-    setEditingRoutineId(null);
+    closeHomeworkEditor();
+    setWeeklyEditingId(null);
+    setRoutineTitle("");
+    setRoutineSubjectId(null);
+    setRoutineChapterId(null);
 
     const selectedDate = toDayStart(date);
     setRoutineDay(String(selectedDate.getDay()));
@@ -906,6 +645,7 @@ export default function StudyPlanner({
       availableColors[Math.floor(Math.random() * availableColors.length)] ??
       ROUTINE_COLORS[Math.floor(Math.random() * ROUTINE_COLORS.length)];
     const hasOverlap = routineBlocks.some((block) => {
+      if (block.id === weeklyEditingId) return false;
       return routinesOverlap(
         dayOfWeek,
         routineStart,
@@ -933,10 +673,17 @@ export default function StudyPlanner({
       color,
     };
 
-    addedBlockRef.current = updatedRoutine;
+    addedBlockRef.current = weeklyEditingId ? null : updatedRoutine;
     setMobileRoutineDay(dayOfWeek);
     setWeekAnchorDate(dateInViewedWeek(weekAnchorDate, dayOfWeek));
-    onAddRoutineBlock(updatedRoutine);
+    setExpandedRoutineDay(dayOfWeek);
+    if (weeklyEditingId) {
+      onUpdateRoutineBlock(weeklyEditingId, updatedRoutine);
+      setRoutineToFocus(weeklyEditingId);
+    } else {
+      onAddRoutineBlock(updatedRoutine);
+    }
+    setWeeklyEditingId(null);
 
     setRoutineTitle("");
     setRoutineSubjectId(null);
@@ -951,7 +698,7 @@ export default function StudyPlanner({
       )
     ).find((card) => card.offsetParent !== null);
 
-    routineCard?.focus({ preventScroll: true });
+    routineCard?.querySelector<HTMLButtonElement>(".routine-card-trigger")?.focus({ preventScroll: true });
   };
 
   const closeRoutineMenu = (afterClose?: () => void) => {
@@ -972,9 +719,6 @@ export default function StudyPlanner({
       return;
     }
     claimRoutinePopup();
-    setExpandedSubjectId(null);
-    setRoutineChapterPreview(null);
-    clearRoutinePreviewCloseTimer();
     menuAnchorRef.current = cardElement;
     setRoutineMenuDateKey(localDateKey(occurrenceDate));
     setRoutineToDelete(block);
@@ -1016,6 +760,7 @@ export default function StudyPlanner({
   };
 
   const closeHomeworkEditor = (restoreFocus = false) => {
+    if (editRoutineRequest) onEditRequestHandled?.();
     const blockId = homeworkEditorBlockId;
     const anchor = homeworkEditorAnchorRef.current;
     setIsHomeworkChapterPickerOpen(false);
@@ -1051,14 +796,13 @@ export default function StudyPlanner({
 
     setShowRoutineForm(false);
     setRoutineError(null);
-    setRoutineChapterPreview(null);
-    setExpandedSubjectId(null);
     setEditingRoutineId(block.id);
     setHomeworkEditorBlockId(block.id);
     setHomeworkDateKey(occurrenceDateKey);
-    setHomeworkChapterId(existingBlock?.chapterId ?? null);
+    const chapterId = existingBlock ? getRoutineBlockChapter(existingBlock)?.chapter.id : undefined;
+    setHomeworkChapterId(chapterId ?? null);
     setHomeworkDraft(existingBlock?.homeworkText?.trim() || "");
-    setIsHomeworkChapterPickerOpen(true);
+    setIsHomeworkChapterPickerOpen(!!getRoutineBlockSubject(block)?.chapters.length && !chapterId && !existingBlock?.homeworkText);
 
     homeworkEditorAnchorRef.current = anchor;
 
@@ -1082,85 +826,91 @@ export default function StudyPlanner({
     closeRoutineMenu(() => {
       if (!occurrenceDateKey) return;
       openHomeworkEditor(block, anchor, occurrenceDateKey);
-      setRoutineToFocus(block.id);
     });
   };
 
   const selectHomeworkChapter = (block: RoutineBlock, chapterId: string) => {
-    const existingTask = homeworkDateKey
-      ? dailyRoutineTasks.find(
-          (task) =>
-            task.date === homeworkDateKey &&
-            task.block.id === block.id
-        )
-      : undefined;
-    const existingBlock = existingTask?.block;
-
     setHomeworkChapterId(chapterId);
-    setHomeworkDraft(
-      chapterId === existingBlock?.chapterId
-        ? existingBlock.homeworkText?.trim() || ""
-        : ""
-    );
     setIsHomeworkChapterPickerOpen(false);
 
     focusVisibleHomeworkInput(block.id);
   };
 
   const saveRoutineHomework = () => {
-    if (!homeworkEditorBlockId || !homeworkChapterId || !homeworkDateKey) return;
+    if (!homeworkEditorBlockId || !homeworkDateKey) return;
+    const template = routineBlocks.find(item => item.id === homeworkEditorBlockId);
+    if (!template) return;
+    const existing = getScheduledRoutineTasks(homeworkDateKey, routineBlocks, dailyRoutineTasks, subjects, additionalSubjects)
+      .find(task => task.block.id === template.id);
+    if (!existing) return;
+    const updated = updateDatedHomework(existing, homeworkChapterId, homeworkDraft, subjects, additionalSubjects);
+    if (onSaveDatedRoutineTask(updated)) {
+      setHomeworkUndo(null);
+      closeHomeworkEditor(true);
+    }
+  };
 
-    const block = routineBlocks.find((item) => item.id === homeworkEditorBlockId);
-    if (!block) {
-      closeHomeworkEditor();
+  const deleteRoutineHomework = () => {
+    if (!homeworkEditorBlockId || !homeworkDateKey) return;
+    const existing = dailyRoutineTasks.find(
+      (task) =>
+        task.date === homeworkDateKey &&
+        task.block.id === homeworkEditorBlockId
+    );
+
+    // For a new, unsaved draft, deleting simply returns the card to its
+    // homework-free state. A saved task keeps its completion record while
+    // removing the chapter and homework for this date.
+    if (!existing) {
+      closeHomeworkEditor(true);
       return;
     }
 
-    const subject = getRoutineBlockSubject(block);
-    const chapter = subject?.chapters.find((item) => item.id === homeworkChapterId);
-    const cleanedHomework = homeworkDraft.trim();
-    if (!subject || !chapter || !cleanedHomework) return;
-
-    const datedBlock: RoutineBlock = {
-      id: block.id,
-      dayOfWeek: block.dayOfWeek,
-      title: block.title,
-      subjectId: block.subjectId,
-      chapterId: chapter.id,
-      startTime: block.startTime,
-      endTime: block.endTime,
-      color: block.color,
-      homeworkText: cleanedHomework,
-    };
-
-    const existingTask = dailyRoutineTasks.find(
-      (task) =>
-        task.date === homeworkDateKey &&
-        task.block.id === block.id
+    const clearedTask = updateDatedHomework(
+      existing,
+      null,
+      "",
+      subjects,
+      additionalSubjects
     );
 
-    const saved = onSaveDatedRoutineTask({
-      date: homeworkDateKey,
-      block: datedBlock,
-      ...describeRoutineTask(
-        datedBlock,
-        subjects,
-        additionalSubjects
-      ),
-      completed: existingTask?.completed ?? false,
-    });
+    if (onSaveDatedRoutineTask(clearedTask)) {
+      setHomeworkUndo(null);
+      closeHomeworkEditor(true);
+    }
+  };
 
-    if (!saved) return;
+  const clearDatedHomework = () => {
+    const existing = dailyRoutineTasks.find(task => task.date === routineMenuDateKey && task.block.id === routineToDelete?.id);
+    if (!existing) return;
+    if (!onSaveDatedRoutineTask(updateDatedHomework(existing, null, "", subjects, additionalSubjects))) return;
+    setHomeworkUndo(existing);
+    setDeletedRoutine(null);
+    closeRoutineMenu();
+    focusVisibleRoutineCard(existing.block.id);
+  };
 
+  const startEditingWeeklyTime = () => {
+    const block = routineBlocks.find(item => item.id === routineToDelete?.id);
+    if (!block) return;
+    closeRoutineMenu();
     closeHomeworkEditor();
-    setRoutineToFocus(block.id);
+    setWeeklyEditingId(block.id);
+    setRoutineTitle(getMotherRoutineTitle(block));
+    setRoutineSubjectId(block.subjectId ?? getRoutineBlockSubject(block)?.id ?? null);
+    setRoutineChapterId(null);
+    setRoutineDay(String(block.dayOfWeek));
+    setRoutineStart(block.startTime);
+    setRoutineEnd(block.endTime);
+    setRoutineError(null);
+    draftNeedsScroll.current = true;
+    setShowRoutineForm(true);
   };
 
   useEffect(() => {
     if (
       !homeworkEditorBlockId ||
-      isHomeworkChapterPickerOpen ||
-      !homeworkChapterId
+      isHomeworkChapterPickerOpen
     ) {
       return;
     }
@@ -1168,7 +918,7 @@ export default function StudyPlanner({
     focusVisibleHomeworkInput(homeworkEditorBlockId);
   }, [homeworkEditorBlockId, homeworkChapterId, isHomeworkChapterPickerOpen]);
 
-  useEffect(() => {
+  React.useLayoutEffect(() => {
     if (
       !homeworkEditorBlockId ||
       !isHomeworkChapterPickerOpen ||
@@ -1189,13 +939,6 @@ export default function StudyPlanner({
       );
     };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeHomeworkEditor(true);
-      }
-    };
-
     const handleOutsideClick = (event: MouseEvent) => {
       const target = event.target as Node;
       if (
@@ -1208,22 +951,27 @@ export default function StudyPlanner({
     };
 
     updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(homeworkEditorAnchorRef.current);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
-    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleOutsideClick);
 
     return () => {
+      observer.disconnect();
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
-      document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, [homeworkEditorBlockId, isHomeworkChapterPickerOpen]);
 
+  useDialogFocus(!!homeworkEditorBlockId && isHomeworkChapterPickerOpen, homeworkEditorRef, () => closeHomeworkEditor(true));
+  useDialogFocus(!!deleteConfirmation, deleteConfirmationRef, () => setDeleteConfirmation(null));
+
   const deleteRoutineWithUndo = () => {
     if (!routineToDelete) return;
     const block = routineToDelete;
+    setHomeworkUndo(null);
     closeRoutineMenu(() => {
       onDeleteRoutineBlock(block.id);
       setDeletedRoutine(block);
@@ -1253,103 +1001,57 @@ export default function StudyPlanner({
 
   useEffect(() => {
     if (!editRoutineRequest) return;
-    const block = routineBlocks.find((item) => item.id === editRoutineRequest.routineId);
-    if (block) {
-      const [year, month, day] = editRoutineRequest.occurrenceDate.split("-").map(Number);
-      setWeekAnchorDate(new Date(year, month - 1, day));
-      setShowRoutineForm(false);
-      setRoutineError(null);
-      setRoutineTitle("");
-      setRoutineSubjectId(null);
-      setRoutineChapterId(null);
-      setRoutineToDelete(null);
-      setRoutineChapterPreview(null);
-      setExpandedSubjectId(null);
-      setMobileRoutineDay(block.dayOfWeek);
-      // The next-task action must reveal the editable recurring card, not the
-      // read-only expanded day details. The date-specific editor below still
-      // receives the requested future occurrence date.
-      setExpandedRoutineDay(null);
-      window.requestAnimationFrame(() => {
-        const card = Array.from(
-          document.querySelectorAll<HTMLElement>("[data-routine-card-id]")
-        ).find(
-          (element) =>
-            element.dataset.routineCardId === block.id &&
-            element.offsetParent !== null
-        );
-
-        card?.focus({ preventScroll: true });
-        card?.scrollIntoView({
-          behavior: shouldReduceMotion ? "auto" : "smooth",
-          block: "center",
-        });
-
-        // Wait for the single page scroll to settle before measuring the card
-        // and showing its editor. This prevents the popup from jumping away
-        // from its card during a dashboard-to-planner handoff.
-        window.setTimeout(() => {
-          const settledCard = Array.from(
-            document.querySelectorAll<HTMLElement>("[data-routine-card-id]")
-          ).find(
-            (element) =>
-              element.dataset.routineCardId === block.id &&
-              element.offsetParent !== null
-          );
-          openHomeworkEditor(
-            block,
-            settledCard ?? null,
-            editRoutineRequest.occurrenceDate
-          );
-        }, shouldReduceMotion ? 0 : 340);
-      });
-    }
-    onEditRequestHandled?.();
-  }, [editRoutineRequest, routineBlocks, onEditRequestHandled, shouldReduceMotion]);
+    const block = routineBlocks.find(item => item.id === editRoutineRequest.routineId);
+    if (!block) { onEditRequestHandled?.(); return; }
+    const [year, month, day] = editRoutineRequest.occurrenceDate.split("-").map(Number);
+    setWeekAnchorDate(new Date(year, month - 1, day));
+    setShowRoutineForm(false);
+    setRoutineToDelete(null);
+    setMobileRoutineDay(block.dayOfWeek);
+    setExpandedRoutineDay(block.dayOfWeek);
+    // Wait for real layout/scroll stability, not an arbitrary timeout.
+    let frame = 0;
+    let lastPosition = "";
+    let stableFrames = 0;
+    let revealed = false;
+    const reveal = () => {
+      const card = Array.from(document.querySelectorAll<HTMLElement>("[data-routine-card-id]"))
+        .find(element => element.dataset.routineCardId === block.id && element.offsetParent !== null);
+      if (!card) { frame = requestAnimationFrame(reveal); return; }
+      const rect = card.getBoundingClientRect();
+      const position = [rect.top, rect.left, rect.width, rect.height].map(value => Math.round(value * 10)).join(":");
+      stableFrames = position === lastPosition ? stableFrames + 1 : 0;
+      lastPosition = position;
+      if (stableFrames >= 3 && !revealed) {
+        revealed = true;
+        stableFrames = 0;
+        card.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth", block: "nearest", inline: "nearest" });
+      } else if (stableFrames >= 3 && revealed) {
+        openHomeworkEditor(block, card, editRoutineRequest.occurrenceDate);
+        onEditRequestHandled?.();
+        return;
+      }
+      frame = requestAnimationFrame(reveal);
+    };
+    frame = requestAnimationFrame(reveal);
+    return () => cancelAnimationFrame(frame);
+  }, [editRoutineRequest, routineBlocks, shouldReduceMotion]);
 
   useEffect(() => {
     if (!routineToFocus) return;
-    // Wait for the selected mobile day and edit highlight to render.
-    const frame = window.requestAnimationFrame(() => {
+    const frame = requestAnimationFrame(() => {
       const card = Array.from(document.querySelectorAll<HTMLElement>("[data-routine-card-id]"))
-        .find((element) => element.dataset.routineCardId === routineToFocus && element.offsetParent !== null);
-      card?.focus({ preventScroll: true });
-      card?.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth", block: "center" });
+        .find(element => element.dataset.routineCardId === routineToFocus && element.offsetParent !== null);
+      focusVisibleRoutineCard(routineToFocus);
+      const rect = card?.getBoundingClientRect();
+      if (rect && (rect.top < 80 || rect.bottom > window.innerHeight - 48)) {
+        card?.scrollIntoView({ behavior: shouldReduceMotion ? "auto" : "smooth", block: "nearest", inline: "nearest" });
+      }
       setRoutineToFocus(null);
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => cancelAnimationFrame(frame);
   }, [routineToFocus, mobileRoutineDay, shouldReduceMotion]);
 
-  const renderRoutineTitle = (title: string) => {
-    const colonIndex = title.indexOf(":");
-
-    if (colonIndex === -1) {
-      return <span className="break-words [overflow-wrap:anywhere]">{title}</span>;
-    }
-
-    const subjectPart = title.slice(0, colonIndex + 1);
-    const chapterPart = title.slice(colonIndex + 1).trimStart();
-
-    return (
-      <span className="flex w-full flex-wrap justify-center gap-x-1 gap-y-0 leading-tight">
-        <span className="break-words [overflow-wrap:anywhere]">{subjectPart}</span>
-        <span className="break-words [overflow-wrap:anywhere]">{chapterPart}</span>
-      </span>
-    );
-  };
-
-  const sortedRoutineBlocks = [...routineBlocks].sort(
-    (a, b) => {
-      if (a.dayOfWeek !== b.dayOfWeek) {
-        return a.dayOfWeek - b.dayOfWeek;
-      }
-
-      return (
-        timeToMinutes(a.startTime) -
-        timeToMinutes(b.startTime)
-      );
-    }
-  );
   const visibleWeek = getWeekDates(weekAnchorDate);
   const routineDurationMinutes = getRoutineDurationMinutes(
     routineStart,
@@ -1370,141 +1072,7 @@ export default function StudyPlanner({
               : "minmax(100px, 1fr)"
           )
           .join(" ");
-  // ------------------------------------------------------------
-  // Subjects & Chapters
-  // ------------------------------------------------------------
-
-  const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
-  const [chapterTrigger, setChapterTrigger] = useState<HTMLButtonElement | null>(
-    null
-  );
-  const chapterPopoverRef = React.useRef<HTMLDivElement>(null);
-  const [chapterListHeight, setChapterListHeight] = useState(280);
-  const claimChapterPopup = usePlannerPopup(() => {
-    setExpandedSubjectId(null);
-    setChapterTrigger(null);
-  });
-  const claimRoutinePopup = usePlannerPopup(() => {
-    clearRoutinePreviewCloseTimer();
-    setRoutineChapterPreview(null);
-    if (menuCloseTimer.current) clearTimeout(menuCloseTimer.current);
-    setRoutineToDelete(null);
-  });
-  const [chapterPopoverPosition, setChapterPopoverPosition] = useState({
-    top: 0,
-    left: 0,
-    width: 0,
-    maxHeight: 360,
-    placement: "right" as FloatingPlacement,
-  });
-
-  useEffect(() => {
-    const handleOutsideClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-
-      if (!target.closest(".chapter-popover") && !target.closest("[data-subject-card]")) {
-        setExpandedSubjectId(null);
-        setChapterTrigger(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleOutsideClick);
-
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!expandedSubjectId || !chapterTrigger) return;
-
-    const updateChapterPosition = () => {
-      const rows = Array.from(chapterPopoverRef.current?.querySelectorAll<HTMLElement>("[data-chapter-option]") ?? []);
-      if (rows.length) setChapterListHeight(firstSixRowsHeight(rows.map(row => row.getBoundingClientRect().height), 4, 20));
-      const triggerRect = chapterTrigger.getBoundingClientRect();
-      const measuredHeight = chapterPopoverRef.current?.offsetHeight || 360;
-
-      setChapterPopoverPosition(
-        getSideAwareFloatingPosition(
-          triggerRect,
-          triggerRect.width,
-          measuredHeight
-        )
-      );
-    };
-
-    updateChapterPosition();
-    const frame = window.requestAnimationFrame(() => {
-      const firstChapter = chapterPopoverRef.current?.querySelector<HTMLElement>(
-        "[data-chapter-option]"
-      );
-
-      (firstChapter ?? chapterPopoverRef.current)?.focus({ preventScroll: true });
-    });
-    const observer = new ResizeObserver(updateChapterPosition);
-    if (chapterPopoverRef.current) observer.observe(chapterPopoverRef.current);
-    let alive = true;
-    document.fonts.ready.then(() => { if (alive) updateChapterPosition(); });
-    window.addEventListener("resize", updateChapterPosition);
-    window.addEventListener("scroll", updateChapterPosition, true);
-
-    return () => {
-      alive = false;
-      observer.disconnect();
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("resize", updateChapterPosition);
-      window.removeEventListener("scroll", updateChapterPosition, true);
-    };
-  }, [chapterTrigger, expandedSubjectId]);
-
-  const closeChapterPopover = (restoreFocus = false) => {
-    const trigger = chapterTrigger;
-    setExpandedSubjectId(null);
-    setChapterTrigger(null);
-
-    if (restoreFocus) {
-      trigger?.focus();
-    }
-  };
-
-  const handleChapterPopoverKeyDown = (
-    event: React.KeyboardEvent<HTMLDivElement>
-  ) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeChapterPopover(true);
-      return;
-    }
-
-    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
-      return;
-    }
-
-    const chapters = Array.from(
-      chapterPopoverRef.current?.querySelectorAll<HTMLButtonElement>(
-        "[data-chapter-option]"
-      ) ?? []
-    );
-
-    if (chapters.length === 0) return;
-
-    event.preventDefault();
-    const currentIndex = chapters.indexOf(
-      document.activeElement as HTMLButtonElement
-    );
-    let nextIndex = currentIndex;
-
-    if (event.key === "Home") nextIndex = 0;
-    if (event.key === "End") nextIndex = chapters.length - 1;
-    if (event.key === "ArrowDown") {
-      nextIndex = (currentIndex + 1) % chapters.length;
-    }
-    if (event.key === "ArrowUp") {
-      nextIndex = (currentIndex - 1 + chapters.length) % chapters.length;
-    }
-
-    chapters[nextIndex]?.focus();
-  };
+  const claimRoutinePopup = usePlannerPopup(() => setRoutineToDelete(null));
 
   const safeAdditionalSubjects = additionalSubjects ?? [];
 
@@ -1512,119 +1080,6 @@ export default function StudyPlanner({
     card: "bg-amber-50/45 border-amber-100/70 hover:border-amber-200",
     chapter: "bg-amber-50/40 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border-amber-100/60",
     icon: "bg-amber-100 text-amber-600",
-  };
-
-  const formatChapterNumber = (chapterNumber: string) => {
-    const trimmed = chapterNumber.trim();
-
-    if (/^chapter\s+/i.test(trimmed)) {
-      return trimmed.replace(/^chapter\s+/i, "Ch-");
-    }
-
-    if (/^lesson\s+/i.test(trimmed)) {
-      return trimmed.replace(/^lesson\s+/i, "Less-");
-    }
-
-    if (/^question\s+/i.test(trimmed)) {
-      return trimmed.replace(/^question\s+/i, "Ques-");
-    }
-
-    if (/^ch[-\s]?/i.test(trimmed)) {
-      return trimmed.replace(/^ch[-\s]?/i, "Ch-");
-    }
-
-    if (/^less[-\s]?/i.test(trimmed)) {
-      return trimmed.replace(/^less[-\s]?/i, "Less-");
-    }
-
-    if (/^ques[-\s]?/i.test(trimmed)) {
-      return trimmed.replace(/^ques[-\s]?/i, "Ques-");
-    }
-
-    return `Ch-${trimmed}`;
-  };
-
-  const formatFullChapterLabel = (chapterNumber: string) => {
-    const trimmed = chapterNumber.trim();
-
-    if (/^chapter\s+/i.test(trimmed)) {
-      return trimmed.replace(/^chapter\s+/i, "Chapter-");
-    }
-
-    if (/^lesson\s+/i.test(trimmed)) {
-      return trimmed.replace(/^lesson\s+/i, "Lesson-");
-    }
-
-    if (/^question\s+/i.test(trimmed)) {
-      return trimmed.replace(/^question\s+/i, "Question-");
-    }
-
-    if (/^ch[-\s]?/i.test(trimmed)) {
-      return trimmed.replace(/^ch[-\s]?/i, "Chapter-");
-    }
-
-    if (/^less[-\s]?/i.test(trimmed)) {
-      return trimmed.replace(/^less[-\s]?/i, "Lesson-");
-    }
-
-    if (/^ques[-\s]?/i.test(trimmed)) {
-      return trimmed.replace(/^ques[-\s]?/i, "Question-");
-    }
-
-    return `Chapter-${trimmed}`;
-  };
-
-  const toggleSubject = (
-    subjectId: string,
-    event: React.MouseEvent<HTMLButtonElement>
-  ) => {
-    if (expandedSubjectId === subjectId) {
-      setExpandedSubjectId(null);
-      setChapterTrigger(null);
-      return;
-    }
-
-    claimChapterPopup();
-    setRoutineChapterPreview(null);
-    setChapterListHeight(280);
-    const card = event.currentTarget.getBoundingClientRect();
-    setChapterPopoverPosition(
-      getSideAwareFloatingPosition(card, card.width, 360)
-    );
-    setChapterTrigger(event.currentTarget);
-    setExpandedSubjectId(subjectId);
-  };
-
-  const formatRoutineSubjectName = (subjectName: string) => {
-    const words = subjectName.trim().split(/\s+/).filter(Boolean);
-
-    // Examples:
-    // Bangla 2nd Paper -> Bangla-2
-    // English 1st Paper -> English-1
-    // Higher Mathematics -> HM
-    // ICT -> ICT
-    const paperNumberIndex = words.findIndex((word) =>
-      /^(1st|2nd|3rd|4th|5th|6th|7th|8th|9th|10th)$/i.test(word)
-    );
-
-    if (paperNumberIndex > 0) {
-      const baseName = words
-        .slice(0, paperNumberIndex)
-        .map((word) => word.replace(/[^A-Za-z]/g, ""))
-        .filter(Boolean)
-        .join(" ");
-
-      return `${baseName}-${words[paperNumberIndex].replace(/\D/g, "")}`;
-    }
-
-    if (words.length === 1) {
-      return words[0];
-    }
-
-    return words
-      .map((word) => word.replace(/[^A-Za-z]/g, "").charAt(0).toUpperCase())
-      .filter(Boolean)
-      .join("");
   };
 
   const routineSubjectOptions: SubjectPickerOption[] = [
@@ -1640,7 +1095,7 @@ export default function StudyPlanner({
   ];
 
   const selectedRoutineSubjectKey = routineSubjectId
-    ? `subject:${routineSubjectId}`
+    ? `${subjects.some(subject => subject.id === routineSubjectId) ? "subject" : "additional"}:${routineSubjectId}`
     : safeAdditionalSubjects.find(
       (subject) => formatRoutineSubjectName(subject.name) === routineTitle
     )
@@ -1651,292 +1106,14 @@ export default function StudyPlanner({
       : "";
 
   const handleRoutineSubjectSelect = (option: SubjectPickerOption) => {
-    const [kind, id] = option.key.split(":");
+    const [, id] = option.key.split(":");
 
     setRoutineTitle(formatRoutineSubjectName(option.label));
     setRoutineChapterId(null);
 
-    if (kind === "subject") {
-      setRoutineSubjectId(id);
-    } else {
-      setRoutineSubjectId(null);
-    }
+    setRoutineSubjectId(id);
 
   };
-
-  const scrollRoutineCardIntoView = (routineId: string) => {
-    window.setTimeout(() => {
-      const routineCard = Array.from(
-        document.querySelectorAll<HTMLElement>(
-          `[data-routine-card-id="${routineId}"]`
-        )
-      ).find((card) => card.offsetParent !== null);
-
-      routineCard?.scrollIntoView({
-        behavior: shouldReduceMotion ? "auto" : "smooth",
-        block: "center",
-      });
-      routineCard?.focus({ preventScroll: true });
-    }, 0);
-  };
-
-  const replaceRoutineSubject = (
-    routineId: string,
-    title: string,
-    subjectId: string | undefined,
-    chapterId: string | undefined,
-    color: string | undefined
-  ) => {
-    const routineBeingEdited = routineBlocks.find(
-      (block) => block.id === routineId
-    );
-
-    if (!routineBeingEdited) {
-      setEditingRoutineId(null);
-      setExpandedSubjectId(null);
-      return;
-    }
-
-    onUpdateRoutineBlock(routineId, {
-      dayOfWeek: routineBeingEdited.dayOfWeek,
-      title,
-      subjectId,
-      chapterId,
-      startTime: routineBeingEdited.startTime,
-      endTime: routineBeingEdited.endTime,
-      color: color ?? routineBeingEdited.color,
-      homeworkText:
-        routineBeingEdited.subjectId === subjectId &&
-        routineBeingEdited.chapterId === chapterId
-          ? routineBeingEdited.homeworkText
-          : undefined,
-    });
-
-    setEditingRoutineId(null);
-    setExpandedSubjectId(null);
-    scrollRoutineCardIntoView(routineId);
-  };
-
-  const prepareDraft = () => {
-    if (showRoutineForm) return;
-    draftNeedsScroll.current = true;
-    const today = toDayStart(new Date());
-    setRoutineDay(String(today.getDay()));
-    setWeekAnchorDate(today);
-    setMobileRoutineDay(today.getDay());
-    setRoutineError(null);
-    setShowRoutineForm(true);
-  };
-
-  const handleChapterSelect = (
-    subjectId: string,
-    subjectName: string,
-    chapterNumber: string,
-    chapterId: string
-  ) => {
-    const title = `${formatRoutineSubjectName(subjectName)}: ${formatChapterNumber(
-      chapterNumber
-    )}`;
-
-    if (editingRoutineId) {
-      const selectedSubject = subjects.find(
-        (subject) => subject.id === subjectId
-      );
-
-      replaceRoutineSubject(
-        editingRoutineId,
-        title,
-        subjectId,
-        chapterId,
-        getRoutineColorForSubject(selectedSubject?.color ?? "") ?? undefined
-      );
-      return;
-    }
-
-    prepareDraft();
-    setRoutineTitle(title);
-    setRoutineSubjectId(subjectId);
-    setRoutineChapterId(chapterId);
-    setExpandedSubjectId(null);
-  };
-
-  const handleAdditionalSubjectSelect = (subjectName: string) => {
-    const title = formatRoutineSubjectName(subjectName);
-
-    if (editingRoutineId) {
-      replaceRoutineSubject(editingRoutineId, title, undefined, undefined, "amber");
-      return;
-    }
-
-    prepareDraft();
-    setRoutineTitle(title);
-    setRoutineSubjectId(null);
-    setRoutineChapterId(null);
-    setExpandedSubjectId(null);
-  };
-
-  const renderSubjectCard = (
-    subject: Subject,
-    cardIndex: number
-  ) => {
-    const isExpanded = expandedSubjectId === subject.id;
-    const styles = getSubjectCardStyles(subject.color);
-    const subjectAccent = getSubjectAccentColor(subject.color);
-
-    return (
-      <div
-        key={`${subject.id}-${cardIndex}`}
-        className="relative min-w-0"
-      >
-        {createPortal(
-          <AnimatePresence initial={false}>{isExpanded && <motion.div
-            key={subject.id}
-            initial={shouldReduceMotion ? false : { opacity: 0, ...popupOffset(chapterPopoverPosition.placement) }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, ...popupOffset(chapterPopoverPosition.placement), pointerEvents: "none" }}
-            transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
-            data-subject-id={subject.id}
-            ref={(node) => {
-              if (node) chapterPopoverRef.current = node;
-              else if (chapterPopoverRef.current?.dataset.subjectId === subject.id) chapterPopoverRef.current = null;
-            }}
-            id={`chapter-picker-${subject.id}`}
-            role="dialog"
-            aria-label={`Choose a chapter from ${subject.name}`}
-            tabIndex={-1}
-            onKeyDown={handleChapterPopoverKeyDown}
-            className="chapter-popover planner-popup fixed z-[110] flex flex-col overflow-hidden rounded-xl border bg-white"
-            style={{
-              top: chapterPopoverPosition.top,
-              left: chapterPopoverPosition.left,
-              width: chapterPopoverPosition.width || undefined,
-              maxHeight: chapterPopoverPosition.maxHeight,
-              borderColor: `${subjectAccent}55`,
-              boxShadow: `0 18px 30px -18px ${subjectAccent}66, inset 0 0 0 1px ${subjectAccent}26`,
-              ["--chapter-accent" as string]: subjectAccent,
-            }}
-          >
-            <div className="flex shrink-0 items-center gap-2 px-3 py-2.5">
-              <div className={`rounded-lg p-1.5 ${styles.icon}`}>
-                <BookOpen className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-xs font-bold text-slate-800">
-                  {subject.name}
-                </div>
-                <div className="text-xs font-medium text-slate-500">
-                  {editingRoutineId ? "Choose replacement chapter" : "Choose a chapter for your routine"}
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="mx-3 h-px shrink-0"
-              style={{
-                backgroundColor: `${subjectAccent}80`,
-                boxShadow: `0 1px 0 ${subjectAccent}24`,
-              }}
-            />
-
-            {subject.chapters.length > 0 ? (
-              <div style={{ maxHeight: chapterListHeight }} className="chapter-popover-scroll min-h-0 flex-1 space-y-1 overflow-y-auto pb-3 pl-3 pr-1 pt-2">
-                {subject.chapters.map((chapter) => (
-                  <button
-                    type="button"
-                    key={chapter.id}
-                    data-chapter-option
-                    onClick={() =>
-                      handleChapterSelect(
-                        subject.id,
-                        subject.name,
-                        chapter.chapterNumber,
-                        chapter.id
-                      )
-                    }
-                    className={`planner-focus flex w-full items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[13px] transition-colors cursor-pointer ${styles.chapter}`}
-                  >
-                    <span className={`shrink-0 rounded-md px-1.5 py-1 text-[10px] font-bold ${styles.icon}`}>
-                      {formatChapterNumber(chapter.chapterNumber)}
-                    </span>{" "}
-                    <span className="min-w-0 flex-1 font-medium">{chapter.banglaName}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="px-3 py-4 text-xs text-slate-500">
-                No chapter data is available for this subject yet.
-              </div>
-            )}
-          </motion.div>}</AnimatePresence>,
-          document.body
-        )}
-
-        <button
-          type="button"
-          onClick={(event) => toggleSubject(subject.id, event)}
-          data-subject-card
-          aria-haspopup="dialog"
-          aria-expanded={isExpanded}
-          aria-controls={`chapter-picker-${subject.id}`}
-          style={{ ["--subject-hover-color" as string]: subjectAccent }}
-          className={`planner-focus subject-card-live w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm cursor-pointer ${styles.card}`}
-        >
-          <div className="flex items-center gap-2.5">
-            <div className={`subject-card-live-icon rounded-lg p-1.5 shrink-0 ${styles.icon}`}>
-              <BookOpen className="w-4 h-4" />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold text-slate-800 break-words">
-                {subject.name}
-              </div>
-              <div className="mt-0.5 text-xs text-slate-500">
-                {isExpanded ? "Hide chapters" : "View chapters"}
-              </div>
-            </div>
-
-            <span
-              className={`text-slate-400 text-base transition-transform ${isExpanded ? "rotate-90" : ""
-                }`}
-              aria-hidden="true"
-            >
-              ›
-            </span>
-          </div>
-        </button>
-      </div>
-    );
-  };
-
-  const renderAdditionalSubjectCard = (
-    subject: AdditionalSubject,
-    cardIndex: number
-  ) => (
-    <button
-      type="button"
-      key={`${subject.id}-${cardIndex}`}
-      onClick={() => handleAdditionalSubjectSelect(subject.name)}
-      data-subject-card
-      aria-label={`${subject.name}, additional subject`}
-      style={{ ["--subject-hover-color" as string]: "#d97706" }}
-      className={`planner-focus subject-card-live w-full min-h-[68px] rounded-xl border p-2.5 text-left shadow-sm cursor-pointer ${additionalSubjectStyles.card}`}
-    >
-      <div className="flex items-center gap-2.5">
-        <div className={`subject-card-live-icon rounded-lg p-1.5 shrink-0 ${additionalSubjectStyles.icon}`}>
-          <BookOpen className="w-4 h-4" />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-semibold text-slate-800 break-words">
-            {subject.name}
-          </div>
-          <div className="mt-0.5 text-xs text-slate-500">
-            Additional subject
-          </div>
-        </div>
-      </div>
-    </button>
-  );
 
   return (
     <div
@@ -1948,9 +1125,9 @@ export default function StudyPlanner({
       {/* ------------------------------------------------------ */}
 
       <section className="planner-surface">
-        <div className="flex flex-col gap-3 border-b border-[#dce5f4] pb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pb-4">
+        <div className="flex flex-col gap-3 border-b border-slate-200 pb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-[#edf3ff] text-indigo-600 rounded-xl">
+            <div className="p-2.5 bg-[#eef0fa] text-[#5b57b7] rounded-xl">
               <CalendarDays className="w-6 h-6" aria-hidden="true" />
             </div>
 
@@ -2018,7 +1195,7 @@ export default function StudyPlanner({
               >
                 <div className="flex items-center justify-between">
                   <h3 ref={formHeadingRef} tabIndex={-1} className="text-sm font-semibold text-slate-700 outline-none">
-                    Add a weekly study time
+                    {weeklyEditingId ? "Edit a weekly study time" : "Add a weekly study time"}
                   </h3>
                 </div>
 
@@ -2061,7 +1238,7 @@ export default function StudyPlanner({
                 </div>
 
                 <div className="planner-form-context" aria-live="polite">
-                  <span>Repeats every {getDayName(Number(routineDay))}</span>
+                  <span>Repeats every {getDayName(Number(routineDay))}{weeklyEditingId ? " · Saved dated homework stays unchanged" : ""}</span>
                   <span>{durationDescription(routineStart, routineEnd)}</span>
                 </div>
 
@@ -2075,7 +1252,7 @@ export default function StudyPlanner({
                     className="planner-focus planner-primary flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 md:w-auto"
                   >
                     <Plus className="w-4 h-4" />
-                    Save weekly study time
+                    {weeklyEditingId ? "Save weekly changes" : "Save weekly study time"}
                   </button>
 
                   {!routineCanBeSaved && !routineError && (
@@ -2150,11 +1327,10 @@ export default function StudyPlanner({
                       <div className="mt-1 text-base font-semibold text-slate-800">{getMotherRoutineTitle(routineToDelete)}</div>
                     </div>
                     <p className="mt-3 text-center text-xs leading-relaxed text-slate-500">
-                      Details apply to this date. Removing the study time affects every week.
+                      Homework applies to this date. Weekly changes affect repeating times; saved dated records are kept.
                     </p>
-                    <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
-                      <button type="button" onClick={startEditingRoutine} className="planner-focus routine-sheet-action">Edit</button>
-                      <button type="button" onClick={deleteRoutineWithUndo} className="planner-focus routine-sheet-action routine-card-delete">Delete</button>
+                    <div className="mt-3 border-t border-slate-100 pt-3">
+                      {renderRoutineActions(routineToDelete, routineMenuDateKey ?? "", true)}
                     </div>
                     <button type="button" onClick={() => closeRoutineMenu()} className="planner-focus planner-sheet-close mt-3 w-full rounded-lg py-2 text-sm font-medium text-slate-500">Close</button>
                   </motion.div>
@@ -2177,6 +1353,8 @@ export default function StudyPlanner({
                 <motion.div
                   ref={homeworkEditorRef}
                   role="dialog"
+                  aria-modal="true"
+                  tabIndex={-1}
                   aria-label={`Choose homework chapter for ${getMotherRoutineTitle(block)}`}
                   initial={shouldReduceMotion ? false : { opacity: 0, y: 6, scale: 0.985 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -2257,15 +1435,88 @@ export default function StudyPlanner({
           document.body
         )}
 
+        {createPortal(
+          <AnimatePresence>
+            {deleteConfirmation && (
+              <motion.div
+                className="fixed inset-0 z-[150] flex items-center justify-center p-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
+              >
+                <button
+                  type="button"
+                  aria-label="Keep this item"
+                  onClick={() => setDeleteConfirmation(null)}
+                  className="absolute inset-0 cursor-default bg-slate-900/30 backdrop-blur-[1px]"
+                />
+                <motion.div
+                  ref={deleteConfirmationRef}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="delete-confirmation-title"
+                  aria-describedby="delete-confirmation-description"
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={shouldReduceMotion ? undefined : { opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl bg-rose-50 p-2 text-rose-600">
+                      <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h3 id="delete-confirmation-title" className="text-base font-semibold text-slate-800">
+                        {deleteConfirmation === "homework" ? "Delete this homework?" : "Delete this weekly study time?"}
+                      </h3>
+                      <p id="delete-confirmation-description" className="mt-1 text-sm leading-relaxed text-slate-600">
+                        {deleteConfirmation === "homework"
+                          ? "Its chapter and homework for this date will be removed."
+                          : "This study time will no longer repeat. Saved homework records stay in your study log."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmation(null)}
+                      className="planner-focus rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      Keep
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = deleteConfirmation;
+                        setDeleteConfirmation(null);
+                        if (target === "homework") deleteRoutineHomework();
+                        else deleteRoutineWithUndo();
+                      }}
+                      className="planner-focus rounded-xl bg-rose-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+                    >
+                      {deleteConfirmation === "homework" ? "Delete HW" : "Delete"}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
         {/* Weekly Routine Board */}
         <div id="planner-week-board" ref={routineBoardRef} tabIndex={-1} className="planner-board">
           <div className="planner-board-heading">
-            <p className="text-xs leading-relaxed text-slate-600">Open a day to see its chapter and homework.</p>
+            <p className="text-xs leading-relaxed text-slate-500">Weekly times repeat. Homework belongs to one date.</p>
             <div className="planner-week-controls flex items-center gap-1.5">
               <button
                 type="button"
                 className="planner-focus planner-text-action"
                 onClick={() => {
+                  closeHomeworkEditor();
+                  closeRoutineMenu();
                   const today = toDayStart(new Date());
                   setWeekAnchorDate(today);
                   setMobileRoutineDay(today.getDay());
@@ -2279,6 +1530,8 @@ export default function StudyPlanner({
                 className="planner-focus planner-week-nav-button"
                 aria-label="Previous week"
                 onClick={() => {
+                  closeHomeworkEditor();
+                  closeRoutineMenu();
                   const previousWeek = new Date(weekAnchorDate);
                   previousWeek.setDate(previousWeek.getDate() - 7);
                   setWeekMotionDirection("previous");
@@ -2297,6 +1550,8 @@ export default function StudyPlanner({
                 className="planner-focus planner-week-nav-button"
                 aria-label="Next week"
                 onClick={() => {
+                  closeHomeworkEditor();
+                  closeRoutineMenu();
                   const nextWeek = new Date(weekAnchorDate);
                   nextWeek.setDate(nextWeek.getDate() + 7);
                   setWeekMotionDirection("next");
@@ -2320,7 +1575,7 @@ export default function StudyPlanner({
                 <button
                   key={day.value}
                   type="button"
-                  onClick={() => setMobileRoutineDay(day.value)}
+                  onClick={() => { closeHomeworkEditor(); closeRoutineMenu(); setMobileRoutineDay(day.value); }}
                   aria-pressed={isSelected}
                   aria-label={`${day.label}, ${day.date.toLocaleDateString("en-US", {
                     month: "long",
@@ -2361,12 +1616,7 @@ export default function StudyPlanner({
             style={{ gridTemplateColumns: weeklyGridTemplate }}
           >
             {visibleWeek.map((day) => {
-              const dayBlocks = routineBlocks
-                .filter((block) => block.dayOfWeek === day.value)
-                .sort(
-                  (a, b) =>
-                    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-                );
+              const dayBlocks = getScheduledRoutineTasks(localDateKey(day.date), routineBlocks, dailyRoutineTasks, subjects, additionalSubjects).map(task => task.block);
 
               const isToday = isSameCalendarDate(day.date, new Date());
               const isSelectedDate = isSameCalendarDate(day.date, weekAnchorDate);
@@ -2389,6 +1639,8 @@ export default function StudyPlanner({
                     aria-expanded={isExpanded}
                     aria-label={`${isExpanded ? "Collapse" : "Expand"} ${day.label}, ${day.date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`}
                     onClick={() => {
+                      closeHomeworkEditor();
+                      closeRoutineMenu();
                       setExpandedRoutineDay(isExpanded ? null : day.value);
                       setMobileRoutineDay(day.value);
                       setWeekAnchorDate(day.date);
@@ -2413,132 +1665,17 @@ export default function StudyPlanner({
                     </div>
 
                   </button>
-                  {/* Routine blocks */}
-                  {isExpanded ? (
-                    <motion.div
-                      initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: shouldReduceMotion ? 0 : 0.22, delay: shouldReduceMotion ? 0 : 0.08, ease: [0.22, 1, 0.36, 1] }}
-                      className="space-y-2"
-                    >
-                      {dayBlocks.length > 0 ? (
-                        dayBlocks.map((block) => renderDatedRoutineCard(block, day.date))
-                      ) : (
-                        <div className="planner-empty-day rounded-lg border border-dashed border-[#dce5f4] bg-[#f8faff] px-2 py-4 text-center">
-                          <CalendarDays className="mx-auto h-4 w-4 text-slate-400" aria-hidden="true" />
-                          <p className="mt-1.5 text-xs leading-relaxed text-slate-600">No study time planned for {day.label}.</p>
-                          <button type="button" onClick={() => openRoutineFormForDate(day.date, true)} className="planner-focus mt-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">Add study time</button>
-                        </div>
-                      )}
-                    </motion.div>
-                  ) : (
+                  {/* A single keyed card stays mounted throughout day expansion. */}
                   <div className="space-y-2">
-                    {dayBlocks.length > 0 ? (
-                      dayBlocks.map((block) => {
-                        const isOpen = routineToDelete?.id === block.id;
-                        const isEditing = editingRoutineId === block.id;
-                        const draftChapter =
-                          isEditing && homeworkEditorBlockId === block.id
-                            ? getRoutineBlockSubject(block)?.chapters.find(
-                                (chapter) => chapter.id === homeworkChapterId
-                              )
-                            : undefined;
-                        const showInlineHomeworkDraft =
-                          isEditing &&
-                          homeworkEditorBlockId === block.id &&
-                          !isHomeworkChapterPickerOpen &&
-                          !!draftChapter;
-                        return <motion.div
-                          layout
-                          data-routine-card-id={block.id}
-                          key={block.id}
-                          transition={{ layout: { duration: shouldReduceMotion ? 0 : 0.26, ease: [0.22, 1, 0.36, 1] } }}
-                          className={`routine-card group relative overflow-hidden rounded-lg border text-center shadow-sm ${getRoutineBlockCardStyle(block)} ${isEditing
-                            ? "routine-card-editing relative z-10 ring-2 ring-indigo-300 ring-offset-2"
-                            : ""
-                            }`}
-                        >
-                          <button
-                            type="button"
-                            disabled={isEditing}
-                            aria-expanded={isOpen}
-                            aria-controls={isOpen ? `routine-details-${block.id}` : undefined}
-                            aria-label={`${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. ${isOpen ? "Close details" : "Open details"}.`}
-                            onClick={(event) => openRoutineMenu(event.currentTarget.parentElement as HTMLDivElement, block, day.date)}
-                            className="planner-focus routine-card-trigger relative flex w-full flex-col items-center justify-center px-2.5 py-2.5 text-center disabled:cursor-default"
-                          >
-                            <span className={`whitespace-nowrap text-xs font-medium tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
-                              {formatCompactTimeRange(block.startTime, block.endTime)}
-                            </span>
-                            <span className="routine-card-title mt-1 min-w-0 text-[13px] font-semibold text-slate-800">{getMotherRoutineTitle(block)}</span>
-                            <MoreHorizontal aria-hidden="true" className="routine-card-more absolute right-2 top-2 h-3.5 w-3.5 text-slate-400" />
-                          </button>
-
-                          <AnimatePresence initial={false}>
-                            {isOpen && (
-                              <motion.div
-                                id={`routine-details-${block.id}`}
-                                data-routine-details
-                                initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: shouldReduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
-                                className="routine-card-details overflow-hidden"
-                              >
-                                <div className="routine-card-details-inner">
-                                  <div className="routine-card-actions">
-                                    <button type="button" onClick={startEditingRoutine} className="planner-focus routine-card-action">Edit</button>
-                                    <button type="button" onClick={deleteRoutineWithUndo} className="planner-focus routine-card-action routine-card-delete">Delete</button>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-
-                          {showInlineHomeworkDraft && draftChapter && (
-                            <div className="border-t border-slate-200/70 px-2.5 pb-2.5 pt-2 text-left">
-                              <div className="text-center text-[11px] font-semibold leading-snug text-slate-700">
-                                {formatChapterNumber(draftChapter.chapterNumber)}:{" "}
-                                <span lang="bn">{draftChapter.banglaName}</span>
-                              </div>
-                              <textarea
-                                data-homework-input-for={block.id}
-                                value={homeworkDraft}
-                                onChange={(event) => setHomeworkDraft(event.target.value)}
-                                rows={2}
-                                placeholder="Add homework details"
-                                aria-label="Add homework details"
-                                className="planner-focus mt-2 w-full resize-none rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs leading-relaxed text-slate-800 shadow-sm outline-none placeholder:text-slate-500"
-                              />
-                              <div className="mt-2 grid grid-cols-2 gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => closeHomeworkEditor(true)}
-                                  className="planner-focus rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={saveRoutineHomework}
-                                  disabled={!homeworkDraft.trim()}
-                                  className="planner-focus rounded-lg bg-indigo-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-45"
-                                >
-                                  Save
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                        </motion.div>;
-                      })
-                    ) : (
-                      <div className="rounded-lg border border-dashed border-[#dce5f4] bg-[#f8faff] py-5 text-center text-xs text-slate-500">
-                        No sessions
+                    {dayBlocks.length > 0 ? dayBlocks.map(block => renderDatedRoutineCard(block, day.date, isExpanded)) : (
+                      <div className="planner-empty-day rounded-lg border border-dashed border-slate-200 px-2 py-4 text-center">
+                        <p className="text-xs text-slate-500">No study times</p>
+                        <button type="button" aria-label={`Add study time for ${day.label}`}
+                          onClick={() => openRoutineFormForDate(day.date, true)}
+                          className="planner-focus mt-2 rounded-lg px-2 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50">Add study time</button>
                       </div>
                     )}
                   </div>
-                  )}
                 </motion.div>
               );
             })}
@@ -2551,12 +1688,7 @@ export default function StudyPlanner({
                 visibleWeek.find((day) => day.value === mobileRoutineDay) ??
                 visibleWeek[0];
 
-              const selectedDayBlocks = routineBlocks
-                .filter((block) => block.dayOfWeek === mobileRoutineDay)
-                .sort(
-                  (a, b) =>
-                    timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-                );
+              const selectedDayBlocks = getScheduledRoutineTasks(localDateKey(selectedDay.date), routineBlocks, dailyRoutineTasks, subjects, additionalSubjects).map(task => task.block);
 
               return (
                 <motion.div
@@ -2582,96 +1714,7 @@ export default function StudyPlanner({
 
                   {selectedDayBlocks.length > 0 ? (
                     <div className="space-y-3">
-                      {selectedDayBlocks.map((block) => {
-                        const info = getDetailedRoutineInfo(getDatedRoutineBlock(block, selectedDay.date));
-                        const editing = editingRoutineId === block.id;
-                        const draftChapter =
-                          editing && homeworkEditorBlockId === block.id
-                            ? getRoutineBlockSubject(block)?.chapters.find(
-                                (chapter) => chapter.id === homeworkChapterId
-                              )
-                            : undefined;
-                        const showInlineHomeworkDraft =
-                          editing &&
-                          homeworkEditorBlockId === block.id &&
-                          !isHomeworkChapterPickerOpen &&
-                          !!draftChapter;
-                        return (
-                          <div key={block.id} data-routine-card-id={block.id}
-                            role="group" tabIndex={-1}
-                            aria-label={editing ? `${block.title} is being edited.` : block.title}
-                            className={`planner-focus routine-card rounded-xl border p-3 text-center ${getRoutineBlockCardStyle(block)} ${editing ? "routine-card-editing ring-2 ring-indigo-300 ring-offset-2" : ""}`}>
-                            <button type="button" disabled={editing}
-                              aria-haspopup="dialog" aria-expanded={routineToDelete?.id === block.id}
-                              aria-label={`${block.title}, ${formatTimeRange(block.startTime, block.endTime)}. Open details.`}
-                              onClick={(event) => openRoutineMenu(event.currentTarget.parentElement as HTMLDivElement, block, selectedDay.date)}
-                              className="planner-focus block w-full cursor-pointer rounded-lg p-1 disabled:cursor-default">
-                              <span className={`block whitespace-nowrap text-xs font-medium tabular-nums ${getRoutineBlockTimeStyle(block)}`}>
-                                {formatCompactTimeRange(block.startTime, block.endTime)}
-                              </span>
-                              <span className="relative mt-1 block text-[13px] font-semibold text-slate-800">{getMotherRoutineTitle(block)}<MoreHorizontal aria-hidden="true" className="absolute right-0 top-0 h-3.5 w-3.5 text-slate-400" /></span>
-                            </button>
-                            <div className="planner-card-details-copy mt-2 border-t border-slate-200/70 pt-2 text-center">
-                              {info.chapterLabel && (
-                                <div className="text-sm font-semibold text-slate-800">
-                                  {info.chapterLabel}
-                                </div>
-                              )}
-                              {info.details ? (
-                                <button
-                                  type="button"
-                                  lang="bn"
-                                  onClick={() => onOpenRoutineChapter(info.details!.subject.id, info.details!.chapter.id)}
-                                  className="planner-focus routine-card-chapter-link mt-0.5 w-full rounded-lg py-0.5 text-center text-sm font-medium leading-snug text-indigo-700 underline decoration-indigo-200 underline-offset-2"
-                                >
-                                  {info.details.chapter.banglaName}
-                                </button>
-                              ) : (
-                                <div className="text-xs text-slate-500">No homework assigned</div>
-                              )}
-                              {info.details && (
-                                <div lang="bn" className={`mt-0.5 text-sm leading-snug ${info.homeworkText ? "text-slate-700" : "italic text-slate-500"}`}>
-                                  {info.homeworkText || "No homework detail added"}
-                                </div>
-                              )}
-                            </div>
-                            {showInlineHomeworkDraft && draftChapter && (
-                              <div className="mt-3 border-t border-slate-200/70 pt-3 text-left">
-                                <div className="text-center text-sm font-semibold leading-snug text-slate-700">
-                                  {formatChapterNumber(draftChapter.chapterNumber)}:{" "}
-                                  <span lang="bn">{draftChapter.banglaName}</span>
-                                </div>
-                                <textarea
-                                  data-homework-input-for={block.id}
-                                  value={homeworkDraft}
-                                  onChange={(event) => setHomeworkDraft(event.target.value)}
-                                  rows={2}
-                                  placeholder="Add homework details"
-                                  aria-label="Add homework details"
-                                  className="planner-focus mt-2 w-full resize-none rounded-lg border border-indigo-200 bg-white px-3 py-2.5 text-sm leading-relaxed text-slate-800 shadow-sm outline-none placeholder:text-slate-500"
-                                />
-                                <div className="mt-2 grid grid-cols-2 gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => closeHomeworkEditor(true)}
-                                    className="planner-focus rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={saveRoutineHomework}
-                                    disabled={!homeworkDraft.trim()}
-                                    className="planner-focus rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-45"
-                                  >
-                                    Save
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {selectedDayBlocks.map(block => renderDatedRoutineCard(block, selectedDay.date, true, true))}
                     </div>
                   ) : (
                     <div className="planner-empty-day rounded-lg border border-dashed border-slate-200 px-4 py-7 text-center">
@@ -2697,7 +1740,7 @@ export default function StudyPlanner({
 
       {createPortal(
         <AnimatePresence>
-          {deletedRoutine && (
+          {(deletedRoutine || homeworkUndo) && (
             <motion.div
               role="status"
               aria-live="polite"
@@ -2707,8 +1750,13 @@ export default function StudyPlanner({
               transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
               className="routine-undo fixed bottom-5 left-1/2 z-[130] flex w-[min(360px,calc(100vw-32px))] -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl"
             >
-              <span className="min-w-0 text-sm font-medium text-slate-700">Routine deleted.</span>
-              <button type="button" onClick={undoRoutineDelete} className="planner-focus shrink-0 rounded-lg px-2 py-1 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">Undo</button>
+              <span className="min-w-0 text-sm font-medium text-slate-700">{homeworkUndo ? "Homework cleared for this date." : "Weekly time deleted. Saved homework kept."}</span>
+              <button type="button" onClick={() => {
+                if (homeworkUndo) {
+                  if (onSaveDatedRoutineTask(homeworkUndo)) setHomeworkUndo(null);
+                } else undoRoutineDelete();
+              }} className="planner-focus shrink-0 rounded-lg px-2 py-1 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">Undo</button>
+              <button type="button" aria-label="Dismiss undo message" onClick={() => { setHomeworkUndo(null); setDeletedRoutine(null); }} className="planner-focus rounded-lg p-2 text-slate-500"><X size={16} /></button>
             </motion.div>
           )}
         </AnimatePresence>,

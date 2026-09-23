@@ -4,7 +4,7 @@ import { CalendarDays, Check } from "lucide-react";
 import { getSubjectAccentColor, getSubjectCardStyles } from "../colorPalettes";
 import type { Subject } from "../data/curriculum";
 import type { AdditionalSubject, DailyRoutineTask, RoutineBlock } from "../types";
-import { findNextRoutineTask, getDailyRoutineTasks, localDateKey, resolveRoutineChapter } from "../utils/routineTasks.ts";
+import { findNextRoutineTask, getScheduledRoutineTasks, localDateKey, resolveRoutineChapter } from "../utils/routineTasks.ts";
 import { formatTime12Hour, formatTimeRange } from "../utils/time";
 
 interface TodaysTasksProps {
@@ -78,22 +78,7 @@ export default function TodaysTasks({
     };
   }, [prompt]);
 
-  const [year, month, day] = today.split("-").map(Number);
-  const todayDayOfWeek = new Date(year, month - 1, day).getDay();
-  const currentTodayBlockIds = new Set(
-    routineBlocks
-      .filter((block) => block.dayOfWeek === todayDayOfWeek)
-      .map((block) => block.id)
-  );
-  // Saved date details remain safely in storage, but the landing page should
-  // mirror the sessions that are actually present in today's study plan.
-  const tasks = getDailyRoutineTasks(
-    today,
-    routineBlocks,
-    records,
-    subjects,
-    additionalSubjects
-  ).filter((task) => currentTodayBlockIds.has(task.block.id));
+  const tasks = getScheduledRoutineTasks(today, routineBlocks, records, subjects, additionalSubjects);
   const setNextTask = () => {
     if (!prompt) return;
     if (promptError) { closePrompt(); onOpenPlanner(); return; }
@@ -121,9 +106,9 @@ export default function TodaysTasks({
             // Keep the dashboard card tied to the same chapter and homework the
             // student sees in today's expanded study-plan card.
             const homeworkText = block.homeworkText?.trim();
-            const detailText = homeworkText
-              ? `${task.chapterBanglaName} — ${homeworkText}`
-              : task.chapterBanglaName;
+            const detailText = chapterLink
+              ? `${chapterLink.chapter.banglaName}${homeworkText ? ` — ${homeworkText}` : ""}`
+              : homeworkText || "No homework assigned";
             const isOpen = prompt?.block.id === block.id;
             const promptId = `next-task-${block.id}`;
             return (

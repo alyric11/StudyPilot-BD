@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Subject } from "../data/curriculum";
 import type { DailyRoutineTask, RoutineBlock } from "../types";
-import { describeRoutineTask, findNextRoutineTask, getDailyRoutineTasks, localDateKey, parseDailyRoutineTasks, resolveRoutineChapter, setDailyRoutineCompletion } from "./routineTasks.ts";
+import { describeRoutineTask, findNextRoutineTask, getDailyRoutineTasks, getScheduledRoutineTasks, updateDatedHomework, localDateKey, parseDailyRoutineTasks, resolveRoutineChapter, setDailyRoutineCompletion } from "./routineTasks.ts";
 
 const subjects: Subject[] = [1, 2].map((paper) => ({
   id: `physics${paper}`, name: `Physics ${paper === 1 ? "1st" : "2nd"} Paper`, banglaName: "পদার্থবিজ্ঞান", color: "cyan",
@@ -37,6 +37,7 @@ test("completion survives reload and routine edits, and new sessions start witho
   const nextWeek = getDailyRoutineTasks("2026-09-23", [edited], records, subjects, []);
   assert.equal(nextWeek[0].completed, false);
   assert.equal(nextWeek[0].block.chapterId, undefined);
+  assert.equal(resolveRoutineChapter(nextWeek[0].block, subjects), null);
 });
 
 test("deleting or moving a recurring block retains its recorded session only on the original date", () => {
@@ -89,4 +90,59 @@ test("saved data validation rejects malformed rows and invalid dates", () => {
   assert.deepEqual(parseDailyRoutineTasks(null), []);
   assert.equal(parseDailyRoutineTasks(JSON.stringify([task, null, { ...task, date: "2026-02-31" }, { ...task, block: { ...source, startTime: "99:00" } }])).length, 1);
   assert.throws(() => parseDailyRoutineTasks("{}"));
+});
+
+test("planner and Today use dated times and exclude removed or moved weekly slots", () => {
+  const saved = { ...task, block: { ...source, homeworkText: "Solve 1–3" } };
+  const rescheduled = { ...source, startTime: "21:00", endTime: "22:00" };
+  const result = getScheduledRoutineTasks(today, [rescheduled], [saved], subjects, []);
+  assert.equal(result[0].block.startTime, "17:00");
+  assert.equal(result[0].block.homeworkText, "Solve 1–3");
+  assert.equal(getScheduledRoutineTasks(today, [], [saved], subjects, []).length, 0);
+  assert.equal(getScheduledRoutineTasks(today, [{ ...source, dayOfWeek: 4 }], [saved], subjects, []).length, 0);
+  assert.equal(getDailyRoutineTasks(today, [], [saved], subjects, []).length, 1);
+});
+
+test("editing homework preserves dated identity, completion and weekly template", () => {
+  const before = JSON.stringify(source);
+  const updated = updateDatedHomework({ ...task, completed: true }, "p1c1", "  Read page 12  ", subjects, []);
+  assert.equal(updated.date, task.date);
+  assert.equal(updated.block.id, source.id);
+  assert.equal(updated.block.startTime, source.startTime);
+  assert.equal(updated.completed, true);
+  assert.equal(updated.block.chapterId, "p1c1");
+  assert.equal(updated.block.homeworkText, "Read page 12");
+  assert.equal(JSON.stringify(source), before);
+  assert.equal(updated.subjectKey, "subject:physics1");
+});
+
+test("clearing homework removes legacy chapter fallback without deleting the dated record", () => {
+  const original = { ...task, block: { ...source, homeworkText: "Solve 1–3" } };
+  const cleared = updateDatedHomework(original, null, "", subjects, []);
+  assert.equal(cleared.block.chapterId, undefined);
+  assert.equal(cleared.block.homeworkText, undefined);
+  assert.equal(resolveRoutineChapter(cleared.block, subjects), null);
+  assert.equal(cleared.block.id, original.block.id);
+  assert.equal(original.block.homeworkText, "Solve 1–3"); // exact original remains usable for Undo
+});
+
+test("custom activities accept date-only homework without a curriculum chapter", () => {
+  const custom = { ...source, title: "Practice", subjectId: undefined, chapterId: undefined };
+  const customTask = { ...task, block: custom, ...describeRoutineTask(custom, subjects, []) };
+  const updated = updateDatedHomework(customTask, null, "Practise handwriting", subjects, []);
+  assert.equal(updated.block.homeworkText, "Practise handwriting");
+  assert.equal(updated.subjectName, "Practice");
+  assert.equal(updated.block.chapterId, undefined);
+  assert.equal(getScheduledRoutineTasks("2026-09-23", [custom], [updated], subjects, [])[0].block.homeworkText, undefined);
+});
+
+test("chapter-only and homework-only assignments are supported without changing paper", () => {
+  const chapterOnly = updateDatedHomework(task, "p1c1", "", subjects, []);
+  assert.equal(chapterOnly.block.chapterId, "p1c1");
+  assert.equal(chapterOnly.block.homeworkText, undefined);
+  const homeworkOnly = updateDatedHomework(task, null, "Revise last lesson", subjects, []);
+  assert.equal(resolveRoutineChapter(homeworkOnly.block, subjects), null);
+  const wrongPaper = updateDatedHomework(task, "p2c1", "Read", subjects, []);
+  assert.equal(wrongPaper.block.chapterId, undefined);
+  assert.equal(wrongPaper.subjectKey, "subject:physics1");
 });

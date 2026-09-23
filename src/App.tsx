@@ -556,7 +556,7 @@ export default function App() {
           )}
 
           {/* Study Workstation */}
-          <main className={`min-w-0 w-full lg:ml-[260px] lg:w-[calc(100%-260px)] p-3 pb-16 sm:p-4 sm:pb-16 lg:p-6 lg:pb-16 overflow-x-hidden ${activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : activeSection === "planner" ? "bg-[#f5f7fb]" : ""}`} id="dynamic-flight-window" tabIndex={-1}>
+          <main className={`min-w-0 w-full lg:ml-[260px] lg:w-[calc(100%-260px)] p-3 pb-16 sm:p-4 sm:pb-16 lg:p-6 lg:pb-16 overflow-x-hidden ${activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : activeSection === "planner" ? "bg-[#f6f7f9]" : ""}`} id="dynamic-flight-window" tabIndex={-1}>
             <Suspense fallback={<LoadingStudyScreen />}>
               {showVideoLessons ? (
               <VideoLessonsPage

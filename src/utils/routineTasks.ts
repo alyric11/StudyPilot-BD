@@ -83,10 +83,11 @@ export const getDailyRoutineTasks = (
       // Homework belongs to a specific calendar date, not to the recurring
       // Mother Routine. Legacy chapter/homework fields on a weekly block are
       // deliberately excluded when a new dated session is materialized.
+      const subject = resolveRoutineSubject(block, subjects);
       const datedBlock: RoutineBlock = {
         id: block.id,
         dayOfWeek: block.dayOfWeek,
-        title: block.title,
+        title: subject ? formatRoutineSubjectName(subject.name) : block.title,
         subjectId: block.subjectId,
         startTime: block.startTime,
         endTime: block.endTime,
@@ -111,6 +112,36 @@ export const setDailyRoutineCompletion = (
   // Keep the original snapshot even after undo; a future edit must not rewrite today.
   const updated = { ...(existing ?? task), block: { ...(existing ?? task).block }, completed };
   return [...records.filter((record) => !(record.date === task.date && record.block.id === task.block.id)), updated];
+};
+
+// The planner and dashboard deliberately show only currently scheduled slots.
+// Recorded sessions remain available to the study log after a weekly deletion.
+export const getScheduledRoutineTasks = (
+  date: string, blocks: RoutineBlock[], records: DailyRoutineTask[],
+  subjects: Subject[], additionalSubjects: AdditionalSubject[]
+) => {
+  const weekday = dateFromKey(date).getDay();
+  const scheduledIds = new Set(blocks.filter(block => block.dayOfWeek === weekday).map(block => block.id));
+  return getDailyRoutineTasks(date, blocks, records, subjects, additionalSubjects)
+    .filter(task => scheduledIds.has(task.block.id));
+};
+
+// Edit only the dated homework; preserve the original time, identity and completion.
+export const updateDatedHomework = (
+  task: DailyRoutineTask, chapterId: string | null, homeworkText: string,
+  subjects: Subject[], additionalSubjects: AdditionalSubject[]
+): DailyRoutineTask => {
+  const subject = resolveRoutineSubject(task.block, subjects);
+  const chapter = subject?.chapters.find(item => item.id === chapterId);
+  const block = {
+    ...task.block,
+    // Legacy titles sometimes embed the chapter. Clearing it must not resolve
+    // that stale chapter again through the legacy fallback.
+    title: subject ? formatRoutineSubjectName(subject.name) : task.block.title,
+    chapterId: chapter?.id,
+    homeworkText: homeworkText.trim() || undefined,
+  };
+  return { ...task, block, ...describeRoutineTask(block, subjects, additionalSubjects) };
 };
 
 export const findNextRoutineTask = (
