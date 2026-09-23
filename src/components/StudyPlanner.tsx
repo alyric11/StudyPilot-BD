@@ -534,7 +534,6 @@ export default function StudyPlanner({
         )}
         <PlannerReveal open={showDraft}>
           <div className="border-t border-slate-200/70 px-3 pb-3 pt-2.5 text-left">
-            <p className="mb-2 text-center text-xs text-slate-500">HW for {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
             {draftChapter && (
               <div className="text-center text-xs font-medium leading-snug text-slate-700">
                 {formatChapterNumber(draftChapter.chapterNumber)}: <span lang="bn">{draftChapter.banglaName}</span>
@@ -552,11 +551,36 @@ export default function StudyPlanner({
               aria-label="Homework for this date"
               className="planner-focus mt-2 w-full resize-y rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
             />
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              <button type="button" onClick={saveRoutineHomework} disabled={!homeworkDraft.trim() && !homeworkChapterId}
-                className="planner-focus planner-primary min-h-10 rounded-lg px-2 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45">Save</button>
-              <button type="button" onClick={() => setDeleteConfirmation("homework")}
-                className="planner-focus routine-card-action routine-card-delete border border-rose-200 bg-rose-50">Delete HW</button>
+            <div
+              className={`mt-2 flex items-center ${expanded ? "justify-center gap-6" : "justify-between gap-1"
+                }`}
+            >
+              <button
+                type="button"
+                onClick={() => closeHomeworkEditor(true)}
+                aria-label="Cancel homework editing"
+                title="Back"
+                className="planner-focus flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                onClick={saveRoutineHomework}
+                disabled={!homeworkDraft.trim() && !homeworkChapterId}
+                className="planner-focus routine-card-action min-h-7 whitespace-nowrap px-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Save
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmation("homework")}
+                className="planner-focus routine-card-action routine-card-delete min-h-7 whitespace-nowrap px-1 text-[11px]"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </PlannerReveal>
@@ -1066,12 +1090,12 @@ export default function StudyPlanner({
     expandedRoutineDayIndex === -1
       ? visibleWeek.map(() => "minmax(120px, 1fr)").join(" ")
       : visibleWeek
-          .map((_, index) =>
-            index === expandedRoutineDayIndex
-              ? "minmax(250px, 1.9fr)"
-              : "minmax(100px, 1fr)"
-          )
-          .join(" ");
+        .map((_, index) =>
+          index === expandedRoutineDayIndex
+            ? "minmax(250px, 1.9fr)"
+            : "minmax(100px, 1fr)"
+        )
+        .join(" ");
   const claimRoutinePopup = usePlannerPopup(() => setRoutineToDelete(null));
 
   const safeAdditionalSubjects = additionalSubjects ?? [];
@@ -1172,9 +1196,18 @@ export default function StudyPlanner({
               animate={{ height: "auto", marginTop: 20, opacity: 1 }}
               exit={{ height: 0, marginTop: 0, opacity: 0 }}
               transition={{
-                height: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] },
-                marginTop: { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] },
-                opacity: { duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] },
+                height: {
+                  duration: shouldReduceMotion ? 0 : 0.42,
+                  ease: [0.25, 0.1, 0.25, 1],
+                },
+                marginTop: {
+                  duration: shouldReduceMotion ? 0 : 0.42,
+                  ease: [0.25, 0.1, 0.25, 1],
+                },
+                opacity: {
+                  duration: shouldReduceMotion ? 0 : 0.3,
+                  ease: [0.25, 0.1, 0.25, 1],
+                },
               }}
               className="overflow-hidden"
               onAnimationComplete={() => {
@@ -1401,11 +1434,10 @@ export default function StudyPlanner({
                                 key={chapter.id}
                                 type="button"
                                 onClick={() => selectHomeworkChapter(block, chapter.id)}
-                                className={`planner-focus flex w-full items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[13px] transition ${
-                                  selected
-                                    ? "border-indigo-300 bg-indigo-50 text-indigo-800"
-                                    : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-slate-50"
-                                }`}
+                                className={`planner-focus flex w-full items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[13px] transition ${selected
+                                  ? "border-indigo-300 bg-indigo-50 text-indigo-800"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-slate-50"
+                                  }`}
                               >
                                 <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-1 text-[10px] font-bold text-slate-600">
                                   {formatChapterNumber(chapter.chapterNumber)}
@@ -1461,31 +1493,41 @@ export default function StudyPlanner({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={shouldReduceMotion ? undefined : { opacity: 0, y: 6, scale: 0.98 }}
                   transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+                  className="relative w-full max-w-xs rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-xl bg-rose-50 p-2 text-rose-600">
-                      <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="rounded-lg bg-rose-50 p-1.5 text-rose-600">
+                      <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                     </div>
-                    <div>
-                      <h3 id="delete-confirmation-title" className="text-base font-semibold text-slate-800">
-                        {deleteConfirmation === "homework" ? "Delete this homework?" : "Delete this weekly study time?"}
-                      </h3>
-                      <p id="delete-confirmation-description" className="mt-1 text-sm leading-relaxed text-slate-600">
-                        {deleteConfirmation === "homework"
-                          ? "Its chapter and homework for this date will be removed."
-                          : "This study time will no longer repeat. Saved homework records stay in your study log."}
-                      </p>
-                    </div>
+
+                    <h3
+                      id="delete-confirmation-title"
+                      className="text-sm font-semibold text-slate-800"
+                    >
+                      {deleteConfirmation === "homework"
+                        ? "Delete this homework?"
+                        : "Delete this weekly study time?"}
+                    </h3>
                   </div>
-                  <div className="mt-5 grid grid-cols-2 gap-2">
+
+                  <p
+                    id="delete-confirmation-description"
+                    className="mx-auto mt-2 max-w-[240px] text-center text-xs leading-relaxed text-slate-500"
+                  >
+                    {deleteConfirmation === "homework"
+                      ? "Its chapter and homework for this date will be removed."
+                      : "This study time will no longer repeat. Saved homework records stay in your study log."}
+                  </p>
+
+                  <div className="mt-4 flex items-center justify-center gap-2">
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmation(null)}
-                      className="planner-focus rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                      className="planner-focus min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                     >
                       Keep
                     </button>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -1494,7 +1536,7 @@ export default function StudyPlanner({
                         if (target === "homework") deleteRoutineHomework();
                         else deleteRoutineWithUndo();
                       }}
-                      className="planner-focus rounded-xl bg-rose-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+                      className="planner-focus min-w-24 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
                     >
                       {deleteConfirmation === "homework" ? "Delete HW" : "Delete"}
                     </button>
@@ -1596,9 +1638,9 @@ export default function StudyPlanner({
                     {isToday ? (
                       <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" aria-hidden="true" />Today</span>
                     ) : day.date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </div>
                 </button>
               );
@@ -1606,80 +1648,80 @@ export default function StudyPlanner({
           </div>
 
           <AnimatePresence initial={false} mode="popLayout">
-          <motion.div
-            key={localDateKey(visibleWeek[0].date)}
-            initial={shouldReduceMotion ? false : { opacity: 0, x: weekMotionDirection === "next" ? 12 : -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={shouldReduceMotion ? undefined : { opacity: 0, x: weekMotionDirection === "next" ? -8 : 8 }}
-            transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="planner-week-grid"
-            style={{ gridTemplateColumns: weeklyGridTemplate }}
-          >
-            {visibleWeek.map((day) => {
-              const dayBlocks = getScheduledRoutineTasks(localDateKey(day.date), routineBlocks, dailyRoutineTasks, subjects, additionalSubjects).map(task => task.block);
+            <motion.div
+              key={localDateKey(visibleWeek[0].date)}
+              initial={shouldReduceMotion ? false : { opacity: 0, x: weekMotionDirection === "next" ? 12 : -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={shouldReduceMotion ? undefined : { opacity: 0, x: weekMotionDirection === "next" ? -8 : 8 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="planner-week-grid"
+              style={{ gridTemplateColumns: weeklyGridTemplate }}
+            >
+              {visibleWeek.map((day) => {
+                const dayBlocks = getScheduledRoutineTasks(localDateKey(day.date), routineBlocks, dailyRoutineTasks, subjects, additionalSubjects).map(task => task.block);
 
-              const isToday = isSameCalendarDate(day.date, new Date());
-              const isSelectedDate = isSameCalendarDate(day.date, weekAnchorDate);
-              const isExpanded = expandedRoutineDay === day.value;
+                const isToday = isSameCalendarDate(day.date, new Date());
+                const isSelectedDate = isSameCalendarDate(day.date, weekAnchorDate);
+                const isExpanded = expandedRoutineDay === day.value;
 
-              return (
-                <motion.div
-                  key={day.value}
-                  data-expanded={isExpanded}
-                  className={`planner-day-column min-h-[180px] rounded-xl border p-2.5 text-center ${isSelectedDate
-                    ? "border-indigo-300 bg-[#eef2ff]"
-                    : isToday
-                      ? "border-sky-200 bg-sky-50/60"
-                      : "border-slate-200 bg-[#fbfcfe]"
-                    }`}
-                >
-                  {/* Day header */}
-                  <button
-                    type="button"
-                    aria-expanded={isExpanded}
-                    aria-label={`${isExpanded ? "Collapse" : "Expand"} ${day.label}, ${day.date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`}
-                    onClick={() => {
-                      closeHomeworkEditor();
-                      closeRoutineMenu();
-                      setExpandedRoutineDay(isExpanded ? null : day.value);
-                      setMobileRoutineDay(day.value);
-                      setWeekAnchorDate(day.date);
-                    }}
-                    className={`mb-3 border-b pb-2 ${isSelectedDate ? "border-indigo-200" : isToday ? "border-sky-100" : "border-slate-200"
-                      } planner-day-header`}
+                return (
+                  <motion.div
+                    key={day.value}
+                    data-expanded={isExpanded}
+                    className={`planner-day-column min-h-[180px] rounded-xl border p-2.5 text-center ${isSelectedDate
+                      ? "border-indigo-300 bg-[#eef2ff]"
+                      : isToday
+                        ? "border-sky-200 bg-sky-50/60"
+                        : "border-slate-200 bg-[#fbfcfe]"
+                      }`}
                   >
-                    <div
-                      className={`text-sm font-semibold tracking-tight ${isSelectedDate ? "text-indigo-700" : isToday ? "text-sky-800" : "text-slate-800"
-                        }`}
+                    {/* Day header */}
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      aria-label={`${isExpanded ? "Collapse" : "Expand"} ${day.label}, ${day.date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`}
+                      onClick={() => {
+                        closeHomeworkEditor();
+                        closeRoutineMenu();
+                        setExpandedRoutineDay(isExpanded ? null : day.value);
+                        setMobileRoutineDay(day.value);
+                        setWeekAnchorDate(day.date);
+                      }}
+                      className={`mb-3 border-b pb-2 ${isSelectedDate ? "border-indigo-200" : isToday ? "border-sky-100" : "border-slate-200"
+                        } planner-day-header`}
                     >
-                      {day.label}
-                    </div>
+                      <div
+                        className={`text-sm font-semibold tracking-tight ${isSelectedDate ? "text-indigo-700" : isToday ? "text-sky-800" : "text-slate-800"
+                          }`}
+                      >
+                        {day.label}
+                      </div>
 
-                    <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
-                      {isToday ? (
-                        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" aria-hidden="true" />Today</span>
-                      ) : day.date.toLocaleDateString("en-US", {
+                      <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
+                        {isToday ? (
+                          <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" aria-hidden="true" />Today</span>
+                        ) : day.date.toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                         })}
-                    </div>
-
-                  </button>
-                  {/* A single keyed card stays mounted throughout day expansion. */}
-                  <div className="space-y-2">
-                    {dayBlocks.length > 0 ? dayBlocks.map(block => renderDatedRoutineCard(block, day.date, isExpanded)) : (
-                      <div className="planner-empty-day rounded-lg border border-dashed border-slate-200 px-2 py-4 text-center">
-                        <p className="text-xs text-slate-500">No study times</p>
-                        <button type="button" aria-label={`Add study time for ${day.label}`}
-                          onClick={() => openRoutineFormForDate(day.date, true)}
-                          className="planner-focus mt-2 rounded-lg px-2 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50">Add study time</button>
                       </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+
+                    </button>
+                    {/* A single keyed card stays mounted throughout day expansion. */}
+                    <div className="space-y-2">
+                      {dayBlocks.length > 0 ? dayBlocks.map(block => renderDatedRoutineCard(block, day.date, isExpanded)) : (
+                        <div className="planner-empty-day rounded-lg border border-dashed border-slate-200 px-2 py-4 text-center">
+                          <p className="text-xs text-slate-500">No study times</p>
+                          <button type="button" aria-label={`Add study time for ${day.label}`}
+                            onClick={() => openRoutineFormForDate(day.date, true)}
+                            className="planner-focus mt-2 rounded-lg px-2 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50">Add study time</button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
           </AnimatePresence>
           {/* Mobile selected-day routine */}
           <div className="planner-selected-day">
