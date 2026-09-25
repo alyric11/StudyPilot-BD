@@ -102,12 +102,12 @@ export default function ChapterPage({
   };
 
   return (
-    <div className="space-y-6" id="chapter-page-root">
+    <div className="subject-page space-y-6" id="chapter-page-root">
       {/* Chapter Header */}
       <div className="space-y-3" id="chapter-page-header">
 
         {/* Title Box */}
-        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="subject-panel bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex items-center gap-4">
 
             <button
@@ -121,7 +121,7 @@ export default function ChapterPage({
             <div className="hidden sm:block w-px h-16 bg-slate-200 shrink-0" />
 
             <div className="min-w-0 flex-1">
-              <div className="inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold uppercase tracking-wider">
+              <div className="subject-badge inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold uppercase tracking-wider">
                 {activeChapterObj?.chapterNumber}
               </div>
 
@@ -145,7 +145,7 @@ export default function ChapterPage({
 
         {/* Metadata Box */}
         {activeChapterObj && (
-          <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="subject-panel bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
               {/* Chapter Metadata */}
@@ -155,11 +155,11 @@ export default function ChapterPage({
                   📚 {activeChapterObj.nctbBookName}
                 </span>
 
-                <span className="text-xs font-medium px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md border border-indigo-200/10">
+                <span className="subject-badge text-xs font-medium px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-md border border-indigo-200/10">
                   {activeChapterObj.class}
                 </span>
 
-                <span className="text-xs font-medium px-2.5 py-1 bg-violet-50 text-violet-700 rounded-md border border-violet-200/10">
+                <span className="subject-badge text-xs font-medium px-2.5 py-1 bg-violet-50 text-violet-700 rounded-md border border-violet-200/10">
                   Group: {activeChapterObj.group}
                 </span>
 
@@ -173,12 +173,12 @@ export default function ChapterPage({
 
                 <div className="w-20 sm:w-24 bg-slate-200 h-2 rounded-full overflow-hidden">
                   <div
-                    className="bg-indigo-600 h-full transition-all duration-500"
+                    className="subject-progress-fill bg-indigo-600 h-full transition-all duration-500"
                     style={{ width: `${percentProgress()}%` }}
                   />
                 </div>
 
-                <span className="text-xs font-bold text-indigo-600 w-8 text-right">
+                <span className="subject-accent-text text-xs font-bold text-indigo-600 w-8 text-right">
                   {percentProgress()}%
                 </span>
               </div>
@@ -198,9 +198,9 @@ export default function ChapterPage({
               <button
                 type="button"
                 onClick={generateChapterGuide}
-                className="w-full bg-white rounded-xl border border-slate-200/60 p-8 shadow-sm text-left hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
+                className="subject-panel subject-interactive w-full bg-white rounded-xl border border-slate-200/60 p-8 shadow-sm text-left hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
               >
-                <div className="flex items-center gap-3 text-indigo-600 font-display font-bold">
+                <div className="subject-accent-text flex items-center gap-3 text-indigo-600 font-display font-bold">
                   <Sparkles className="w-5 h-5" />
                   Intelligent Chapter Guide
                 </div>
@@ -214,7 +214,7 @@ export default function ChapterPage({
                 </p>
               </button>
             ) : (
-              <div className="bg-white rounded-xl border border-slate-200/60 p-8 shadow-sm text-center">
+              <div className="subject-panel bg-white rounded-xl border border-slate-200/60 p-8 shadow-sm text-center">
                 <h3 className="text-slate-700 font-semibold">
                   Chapter Overview
                 </h3>
@@ -270,7 +270,7 @@ export default function ChapterPage({
           {/* Checklist Sidebar - Column 3 */}
           <div className="space-y-6">
             {/* Learning Checklist */}
-            <div className="bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm space-y-4">
+            <div className="subject-panel bg-white rounded-xl border border-slate-200/60 p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider">Study Plan</h3>
 
@@ -290,8 +290,9 @@ export default function ChapterPage({
 
                   <button
                     key={item.key}
+                    aria-pressed={Boolean(chapterProgress[item.key as keyof ChapterProgress])}
                     onClick={() => handleChecklistToggle(item.key as keyof ChapterProgress)}
-                    className={`w-full p-3 rounded-lg border text-left transition-all flex items-center justify-between cursor-pointer group ${chapterProgress[item.key as keyof ChapterProgress]
+                    className={`subject-checklist subject-interactive w-full p-3 rounded-lg border text-left transition-all flex items-center justify-between cursor-pointer group ${chapterProgress[item.key as keyof ChapterProgress]
                       ? "bg-indigo-50/30 border-indigo-100 text-slate-700"
                       : "bg-slate-50/50 border-slate-200 text-slate-500 hover:border-indigo-300"
                       }`}
@@ -307,7 +308,7 @@ export default function ChapterPage({
             </div>
 
             {/* Study Plan */}
-            <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
+            <div className="subject-panel bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm space-y-4">
               <div className="relative">
                 <button
                   type="button"
@@ -329,7 +330,7 @@ export default function ChapterPage({
             </div>
 
             {/* Recommended Resources */}
-            <div className="bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm">
+            <div className="subject-panel bg-white rounded-xl border border-slate-200/60 p-6 shadow-sm">
               <h3 className="text-sm font-bold text-slate-800 font-display uppercase tracking-wider mb-4">
                 Recommended Resources
               </h3>
@@ -347,7 +348,7 @@ export default function ChapterPage({
                       href={resource.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white hover:border-indigo-200 transition-all group"
+                      className="subject-interactive block p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white hover:border-indigo-200 transition-all group"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">

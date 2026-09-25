@@ -1,24 +1,9 @@
 import { useState } from "react";
-import {
-  ArrowLeft,
-  Atom,
-  Beaker,
-  BookOpen,
-  Calculator,
-  ChevronRight,
-  Dna,
-  Laptop,
-} from "lucide-react";
-
+import { ArrowLeft, Atom, Beaker, BookOpen, Calculator, Check, ChevronRight, Dna, Laptop } from "lucide-react";
 import type { Chapter, Subject } from "../data/curriculum";
-import type {
-  AdditionalSubject,
-  DailyRoutineTask,
-  RoutineBlock,
-  SubjectProgressMap,
-} from "../types";
-
+import type { AdditionalSubject, DailyRoutineTask, RoutineBlock, SubjectProgressMap } from "../types";
 import { getChapterProgressPercentage } from "../utils/studyProgress";
+import { getStudyLogTasks, localDateKey } from "../utils/routineTasks";
 import SubjectStudyLog from "./SubjectStudyLog";
 
 interface SubjectPaperPageProps {
@@ -31,410 +16,149 @@ interface SubjectPaperPageProps {
   chapterProgress: SubjectProgressMap;
   onBack: () => void;
   onSelectChapter: (chapter: Chapter) => void;
-  onSetRoutineCompletion: (
-    task: DailyRoutineTask,
-    completed: boolean
-  ) => boolean;
+  onSetRoutineCompletion: (task: DailyRoutineTask, completed: boolean) => boolean;
 }
 
-type ChapterFilter =
-  | "all"
-  | "started"
-  | "notStarted"
-  | "revised";
+type ChapterFilter = "all" | "started" | "notStarted" | "revised";
 
 export default function SubjectPaperPage({
-  subject,
-  subjects,
-  additionalSubjects,
-  routineBlocks,
-  dailyRoutineTasks,
-  mastery,
-  chapterProgress,
-  onBack,
-  onSelectChapter,
-  onSetRoutineCompletion,
+  subject, subjects, additionalSubjects, routineBlocks, dailyRoutineTasks,
+  mastery, chapterProgress, onBack, onSelectChapter, onSetRoutineCompletion,
 }: SubjectPaperPageProps) {
-  const [chapterFilter, setChapterFilter] =
-    useState<ChapterFilter>("all");
+  const [chapterFilter, setChapterFilter] = useState<ChapterFilter>("all");
+  const subjectClass = subject.chapters[0]?.class ?? "";
+  const name = `${subject.name} ${subject.banglaName}`.toLowerCase();
+  const SubjectIcon = name.includes("physics") ? Atom
+    : name.includes("chemistry") ? Beaker
+    : name.includes("biology") ? Dna
+    : name.includes("math") ? Calculator
+    : name.includes("ict") || name.includes("information") ? Laptop : BookOpen;
 
-  const hasSections = subject.chapters.some(
-    (chapter) => chapter.section
-  );
-
-  const subjectClass =
-    subject.chapters[0]?.class ?? "";
-
-  const getSubjectIcon = () => {
-    const subjectName =
-      `${subject.name} ${subject.banglaName}`.toLowerCase();
-
-    if (subjectName.includes("physics")) {
-      return Atom;
-    }
-
-    if (subjectName.includes("chemistry")) {
-      return Beaker;
-    }
-
-    if (subjectName.includes("biology")) {
-      return Dna;
-    }
-
-    if (
-      subjectName.includes("math") ||
-      subjectName.includes("mathematics")
-    ) {
-      return Calculator;
-    }
-
-    if (
-      subjectName.includes("ict") ||
-      subjectName.includes("information")
-    ) {
-      return Laptop;
-    }
-
-    return BookOpen;
+  const chapters = subject.chapters.map((chapter, index) => ({
+    chapter,
+    number: index + 1,
+    percentage: getChapterProgressPercentage(chapterProgress[chapter.id]),
+  }));
+  const counts = {
+    all: chapters.length,
+    started: chapters.filter(({ percentage }) => percentage > 0 && percentage < 100).length,
+    notStarted: chapters.filter(({ percentage }) => percentage === 0).length,
+    revised: chapters.filter(({ percentage }) => percentage === 100).length,
   };
-
-  const SubjectIcon = getSubjectIcon();
-
-  const chapterPercentages = subject.chapters.map(
-    (chapter) => ({
-      chapter,
-      percentage: getChapterProgressPercentage(
-        chapterProgress[chapter.id]
-      ),
-    })
+  const filters: { key: ChapterFilter; label: string }[] = [
+    { key: "all", label: "All" }, { key: "started", label: "Started" },
+    { key: "notStarted", label: "Not started" }, { key: "revised", label: "Revised" },
+  ];
+  const visible = chapters.filter(({ percentage }) =>
+    chapterFilter === "started" ? percentage > 0 && percentage < 100
+      : chapterFilter === "notStarted" ? percentage === 0
+      : chapterFilter === "revised" ? percentage === 100 : true
   );
-
-  const chapterCounts = {
-    all: chapterPercentages.length,
-
-    started: chapterPercentages.filter(
-      ({ percentage }) =>
-        percentage > 0 && percentage < 100
-    ).length,
-
-    notStarted: chapterPercentages.filter(
-      ({ percentage }) => percentage === 0
-    ).length,
-
-    revised: chapterPercentages.filter(
-      ({ percentage }) => percentage === 100
-    ).length,
-  };
-
+  const hasSections = chapters.some(({ chapter }) => Boolean(chapter.section));
   const sections = hasSections
-    ? Array.from(
-      new Set(
-        subject.chapters
-          .map((chapter) => chapter.section)
-          .filter(
-            (section): section is string =>
-              Boolean(section)
-          )
-      )
-    )
+    ? Array.from(new Set(chapters.map(({ chapter }) => chapter.section || "Other chapters")))
     : ["Chapters"];
-
-  const getChaptersForSection = (
-    section: string
-  ) => {
-    if (!hasSections) {
-      return subject.chapters;
-    }
-
-    return subject.chapters.filter(
-      (chapter) => chapter.section === section
-    );
-  };
-
-  const chapterMatchesFilter = (
-    chapter: Chapter
-  ) => {
-    const percentage =
-      getChapterProgressPercentage(
-        chapterProgress[chapter.id]
-      );
-
-    if (chapterFilter === "started") {
-      return percentage > 0 && percentage < 100;
-    }
-
-    if (chapterFilter === "notStarted") {
-      return percentage === 0;
-    }
-
-    if (chapterFilter === "revised") {
-      return percentage === 100;
-    }
-
-    return true;
-  };
-
-  const hasVisibleChapters =
-    subject.chapters.some(chapterMatchesFilter);
-
-  const filterButtonClass = (
-    filter: ChapterFilter
-  ) =>
-    `rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${chapterFilter === filter
-      ? "bg-[#243247] text-white shadow-sm"
-      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-    }`;
+  const todaysHomework = getStudyLogTasks(
+    localDateKey(new Date()), routineBlocks, dailyRoutineTasks, subjects, additionalSubjects
+  ).filter((task) => task.subjectKey === `subject:${subject.id}`
+    && !task.completed && Boolean(task.block.chapterId || task.block.homeworkText?.trim()));
 
   return (
-    <div className="space-y-4">
-      {/* Subject header */}
-      <div className="w-full space-y-3">
-        {/* Top box: Back button + subject information */}
-        <div className="w-full rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            {/* Back button */}
-            <button
-              type="button"
-              onClick={onBack}
-              className="shrink-0 cursor-pointer rounded-xl border border-slate-200 p-3 text-slate-500 transition-all hover:bg-slate-50 hover:text-[#243247]"
-              title="Go Back"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-
-            {/* Divider */}
-            <div className="hidden h-16 w-px shrink-0 bg-slate-200 sm:block" />
-
-            {/* Subject information */}
-            <div className="flex min-w-0 flex-1 items-center gap-4">
-              <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[#243247] sm:flex">
-                <SubjectIcon className="h-6 w-6" />
-              </div>
-
-              <div className="min-w-0">
-                {subjectClass && (
-                  <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-[#243247]">
-                    {subjectClass}
-                  </span>
-                )}
-
-                <h1 className="mt-1.5 break-words text-xl font-bold leading-tight text-[#243247] md:text-2xl">
-                  {subject.banglaName}
-                </h1>
-
-                <p className="mt-1 text-sm font-medium text-slate-500">
-                  {subject.name}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom box: Filters + Subject Progress */}
-        <div className="w-full rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            {/* Chapter filters */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setChapterFilter("all")}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${chapterFilter === "all"
-                    ? "bg-[#243247] text-white shadow-sm"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                  }`}
-              >
-                All ({chapterCounts.all})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setChapterFilter("started")}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${chapterFilter === "started"
-                    ? "bg-[#243247] text-white shadow-sm"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                  }`}
-              >
-                Started ({chapterCounts.started})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setChapterFilter("notStarted")}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${chapterFilter === "notStarted"
-                    ? "bg-[#243247] text-white shadow-sm"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                  }`}
-              >
-                Not Started ({chapterCounts.notStarted})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setChapterFilter("revised")}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${chapterFilter === "revised"
-                    ? "bg-[#243247] text-white shadow-sm"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                  }`}
-              >
-                Revised ({chapterCounts.revised})
-              </button>
-            </div>
-
-            {/* Subject progress */}
-            <div className="flex w-full shrink-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:w-auto">
-              <span className="whitespace-nowrap text-xs font-medium text-slate-600">
-                Subject Progress:
-              </span>
-
-              <div className="h-2 min-w-20 flex-1 overflow-hidden rounded-full bg-slate-200 sm:w-24 sm:flex-none">
-                <div
-                  className="h-full rounded-full bg-[#243247] transition-all duration-500"
-                  style={{ width: `${mastery}%` }}
-                />
-              </div>
-
-              <span className="w-9 text-right text-xs font-bold text-[#243247]">
-                {mastery}%
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(340px,1fr)]">
-        {/* Chapters */}
-        <div className="min-w-0">
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm md:p-6">
-            <div className="border-b border-slate-100 pb-3">
-              <h2 className="text-base font-bold text-[#243247]">
-                Chapters
-              </h2>
-
-              <p className="mt-1 text-xs text-slate-400">
-                Select a chapter to open its
-                StudyPilot learning center.
-              </p>
-            </div>
-
-            {hasVisibleChapters ? (
-              <div className="mt-4 space-y-6">
-                {sections.map((section) => {
-                  const chapters =
-                    getChaptersForSection(
-                      section
-                    ).filter(
-                      chapterMatchesFilter
-                    );
-
-                  if (chapters.length === 0) {
-                    return null;
-                  }
-
-                  return (
-                    <section key={section}>
-                      {hasSections && (
-                        <h3 className="mb-2 text-sm font-bold text-slate-600">
-                          {section}
-                        </h3>
-                      )}
-
-                      <div className="overflow-hidden rounded-xl border border-slate-100">
-                        {chapters.map(
-                          (chapter) => {
-                            const chapterNumber =
-                              subject.chapters.findIndex(
-                                (item) =>
-                                  item.id ===
-                                  chapter.id
-                              ) + 1;
-
-                            const percentage =
-                              getChapterProgressPercentage(
-                                chapterProgress[
-                                chapter.id
-                                ]
-                              );
-
-                            return (
-                              <button
-                                type="button"
-                                key={chapter.id}
-                                onClick={() =>
-                                  onSelectChapter(
-                                    chapter
-                                  )
-                                }
-                                className="group flex w-full items-center gap-4 border-b border-slate-100 px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-slate-50 md:px-4"
-                              >
-                                {/* Chapter number */}
-                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-50 text-xs font-bold text-[#243247] ring-1 ring-inset ring-slate-300 transition-colors group-hover:bg-slate-100 group-hover:ring-slate-400">
-                                  {chapterNumber}
-                                </div>
-
-                                {/* Chapter name */}
-                                <span className="min-w-0 flex-1 text-sm font-semibold text-[#243247]">
-                                  {
-                                    chapter.banglaName
-                                  }
-                                </span>
-
-                                {/* Desktop progress */}
-                                <div className="hidden w-36 shrink-0 items-center gap-3 sm:flex lg:w-48">
-                                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-                                    <div
-                                      className="h-full rounded-full bg-[#243247] transition-all duration-500"
-                                      style={{
-                                        width: `${percentage}%`,
-                                      }}
-                                    />
-                                  </div>
-
-                                  <span className="w-9 text-right text-xs font-semibold text-slate-500">
-                                    {percentage}%
-                                  </span>
-                                </div>
-
-                                {/* Mobile percentage */}
-                                <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-500 sm:hidden">
-                                  {percentage}%
-                                </span>
-
-                                <ChevronRight className="h-4 w-4 shrink-0 text-[#243247] transition-transform group-hover:translate-x-0.5" />
-                              </button>
-                            );
-                          }
-                        )}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
-                <p className="text-sm font-medium text-slate-500">
-                  No chapters match this filter.
-                </p>
-              </div>
+    <div className="subject-page subject-overview space-y-4">
+      <header className="subject-panel subject-overview-header rounded-2xl border bg-white p-4 sm:p-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <button type="button" onClick={onBack} aria-label="Go back to subjects"
+            className="shrink-0 cursor-pointer rounded-xl border border-slate-200 p-2.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <span className="subject-icon hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:flex">
+            <SubjectIcon className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            {subjectClass && <span className="subject-badge inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold">{subjectClass}</span>}
+            <h1 className="mt-1 break-words text-xl font-bold leading-snug text-slate-800">{subject.banglaName || subject.name}</h1>
+            {subject.banglaName && subject.banglaName !== subject.name && (
+              <p className="mt-0.5 text-sm text-slate-500">{subject.name}</p>
             )}
           </div>
         </div>
+        <div className="subject-overview-progress">
+          <div className="mb-2 flex items-center justify-between gap-4 text-xs">
+            <span className="font-medium text-slate-600">Subject progress</span>
+            <span className="font-semibold text-slate-800">{mastery}%</span>
+          </div>
+          <div role="progressbar" aria-label="Subject progress" aria-valuenow={mastery} aria-valuemin={0} aria-valuemax={100}
+            className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="subject-progress-fill h-full rounded-full" style={{ width: `${mastery}%` }} />
+          </div>
+        </div>
+      </header>
 
-        {/* Study log */}
-        <div className="min-w-0">
-          <SubjectStudyLog
-            subject={subject}
-            subjects={subjects}
-            additionalSubjects={
-              additionalSubjects
-            }
-            routineBlocks={routineBlocks}
-            records={dailyRoutineTasks}
-            onSetCompletion={
-              onSetRoutineCompletion
-            }
-          />
+      {todaysHomework.length > 0 && (
+        <a href="#subject-study-log" className="subject-homework-summary subject-panel flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm text-slate-700">
+          <span>Today: {todaysHomework.length} pending homework {todaysHomework.length === 1 ? "task" : "tasks"}</span>
+          <span className="subject-accent-text shrink-0 text-xs font-semibold">View homework ↓</span>
+        </a>
+      )}
+
+      <div className="subject-overview-columns">
+        <section aria-labelledby="subject-chapters-heading" className="subject-panel min-w-0 rounded-2xl border bg-white p-4 sm:p-5">
+          <h2 id="subject-chapters-heading" className="text-base font-bold text-slate-800">Chapters</h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">Select a chapter to continue studying.</p>
+          <div role="group" aria-label="Filter chapters" className="mt-4 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
+            {filters.map(({ key, label }) => (
+              <button key={key} type="button" onClick={() => setChapterFilter(key)} aria-pressed={chapterFilter === key}
+                className="subject-filter min-h-9 cursor-pointer rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors">
+                {label} ({counts[key]})
+              </button>
+            ))}
+          </div>
+          <p className="sr-only" role="status">{visible.length} chapters shown</p>
+          {visible.length > 0 ? (
+            <div className="mt-4 space-y-5">
+              {sections.map((section) => {
+                const sectionChapters = visible.filter(({ chapter }) => !hasSections || (chapter.section || "Other chapters") === section);
+                if (!sectionChapters.length) return null;
+                return (
+                  <section key={section}>
+                    {hasSections && <h3 className="mb-2 text-sm font-semibold text-slate-600">{section}</h3>}
+                    <div className="rounded-xl border border-slate-100">
+                      {sectionChapters.map(({ chapter, number, percentage }) => (
+                        <button key={chapter.id} type="button" onClick={() => onSelectChapter(chapter)}
+                          className="subject-chapter subject-chapter-row group w-full cursor-pointer border-b border-slate-100 px-3 py-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl last:border-b-0">
+                          <span className="subject-chapter-number flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-50 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">{number}</span>
+                          <span className="subject-chapter-name min-w-0 break-words text-sm font-semibold leading-relaxed text-slate-800">{chapter.banglaName || chapter.name}</span>
+                          <span className="subject-chapter-status text-xs text-slate-500">
+                            {percentage === 0 ? "Not started" : percentage === 100 ? (
+                              <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 subject-accent-text" aria-hidden="true" />Completed</span>
+                            ) : (
+                              <span className="flex items-center justify-end gap-2">
+                                <span className="subject-row-progress h-1.5 w-16 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+                                  <span className="subject-progress-fill block h-full rounded-full" style={{ width: `${percentage}%` }} />
+                                </span>
+                                <span>{percentage}%</span>
+                              </span>
+                            )}
+                          </span>
+                          <ChevronRight className="subject-chapter-chevron h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-7 text-center">
+              <p className="text-sm text-slate-500">No chapters match this filter.</p>
+              <button type="button" onClick={() => setChapterFilter("all")} className="subject-accent-text mt-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-slate-50">Show all chapters</button>
+            </div>
+          )}
+        </section>
+
+        <div id="subject-study-log" tabIndex={-1} className="min-w-0 scroll-mt-24 rounded-2xl">
+          <SubjectStudyLog subject={subject} subjects={subjects} additionalSubjects={additionalSubjects}
+            routineBlocks={routineBlocks} records={dailyRoutineTasks} onSetCompletion={onSetRoutineCompletion} />
         </div>
       </div>
     </div>

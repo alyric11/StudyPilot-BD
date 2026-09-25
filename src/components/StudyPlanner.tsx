@@ -384,10 +384,13 @@ export default function StudyPlanner({
     }
 
     const matchingAdditionalSubject = safeAdditionalSubjects.find((subject) => {
+      const fullName = subject.name.trim().toLowerCase();
       const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
 
       return (
+        normalizedTitle === fullName ||
         normalizedTitle === compactName ||
+        normalizedTitle.startsWith(`${fullName}:`) ||
         normalizedTitle.startsWith(`${compactName}:`)
       );
     });
@@ -403,6 +406,23 @@ export default function StudyPlanner({
     return resolveRoutineSubject(block, subjects);
   };
 
+  const getAdditionalRoutineSubject = (block: RoutineBlock) => {
+    const storedName = block.title.split(":")[0]?.trim().toLowerCase();
+    if (block.subjectId) {
+      return safeAdditionalSubjects.find((subject) => subject.id === block.subjectId);
+    }
+
+    const fullNameMatches = safeAdditionalSubjects.filter(
+      (subject) => subject.name.trim().toLowerCase() === storedName
+    );
+    if (fullNameMatches.length === 1) return fullNameMatches[0];
+
+    const compactNameMatches = safeAdditionalSubjects.filter(
+      (subject) => formatRoutineSubjectName(subject.name).toLowerCase() === storedName
+    );
+    return compactNameMatches.length === 1 ? compactNameMatches[0] : undefined;
+  };
+
   const getRoutineBlockChapter = (block: RoutineBlock) => {
     return resolveRoutineChapter(block, subjects);
   };
@@ -410,6 +430,8 @@ export default function StudyPlanner({
   const getMotherRoutineTitle = (block: RoutineBlock) => {
     const subject = getRoutineBlockSubject(block);
     if (subject) return formatRoutineSubjectName(subject.name);
+    const additionalSubject = getAdditionalRoutineSubject(block);
+    if (additionalSubject) return additionalSubject.name.trim();
     return block.title.split(":")[0]?.trim() || block.title;
   };
 
@@ -432,16 +454,7 @@ export default function StudyPlanner({
       return getSubjectRoutineStyles(matchingSubject.color).card;
     }
 
-    const normalizedTitle = block.title.trim().toLowerCase();
-
-    const matchingAdditionalSubject = safeAdditionalSubjects.find((subject) => {
-      const compactName = formatRoutineSubjectName(subject.name).toLowerCase();
-
-      return (
-        normalizedTitle === compactName ||
-        normalizedTitle.startsWith(`${compactName}:`)
-      );
-    });
+    const matchingAdditionalSubject = getAdditionalRoutineSubject(block);
 
     if (matchingAdditionalSubject) {
       return additionalSubjectStyles.card;
@@ -1101,9 +1114,9 @@ export default function StudyPlanner({
   const safeAdditionalSubjects = additionalSubjects ?? [];
 
   const additionalSubjectStyles = {
-    card: "bg-amber-50/45 border-amber-100/70 hover:border-amber-200",
-    chapter: "bg-amber-50/40 hover:bg-amber-50 text-slate-600 hover:text-amber-700 border-amber-100/60",
-    icon: "bg-amber-100 text-amber-600",
+    card: "bg-[#faf4fb] border-[#ead3e9] hover:border-[#d8afd5] hover:bg-[#f7eef9]",
+    chapter: "bg-[#faf4fb] hover:bg-[#f7eef9] text-slate-600 hover:text-[#7f3f76] border-[#ead3e9]",
+    icon: "bg-[#f1dff0] text-[#93518b]",
   };
 
   const routineSubjectOptions: SubjectPickerOption[] = [
@@ -1121,18 +1134,18 @@ export default function StudyPlanner({
   const selectedRoutineSubjectKey = routineSubjectId
     ? `${subjects.some(subject => subject.id === routineSubjectId) ? "subject" : "additional"}:${routineSubjectId}`
     : safeAdditionalSubjects.find(
-      (subject) => formatRoutineSubjectName(subject.name) === routineTitle
+      (subject) => subject.name.trim() === routineTitle || formatRoutineSubjectName(subject.name) === routineTitle
     )
       ? `additional:${safeAdditionalSubjects.find(
-        (subject) => formatRoutineSubjectName(subject.name) === routineTitle
+        (subject) => subject.name.trim() === routineTitle || formatRoutineSubjectName(subject.name) === routineTitle
       )!.id
       }`
       : "";
 
   const handleRoutineSubjectSelect = (option: SubjectPickerOption) => {
-    const [, id] = option.key.split(":");
+    const [kind, id] = option.key.split(":");
 
-    setRoutineTitle(formatRoutineSubjectName(option.label));
+    setRoutineTitle(kind === "additional" ? option.label.trim() : formatRoutineSubjectName(option.label));
     setRoutineChapterId(null);
 
     setRoutineSubjectId(id);
@@ -1270,10 +1283,7 @@ export default function StudyPlanner({
                   />
                 </div>
 
-                <div className="planner-form-context" aria-live="polite">
-                  <span>Repeats every {getDayName(Number(routineDay))}{weeklyEditingId ? " · Saved dated homework stays unchanged" : ""}</span>
-                  <span>{durationDescription(routineStart, routineEnd)}</span>
-                </div>
+
 
                 {/* Submit */}
                 <div className="grid min-h-11 grid-cols-1 items-center md:grid-cols-[auto_minmax(0,1fr)] md:gap-3">
@@ -1281,18 +1291,12 @@ export default function StudyPlanner({
                     type="button"
                     onClick={handleAddRoutine}
                     disabled={!routineCanBeSaved}
-                    aria-describedby={!routineCanBeSaved ? "routine-save-hint" : undefined}
+                    aria-describedby={undefined}
                     className="planner-focus planner-primary flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 md:w-auto"
                   >
                     <Plus className="w-4 h-4" />
-                    {weeklyEditingId ? "Save weekly changes" : "Save weekly study time"}
+                    {weeklyEditingId ? "Save weekly changes" : "Save study time"}
                   </button>
-
-                  {!routineCanBeSaved && !routineError && (
-                    <p id="routine-save-hint" className="pt-2 text-center text-xs text-slate-500 md:pt-0 md:text-left">
-                      Choose a subject and at least 30 minutes.
-                    </p>
-                  )}
 
                   <AnimatePresence initial={false}>
                     {routineError && (
@@ -1624,9 +1628,9 @@ export default function StudyPlanner({
                     day: "numeric",
                   })}${isToday ? ", today" : ""}`}
                   className={`planner-focus planner-day-option min-w-20 shrink-0 snap-start rounded-lg border px-3 py-2 text-center transition ${isSelected
-                    ? "border-indigo-500 bg-[#eef1ff] text-indigo-700"
+                    ? "border-[#9b86d6] bg-[#f0ecfb] text-[#6951b4]"
                     : isToday
-                      ? "border-sky-200 bg-sky-50/70 text-slate-700"
+                      ? "border-[#d7cef2] bg-[#f8f6fe] text-slate-700"
                       : "border-[#dce5f4] bg-[#fcfdfe] text-slate-600"
                     }`}
                 >
@@ -1669,10 +1673,10 @@ export default function StudyPlanner({
                     key={day.value}
                     data-expanded={isExpanded}
                     className={`planner-day-column min-h-[180px] rounded-xl border p-2.5 text-center ${isSelectedDate
-                      ? "border-indigo-300 bg-[#eef2ff]"
+                      ? "border-[#9b86d6] bg-[#f0ecfb]"
                       : isToday
-                        ? "border-sky-200 bg-sky-50/60"
-                        : "border-slate-200 bg-[#fbfcfe]"
+                        ? "border-[#d7cef2] bg-[#f8f6fe]"
+                        : "border-[#e4dff3] bg-[#faf9fe]"
                       }`}
                   >
                     {/* Day header */}
@@ -1687,19 +1691,19 @@ export default function StudyPlanner({
                         setMobileRoutineDay(day.value);
                         setWeekAnchorDate(day.date);
                       }}
-                      className={`mb-3 border-b pb-2 ${isSelectedDate ? "border-indigo-200" : isToday ? "border-sky-100" : "border-slate-200"
+                      className={`mb-3 border-b pb-2 ${isSelectedDate ? "border-[#d8cef1]" : isToday ? "border-[#e4dff3]" : "border-[#e4dff3]"
                         } planner-day-header`}
                     >
                       <div
-                        className={`text-sm font-semibold tracking-tight ${isSelectedDate ? "text-indigo-700" : isToday ? "text-sky-800" : "text-slate-800"
+                        className={`text-sm font-semibold tracking-tight ${isSelectedDate ? "text-[#6951b4]" : isToday ? "text-[#6951b4]" : "text-slate-800"
                           }`}
                       >
                         {day.label}
                       </div>
 
-                      <div className={`text-xs ${isToday ? "font-semibold text-sky-700" : "text-slate-500"}`}>
+                      <div className={`text-xs ${isToday ? "font-semibold text-[#6951b4]" : "text-slate-500"}`}>
                         {isToday ? (
-                          <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" aria-hidden="true" />Today</span>
+                          <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#6951b4]" aria-hidden="true" />Today</span>
                         ) : day.date.toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",

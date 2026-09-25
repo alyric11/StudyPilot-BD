@@ -8,9 +8,9 @@
  * 3. Persistence: Automatically reads and writes state data to the browser's 'localStorage' for seamless offline use.
  */
 
-import { lazy, Suspense, useState, useEffect, useRef } from "react";
-import { getSubjectCardStyles } from "./colorPalettes";
-import { ChapterProgress, RoutineEditRequest } from "./types";
+import { lazy, Suspense, useState, useEffect, useRef, type CSSProperties } from "react";
+import { getSubjectAccentColor, getSubjectCardStyles } from "./colorPalettes";
+import { AdditionalSubject, ChapterProgress, RoutineEditRequest } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
@@ -18,6 +18,7 @@ import DashboardSubjectCard from "./components/DashboardSubjectCard";
 import { getStudyProgress } from "./utils/studyProgress";
 import {
   getDailyRoutineTasks,
+  getScheduledRoutineTasks,
   localDateKey,
 } from "./utils/routineTasks.ts";
 import useDialogFocus from "./hooks/useDialogFocus";
@@ -133,13 +134,32 @@ export default function App() {
     }
   };
 
+  const handleEditAdditionalSubject = () => {
+    if (!additionalSubjectToEdit) return;
+
+    const updated = handleUpdateAdditionalSubject(
+      additionalSubjectToEdit.id,
+      editedAdditionalSubjectName
+    );
+
+    if (updated) {
+      setEditedAdditionalSubjectName("");
+      setAdditionalSubjectToEdit(null);
+    }
+  };
+
   // Modal Dialog toggle state
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
+  const [additionalSubjectToEdit, setAdditionalSubjectToEdit] = useState<AdditionalSubject | null>(null);
+  const [additionalSubjectToRemove, setAdditionalSubjectToRemove] = useState<AdditionalSubject | null>(null);
   const [showSelectableSubjects, setShowSelectableSubjects] = useState(false);
   const selectableSubjectButtonsRef = useRef<HTMLDivElement>(null);
   const [newAdditionalSubjectName, setNewAdditionalSubjectName] = useState("");
+  const [editedAdditionalSubjectName, setEditedAdditionalSubjectName] = useState("");
   const addSubjectDialogRef = useRef<HTMLDivElement>(null);
+  const editSubjectDialogRef = useRef<HTMLDivElement>(null);
+  const removeSubjectDialogRef = useRef<HTMLDivElement>(null);
   const resetDialogRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const [mobileNavigation, setMobileNavigation] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
@@ -150,6 +170,8 @@ export default function App() {
     return () => media.removeEventListener("change", update);
   }, []);
   useDialogFocus(showAddSubjectModal, addSubjectDialogRef, () => setShowAddSubjectModal(false));
+  useDialogFocus(Boolean(additionalSubjectToEdit), editSubjectDialogRef, () => setAdditionalSubjectToEdit(null));
+  useDialogFocus(Boolean(additionalSubjectToRemove), removeSubjectDialogRef, () => setAdditionalSubjectToRemove(null));
   useDialogFocus(showLogoutConfirm, resetDialogRef, () => setShowLogoutConfirm(false));
   useDialogFocus(sidebarOpen && mobileNavigation, sidebarRef, () => setSidebarOpen(false));
 
@@ -185,6 +207,7 @@ export default function App() {
     toggleSubjectGroupSelection,
     additionalSubjects,
     handleAddAdditionalSubject,
+    handleUpdateAdditionalSubject,
     handleDeleteAdditionalSubject,
     resetStudentData
   } = useStudentData(showToast);
@@ -315,6 +338,24 @@ export default function App() {
   };
 
   const activeSubjects = getActiveSubjects();
+  const selectedSubject = activeSubjects.find((subject) => subject.id === selectedSubjectPaper);
+  const workspaceSubject = selectedChapter
+    ? activeSubjects.find((subject) => subject.id === selectedChapter.subjectId)
+    : selectedSubject;
+  const subjectPageAccent = workspaceSubject && !showVideoLessons
+    ? getSubjectAccentColor(workspaceSubject.color)
+    : null;
+  const isSubjectPage = Boolean(subjectPageAccent);
+  const todayPendingHomework = getScheduledRoutineTasks(
+    localDateKey(new Date()),
+    routineBlocks,
+    dailyRoutineTasks,
+    activeSubjects,
+    additionalSubjects
+  ).filter((task) =>
+    !task.completed && Boolean(task.block.chapterId || task.block.homeworkText?.trim())
+  ).length;
+
   useEffect(() => {
     if (!loaded || !profile) {
       return;
@@ -556,7 +597,12 @@ export default function App() {
           )}
 
           {/* Study Workstation */}
-          <main className={`min-w-0 w-full lg:ml-[260px] lg:w-[calc(100%-260px)] p-3 pb-16 sm:p-4 sm:pb-16 lg:p-6 lg:pb-16 overflow-x-hidden ${activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : activeSection === "planner" ? "bg-[#f6f7f9]" : ""}`} id="dynamic-flight-window" tabIndex={-1}>
+          <main
+            className={`min-w-0 w-full lg:ml-[260px] lg:w-[calc(100%-260px)] p-3 pb-16 sm:p-4 sm:pb-16 lg:p-6 lg:pb-16 overflow-x-hidden ${isSubjectPage ? "subject-workspace" : activeSection === "dashboard" && !selectedChapter && !selectedSubjectPaper ? "bg-slate-50" : activeSection === "planner" ? "bg-[#f7f5fc]" : ""}`}
+            style={subjectPageAccent ? { "--subject-accent": subjectPageAccent } as CSSProperties : undefined}
+            id="dynamic-flight-window"
+            tabIndex={-1}
+          >
             <Suspense fallback={<LoadingStudyScreen />}>
               {showVideoLessons ? (
               <VideoLessonsPage
@@ -592,11 +638,7 @@ export default function App() {
               />
             ) : selectedSubjectPaper ? (
               <SubjectPaperPage
-                subject={
-                  activeSubjects.find(
-                    (sub) => sub.id === selectedSubjectPaper
-                  )!
-                }
+                subject={selectedSubject!}
                 subjects={activeSubjects}
                 additionalSubjects={additionalSubjects}
                 routineBlocks={routineBlocks}
@@ -651,7 +693,7 @@ export default function App() {
                           <div className="flex items-center justify-center gap-1.5 text-indigo-500 mb-0.5">
                             <ClipboardList className="w-3.5 h-3.5" />
                             <span className="text-lg font-bold text-slate-800">
-                              {homeworks.filter((h) => !h.completed).length}
+                              {todayPendingHomework}
                             </span>
                           </div>
                           <span className="text-xs font-medium text-slate-600">Pending homework</span>
@@ -772,15 +814,16 @@ export default function App() {
                                 </p>
                               </div>
                               <span className="text-[10px] font-bold text-slate-400 shrink-0">
-                                {additionalSubjects.length} / 4
+                                {additionalSubjects.length} / 6
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                               {additionalSubjects.map((subject) => (
                                 <div
                                   key={subject.id}
-                                  className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${getSubjectCardStyles("amber").card}`}
+                                  style={{ "--subject-hover-color": getSubjectAccentColor("personal") } as CSSProperties}
+                                  className={`subject-card-live flex items-center justify-between gap-3 rounded-xl border p-3 ${getSubjectCardStyles("personal").card}`}
                                 >
                                   <div className="min-w-0 flex-1">
                                     <div className="break-words text-sm font-semibold text-slate-800">
@@ -793,10 +836,13 @@ export default function App() {
 
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteAdditionalSubject(subject.id)}
-                                    className="shrink-0 text-[10px] font-bold text-slate-400 hover:text-rose-500 px-1.5 py-1 cursor-pointer"
+                                    onClick={() => {
+                                      setEditedAdditionalSubjectName(subject.name);
+                                      setAdditionalSubjectToEdit(subject);
+                                    }}
+                                    className="shrink-0 px-1.5 py-1 text-[10px] font-bold text-slate-400 transition-colors hover:text-indigo-600 cursor-pointer"
                                   >
-                                    Remove
+                                    Edit
                                   </button>
                                 </div>
                               ))}
@@ -903,7 +949,7 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => setShowAddSubjectModal(true)}
-                                disabled={additionalSubjects.length >= 4}
+                                disabled={additionalSubjects.length >= 6}
                                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50/60 text-indigo-700 text-[11px] font-bold hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <span className="text-base leading-none">+</span>
@@ -1179,6 +1225,148 @@ export default function App() {
                     className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     Add Subject
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Additional Subject Modal */}
+        <AnimatePresence>
+          {additionalSubjectToEdit && (
+            <motion.div
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/30 p-4 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) setAdditionalSubjectToEdit(null);
+              }}
+            >
+              <motion.div
+                ref={editSubjectDialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="edit-subject-heading"
+                tabIndex={-1}
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+              >
+                <h2 id="edit-subject-heading" className="text-base font-bold text-slate-800">Edit personal subject</h2>
+                <p className="mb-4 mt-1 text-[11px] text-slate-500">
+                  Rename this subject whenever you need to.
+                </p>
+
+                <label className="mb-1.5 block text-[11px] font-semibold text-slate-600" htmlFor="edit-additional-subject-name">
+                  Subject name
+                </label>
+                <input
+                  id="edit-additional-subject-name"
+                  type="text"
+                  value={editedAdditionalSubjectName}
+                  onChange={(event) => setEditedAdditionalSubjectName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") handleEditAdditionalSubject();
+                    if (event.key === "Escape") setAdditionalSubjectToEdit(null);
+                  }}
+                  maxLength={60}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                />
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdditionalSubjectToEdit(null);
+                      setAdditionalSubjectToRemove(additionalSubjectToEdit);
+                    }}
+                    className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-600 transition-colors hover:bg-rose-100"
+                  >
+                    Remove
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdditionalSubjectToEdit(null)}
+                      className="rounded-lg px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleEditAdditionalSubject}
+                      disabled={!editedAdditionalSubjectName.trim()}
+                      className="rounded-lg bg-indigo-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Save name
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Personal Subject Removal Confirmation */}
+        <AnimatePresence>
+          {additionalSubjectToRemove && (
+            <motion.div
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <button
+                type="button"
+                aria-label="Keep this personal subject"
+                onClick={() => setAdditionalSubjectToRemove(null)}
+                className="absolute inset-0 cursor-default bg-slate-900/30 backdrop-blur-[1px]"
+              />
+              <motion.div
+                ref={removeSubjectDialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="remove-personal-subject-title"
+                aria-describedby="remove-personal-subject-description"
+                tabIndex={-1}
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="relative w-full max-w-xs rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <div className="rounded-lg bg-rose-50 p-1.5 text-rose-600">
+                    <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <h3 id="remove-personal-subject-title" className="text-sm font-semibold text-slate-800">
+                    Remove this personal subject?
+                  </h3>
+                </div>
+                <p id="remove-personal-subject-description" className="mx-auto mt-2 max-w-[240px] text-center text-xs leading-relaxed text-slate-500">
+                  “{additionalSubjectToRemove.name}” will be removed from your personal subject list. Existing study times will stay, but will no longer be linked to it.
+                </p>
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAdditionalSubjectToRemove(null)}
+                    className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    Keep
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDeleteAdditionalSubject(additionalSubjectToRemove.id);
+                      setAdditionalSubjectToRemove(null);
+                    }}
+                    className="min-w-24 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-rose-700"
+                  >
+                    Remove
                   </button>
                 </div>
               </motion.div>

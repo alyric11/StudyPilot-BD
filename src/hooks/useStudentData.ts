@@ -679,7 +679,7 @@ export default function useStudentData(
         );
     };
 
-    // Add a student-created subject. Maximum 4.
+    // Add a student-created subject. Maximum 6.
     const handleAddAdditionalSubject = (name: string) => {
         const trimmedName = name.trim();
 
@@ -688,8 +688,8 @@ export default function useStudentData(
             return false;
         }
 
-        if (additionalSubjects.length >= 4) {
-            showToast("You can add up to 4 additional subjects.", "warning");
+        if (additionalSubjects.length >= 6) {
+            showToast("You can add up to 6 additional subjects.", "warning");
             return false;
         }
 
@@ -724,6 +724,31 @@ export default function useStudentData(
         localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
 
         showToast("Additional subject removed.", "info");
+    };
+
+    const handleUpdateAdditionalSubject = (id: string, name: string) => {
+        const trimmedName = name.trim();
+
+        if (!trimmedName) {
+            showToast("Please enter a subject name.", "warning");
+            return false;
+        }
+
+        if (additionalSubjects.some(
+            (subject) => subject.id !== id && subject.name.trim().toLowerCase() === trimmedName.toLowerCase()
+        )) {
+            showToast("That additional subject already exists.", "warning");
+            return false;
+        }
+
+        const updated = additionalSubjects.map((subject) =>
+            subject.id === id ? { ...subject, name: trimmedName } : subject
+        );
+
+        setAdditionalSubjects(updated);
+        localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
+        showToast("Personal subject updated.", "success");
+        return true;
     };
 
     const resetStudentData = () => {
@@ -773,6 +798,7 @@ export default function useStudentData(
 
         additionalSubjects,
         handleAddAdditionalSubject,
+        handleUpdateAdditionalSubject,
         handleDeleteAdditionalSubject,
 
         resetStudentData

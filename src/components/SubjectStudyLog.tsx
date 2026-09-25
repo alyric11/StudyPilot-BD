@@ -72,9 +72,9 @@ export default function SubjectStudyLog({
     ).filter((task) => task.subjectKey === subjectKey);
 
     return (
-        <aside className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm">
+        <aside className="subject-panel rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-sky-50 p-2 text-sky-700">
+                <div className="subject-icon rounded-lg bg-sky-50 p-2 text-sky-700">
                     <CalendarDays className="h-4 w-4" />
                 </div>
 
@@ -84,19 +84,19 @@ export default function SubjectStudyLog({
             </div>
 
             {/* Date navigation */}
-            <div className="mt-4 flex items-center justify-between gap-2 rounded-xl bg-slate-50 p-2">
+            <div className="subject-log-date mt-3 flex items-center justify-between gap-2 rounded-xl bg-slate-50 p-1">
                 <button
                     type="button"
                     onClick={() =>
                         setSelectedDate((current) => shiftDate(current, -1))
                     }
-                    className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-white hover:text-indigo-600"
+                    className="subject-log-nav flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white hover:text-indigo-600"
                     aria-label="Previous day"
                 >
                     <ChevronLeft className="h-4 w-4" />
                 </button>
 
-                <label className="relative flex min-w-0 flex-1 cursor-pointer items-center justify-center">
+                <label className="relative flex min-h-10 min-w-0 flex-1 cursor-pointer items-center justify-center rounded-lg focus-within:ring-2 focus-within:ring-slate-400">
                     <span className="text-sm font-semibold text-slate-700">
                         {formatSelectedDate(selectedDate)}
                     </span>
@@ -119,7 +119,7 @@ export default function SubjectStudyLog({
                     onClick={() =>
                         setSelectedDate((current) => shiftDate(current, 1))
                     }
-                    className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-white hover:text-indigo-600"
+                    className="subject-log-nav flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white hover:text-indigo-600"
                     aria-label="Next day"
                 >
                     <ChevronRight className="h-4 w-4" />
@@ -134,11 +134,11 @@ export default function SubjectStudyLog({
                             key={`${task.date}:${task.block.id}`}
                             className="rounded-xl border border-slate-100 bg-slate-50/70 p-3"
                         >
-                            <div className="flex items-start gap-3">
-                                <div className="w-16 shrink-0 text-xs font-semibold text-slate-500">
+                            <div className="mb-2 text-xs font-medium text-slate-500">
                                     {formatTime12Hour(task.block.startTime)}
-                                </div>
-
+                                    {" – "}{formatTime12Hour(task.block.endTime)}
+                            </div>
+                            <div className="flex items-start gap-2">
                                 <div className="min-w-0 flex-1">
                                     <p
                                         className={`text-sm font-semibold ${task.completed
@@ -146,18 +146,17 @@ export default function SubjectStudyLog({
                                                 : "text-slate-700"
                                             }`}
                                     >
-                                        {task.block.title}
+                                        {task.chapterBanglaName || task.block.title}
                                     </p>
 
                                     <p
-                                        lang="bn"
-                                        className="mt-1 text-xs text-slate-500"
+                                        className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-500"
                                     >
-                                        {task.chapterBanglaName}
+                                        {task.block.homeworkText?.trim() || "No homework assigned"}
                                     </p>
                                 </div>
 
-                                <label className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center">
+                                <label className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center">
                                     <input
                                         type="checkbox"
                                         checked={task.completed}
@@ -174,7 +173,7 @@ export default function SubjectStudyLog({
                                             }: ${task.block.title}`}
                                     />
 
-                                    <span className="flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 bg-white text-transparent transition-colors peer-checked:border-indigo-500 peer-checked:bg-indigo-500 peer-checked:text-white">
+                                    <span className="subject-task-check flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 bg-white text-transparent transition-colors peer-checked:border-indigo-500 peer-checked:bg-indigo-500 peer-checked:text-white">
                                         <Check className="h-3.5 w-3.5" strokeWidth={3} />
                                     </span>
                                 </label>
@@ -182,8 +181,8 @@ export default function SubjectStudyLog({
                         </div>
                     ))
                 ) : (
-                    <div className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center">
-                        <p className="text-sm text-slate-500">
+                    <div className="px-1 py-1">
+                        <p className="text-xs leading-relaxed text-slate-500">
                             No tasks for this subject on this date.
                         </p>
                     </div>

@@ -1,4 +1,17 @@
 export const getSubjectCardStyles = (color: string) => {
+    // A dedicated palette for student-created subjects. It is intentionally
+    // separate from every curriculum colour family.
+    if (color.includes("personal")) {
+        return {
+            card: "bg-[#faf4fb] border-[#ead3e9] hover:border-[#d8afd5] hover:bg-[#f7eef9]",
+            progress: "bg-[#a85a9d]",
+            chapter:
+                "bg-[#faf4fb] hover:bg-[#f7eef9] text-slate-600 hover:text-[#7f3f76] border-[#ead3e9]",
+            mastery: "text-[#8e4c85]",
+            icon: "bg-[#f1dff0] text-[#93518b]",
+        };
+    }
+
     if (color.includes("blue")) {
         return {
             card: "bg-blue-50/45 border-blue-100/70 hover:border-blue-200",
@@ -247,23 +260,18 @@ export const getSubjectRoutineStyles = (color: string) => {
 
 // Accent values for popovers and small interactive details that need to match a subject card.
 export const getSubjectAccentColor = (color: string) => {
-    if (color.includes("blue")) return "#2563eb";
-    if (color.includes("purple")) return "#7c3aed";
-    if (color.includes("cyan")) return "#0891b2";
-    if (color.includes("amber")) return "#d97706";
-    if (color.includes("teal")) return "#0f766e";
-    if (color.includes("rose")) return "#e11d48";
-    if (color.includes("indigo")) return "#4f46e5";
-    if (color.includes("pink")) return "#db2777";
-    if (color.includes("orange")) return "#ea580c";
-    if (color.includes("green")) return "#16a34a";
-    if (color.includes("sky")) return "#0284c7";
-    if (color.includes("violet")) return "#7c3aed";
-    if (color.includes("yellow")) return "#ca8a04";
-    if (color.includes("red")) return "#dc2626";
-    if (color.includes("mint")) return "#059669";
-    if (color.includes("lavender")) return "#7c3aed";
-    if (color.includes("periwinkle")) return "#4f46e5";
-
-    return "#64748b";
+    if (color.includes("personal")) return "#93518b";
+    // Read the card's progress hue. A future card-palette change then reaches
+    // every subject page without maintaining a second subject-color list.
+    const progressHue = getSubjectCardStyles(color).progress.match(/bg-([a-z]+)-\d+/)?.[1] ?? "slate";
+    const accents: Record<string, string> = {
+        blue: "#2563eb", purple: "#7c3aed",
+        cyan: "#0891b2", amber: "#d97706", teal: "#0f766e",
+        rose: "#e11d48", indigo: "#4f46e5", pink: "#db2777",
+        orange: "#ea580c", green: "#16a34a", sky: "#0284c7",
+        violet: "#7c3aed", yellow: "#ca8a04", red: "#dc2626",
+        emerald: "#059669", slate: "#64748b", stone: "#78716c",
+        gray: "#6b7280",
+    };
+    return accents[progressHue] ?? accents.slate;
 };
