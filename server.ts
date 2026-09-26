@@ -15,6 +15,7 @@
  */
 
 import express from "express";
+import { mkdir, readFile, rename, writeFile } from "fs/promises";
 import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -26,6 +27,33 @@ const app = express();
 app.use(express.json());
 
 const PORT = 3000;
+const overviewAdminToken = process.env.OVERVIEW_ADMIN_TOKEN;
+const chapterOverviewStorePath = path.join(process.cwd(), "data", "chapter-overviews.json");
+
+type StoredChapterOverview = {
+  introduction: string;
+  importantTopics: Array<{ topic: string; description: string }>;
+};
+
+async function readChapterOverviews(): Promise<Record<string, StoredChapterOverview>> {
+  try {
+    return JSON.parse(await readFile(chapterOverviewStorePath, "utf8"));
+  } catch (error: any) {
+    if (error?.code === "ENOENT") return {};
+    throw error;
+  }
+}
+
+async function writeChapterOverviews(overviews: Record<string, StoredChapterOverview>) {
+  await mkdir(path.dirname(chapterOverviewStorePath), { recursive: true });
+  const temporaryPath = `${chapterOverviewStorePath}.tmp`;
+  await writeFile(temporaryPath, JSON.stringify(overviews, null, 2), "utf8");
+  await rename(temporaryPath, chapterOverviewStorePath);
+}
+
+function getOverviewKey(subjectId: string, chapterId: string) {
+  return `${subjectId}:${chapterId}`;
+}
 
 // Lazy initialization of GoogleGenAI SDK to avoid crashing if API key is not set.
 let aiClient: GoogleGenAI | null = null;
@@ -212,6 +240,61 @@ const generateFallbackPlan = (minutes: number, subjects: string[]): any => {
   };
 };
 
+// API: Retrieve a chapter overview approved for students.
+app.get("/api/chapter-overviews", async (req, res) => {
+  const { subjectId, chapterId } = req.query;
+  if (typeof subjectId !== "string" || typeof chapterId !== "string") {
+    return res.status(400).json({ error: "Subject and chapter are required." });
+  }
+
+  try {
+    const overview = (await readChapterOverviews())[getOverviewKey(subjectId, chapterId)];
+    if (!overview) return res.status(404).json({ error: "No published overview found." });
+    return res.json(overview);
+  } catch (error) {
+    console.error("Chapter overview retrieval failed:", error);
+    return res.status(500).json({ error: "Unable to retrieve the chapter overview." });
+  }
+});
+
+// API: Save an administrator-approved overview for students.
+app.put("/api/chapter-overviews", async (req, res) => {
+  const { subjectId, chapterId, overview } = req.body;
+  if (!overviewAdminToken || req.header("x-overview-admin-token") !== overviewAdminToken) {
+    return res.status(403).json({ error: "Overview management is not authorized." });
+  }
+  if (typeof subjectId !== "string" || typeof chapterId !== "string" ||
+    typeof overview?.introduction !== "string" || !Array.isArray(overview?.importantTopics)) {
+    return res.status(400).json({ error: "A complete overview is required." });
+  }
+
+  const cleanedOverview: StoredChapterOverview = {
+    introduction: overview.introduction.trim(),
+    importantTopics: overview.importantTopics
+      .filter((topic: unknown): topic is { topic: string; description: string } =>
+        typeof topic === "object" && topic !== null &&
+        typeof (topic as { topic?: unknown }).topic === "string" &&
+        typeof (topic as { description?: unknown }).description === "string")
+      .map((topic: { topic: string; description: string }) => ({
+        topic: topic.topic.trim(), description: topic.description.trim()
+      }))
+      .filter((topic: { topic: string; description: string }) => topic.topic && topic.description)
+  };
+  if (!cleanedOverview.introduction) {
+    return res.status(400).json({ error: "The overview introduction is required." });
+  }
+
+  try {
+    const overviews = await readChapterOverviews();
+    overviews[getOverviewKey(subjectId, chapterId)] = cleanedOverview;
+    await writeChapterOverviews(overviews);
+    return res.json(cleanedOverview);
+  } catch (error) {
+    console.error("Chapter overview save failed:", error);
+    return res.status(500).json({ error: "Unable to save the chapter overview." });
+  }
+});
+
 // API: Generate Chapter Study Guide
 app.post("/api/generate-chapter-guide", async (req, res) => {
   const { subject, chapter, classLevel, group } = req.body;
@@ -278,10 +361,7 @@ important topics, return an empty importantTopics array rather than
 inventing topics.
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
+    const generationConfig = {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -316,8 +396,32 @@ inventing topics.
           },
           required: ["introduction", "importantTopics"]
         }
+      };
+
+    // A short structured overview does not require the largest Flash model.
+    // Gemini 3.5 Flash has recently returned persistent 503 capacity errors, so
+    // fall back immediately to the lighter model instead of leaving students waiting.
+    const overviewModels = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
+    let response: Awaited<ReturnType<typeof ai.models.generateContent>> | null = null;
+    let lastError: unknown;
+
+    for (const model of overviewModels) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: generationConfig
+        });
+        break;
+      } catch (error) {
+        lastError = error;
+        const status = (error as { status?: number }).status;
+        if (status !== 429 && status !== 503) throw error;
+        console.warn(`Chapter guide model unavailable: ${model}. Trying the fallback.`);
       }
-    });
+    }
+
+    if (!response) throw lastError;
 
     const text = response.text;
 
@@ -395,34 +499,41 @@ app.post("/api/tutor-chat", async (req, res) => {
 
   try {
     const ai = getAI();
-    const chat = ai.chats.create({
-      model: "gemini-3.5-flash",
-      history: Array.isArray(history)
-        ? history.slice(-10).map((msg) => ({
-          role: msg.sender === "student" ? "user" : "model",
-          parts: [{ text: msg.text }]
-        }))
-        : [],
-      config: {
-        systemInstruction: `You are StudyPilot AI, an elite academic personal tutor and educational coach for Bangladeshi school & college students following the NCTB curriculum (Classes IX-XII, SSC, and HSC).
+    const chatHistory = Array.isArray(history)
+      ? history.slice(-10).map((msg) => ({
+        role: msg.sender === "student" ? "user" : "model",
+        parts: [{ text: msg.text }]
+      }))
+      : [];
+    const chatConfig = {
+      systemInstruction: `You are StudyPilot AI, an elite academic personal tutor and educational coach for Bangladeshi school & college students following the NCTB curriculum (Classes IX-XII, SSC, and HSC).
         - Your main goal is to help students learn their textbook chapters inside out, understand theories deeply, and excel in board exams.
         - You communicate in an encouraging, highly knowledgeable, and warm tone.
         - Use clean, simple language. You can blend Bangla and English (code-switch) naturally (commonly known as "Banglish") to make explanations extremely accessible, or write in proper Bangla or English when requested.
         - Reference actual NCTB syllabus criteria, board exams (Dhaka Board, Chittagong Board, etc.), Creative Question structures (Srijonshil: Ka, Kha, Ga, Gha), and MCQ guidelines.
         - Maintain progress context of the student. Be highly encouraging and provide clear formatting with bullet points and bold headers.`
-      }
-    });
-
-    // Seed chat history if provided
-    if (history && history.length > 0) {
-      // Direct message sending is simplest with a clean prompt context
-    }
+    };
 
     const contextPrompt = `[Student Profile: Class ${classLevel || "9-10"}, Subject: ${subject}, Chapter: ${chapter}]
     Student Question: ${augmentedMessage}`;
 
-    const result = await chat.sendMessage({ message: contextPrompt });
-    res.json({ text: result.text });
+    const tutorModels = ["gemini-3.5-flash", "gemini-3.1-flash-lite"];
+    let lastError: unknown;
+
+    for (const model of tutorModels) {
+      try {
+        const chat = ai.chats.create({ model, history: chatHistory, config: chatConfig });
+        const result = await chat.sendMessage({ message: contextPrompt });
+        return res.json({ text: result.text });
+      } catch (error) {
+        lastError = error;
+        const status = (error as { status?: number }).status;
+        if (status !== 429 && status !== 503) throw error;
+        console.warn(`Tutor model unavailable: ${model}. Trying the fallback.`);
+      }
+    }
+
+    throw lastError;
   } catch (error: any) {
     console.error("Gemini API chat error:", error);
     res.status(500).json({ error: "Failed to generate tutor response", details: error.message });
@@ -573,6 +684,68 @@ app.post("/api/generate-study-plan", async (req, res) => {
   }
 });
 
+// API: Get details for one YouTube video
+app.get("/api/video-details", async (req, res) => {
+  const { videoId } = req.query;
+
+  if (!videoId || typeof videoId !== "string") {
+    return res.status(400).json({
+      error: "Video ID is required."
+    });
+  }
+
+  if (!youtubeApiKey) {
+    return res.status(500).json({
+      error: "YouTube API key is not configured."
+    });
+  }
+
+  try {
+    const params = new URLSearchParams({
+      part: "snippet,contentDetails,statistics",
+      id: videoId,
+      key: youtubeApiKey
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`
+    );
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: "Failed to retrieve video details."
+      });
+    }
+
+    const data = await response.json();
+    const video = data.items?.[0];
+
+    if (!video) {
+      return res.status(404).json({
+        error: "YouTube video not found."
+      });
+    }
+
+    return res.json({
+      videoId: video.id,
+      title: video.snippet?.title || "YouTube Video",
+      channelTitle: video.snippet?.channelTitle || "",
+      thumbnail:
+        video.snippet?.thumbnails?.medium?.url ||
+        video.snippet?.thumbnails?.default?.url ||
+        "",
+      viewCount: video.statistics?.viewCount || "0",
+      duration: video.contentDetails?.duration || null
+    });
+  } catch (error) {
+    console.error("YouTube video details error:", error);
+
+    return res.status(500).json({
+      error: "Unable to retrieve video details."
+    });
+  }
+});
+
 // API: Search YouTube video lessons
 app.get("/api/video-lessons", async (req, res) => {
   const { classLevel, subject, chapterBanglaName, chapterName } = req.query;
@@ -589,11 +762,11 @@ app.get("/api/video-lessons", async (req, res) => {
     });
   }
 
-  const isSSC = classLevel === "9" || classLevel === "10";
+  const isSSC =
+    classLevel === "Class 9" ||
+    classLevel === "Class 10";
   const curriculumLevel = isSSC ? "SSC" : "HSC";
-  const classLabel = isSSC
-    ? `Class ${classLevel}`
-    : `Class ${classLevel}`;
+  const classLabel = String(classLevel);
 
   // Search terms are deliberately ordered from the most specific
   // chapter identifier to the broader curriculum context.
@@ -638,7 +811,10 @@ app.get("/api/video-lessons", async (req, res) => {
     const filteredItems = (data.items || []).filter((item: any) => {
       const title = item.snippet?.title?.toLowerCase() || "";
 
-      if (classLevel === "11" || classLevel === "12") {
+      if (
+        classLevel === "Class 11" ||
+        classLevel === "Class 12"
+      ) {
         return !(
           title.includes("class 9") ||
           title.includes("class 10") ||

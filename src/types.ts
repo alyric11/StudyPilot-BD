@@ -21,12 +21,16 @@ export interface UserProfile {
 }
 
 // Checklists tracking study progress for a textbook chapter
+
 export interface ChapterProgress {
+  readOverview: boolean;
+  watchedIntroVideo: boolean;
   readTextbook: boolean;
   watchedLectures: boolean;
   solvedExercises: boolean;
   solvedBoardQuestions: boolean;
   madeNotes: boolean;
+  timedExams: boolean;
   revisionCompleted: boolean;
 }
 

@@ -312,14 +312,18 @@ export default function useStudentData(
                 initialProg[sub.id] = {};
 
                 sub.chapters.forEach((ch) => {
-                    initialProg[sub.id][ch.id] = {
+                    initialProg[sub.id][ch.id] =
+                    {
+                        readOverview: false,
+                        watchedIntroVideo: false,
                         readTextbook: false,
                         watchedLectures: false,
                         solvedExercises: false,
                         solvedBoardQuestions: false,
                         madeNotes: false,
+                        timedExams: false,
                         revisionCompleted: false
-                    };
+                    }
                 });
             });
 
