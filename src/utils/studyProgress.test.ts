@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { class12Subjects } from "../data/class12";
 import type { ChapterProgress } from "../types";
-import { getStudyProgress } from "./studyProgress";
+import { getStudyProgress, getChapterProgressPercentage } from "./studyProgress";
 
 const done: ChapterProgress = {
   readOverview: true,
@@ -20,6 +20,19 @@ const done: ChapterProgress = {
 const bangla = class12Subjects("Science").find(
   (subject) => subject.id === "bangla_1",
 )!;
+
+test("optional introduction video does not reduce completion or change saved records", () => {
+  const saved = { ...done, watchedIntroVideo: false };
+  assert.equal(getChapterProgressPercentage(saved), 100);
+  assert.equal(getStudyProgress(bangla, Object.fromEntries(bangla.chapters.map(chapter => [chapter.id, saved]))).percentage, 100);
+  assert.equal(saved.watchedIntroVideo, false);
+});
+
+test("overview and timed practice count consistently in chapter and subject summaries", () => {
+  const saved = { ...done, readOverview: false, timedExams: false };
+  assert.equal(getChapterProgressPercentage(saved), 75);
+  assert.equal(getStudyProgress(bangla, Object.fromEntries(bangla.chapters.map(chapter => [chapter.id, saved]))).percentage, 75);
+});
 
 test("chapter revisions cannot overflow section totals", () => {
   const saved = Object.fromEntries(

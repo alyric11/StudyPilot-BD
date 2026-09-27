@@ -7,9 +7,12 @@
  * video lessons, and recommended study resources.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import useDialogFocus from "../hooks/useDialogFocus";
+import { CHAPTER_PREPARATION_KEYS } from "../utils/studyProgress";
+import { formatOverviewForEditor, parseOverviewFromEditor, isOverviewHeading } from "../utils/chapterOverview";
 import { ChapterOverviewData, ChapterProgress, UserProfile } from "../types";
-import { BookOpen, CheckCircle, Sparkles, ArrowLeft, Settings2, X } from "lucide-react";
+import { BookOpen, CheckCircle, Sparkles, ArrowLeft, Settings2, X, Circle, ChevronDown } from "lucide-react";
 import { NCTB_CURRICULUM } from "../data/curriculum";
 import { STUDY_RESOURCES } from '../data/resources';
 
@@ -38,13 +41,20 @@ export default function ChapterPage({
   onBack,
   onWatchVideoLessons,
 }: ChapterPageProps) {
+  const [mobilePlanOpen, setMobilePlanOpen] = useState(false);
   const [guideData, setGuideData] = useState<ChapterOverviewData | null>(null);
   const [loadingGuide, setLoadingGuide] = useState(false);
   const [apiWarning, setApiWarning] = useState<string | null>(null);
   const [showChapterOverview, setShowChapterOverview] = useState(false);
   const [isOverviewManagerOpen, setIsOverviewManagerOpen] = useState(false);
   const [overviewAdminToken, setOverviewAdminToken] = useState("");
-  const [draftOverview, setDraftOverview] = useState<ChapterOverviewData>({ introduction: "", importantTopics: [] });
+  const [loadingPublished, setLoadingPublished] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadingDraft, setLoadingDraft] = useState(false);
+  const managerRef = useRef<HTMLDivElement>(null);
+  const generationRef = useRef<AbortController | null>(null);
+  const saveRef = useRef<AbortController | null>(null);
   const [managementMessage, setManagementMessage] = useState<string | null>(null);
   const [isSavingOverview, setIsSavingOverview] = useState(false);
   const [overviewEditorText, setOverviewEditorText] = useState("");
@@ -54,15 +64,13 @@ export default function ChapterPage({
     importantTopics: overview.importantTopics.map((topic) => ({ ...topic })),
   });
 
-  const isOverviewHeading = (line: string) => {
-    const plainLine = line.replace(/^\*\*(.*?)\*\*$/, "$1").trim();
-
-    return (
-      /^\*\*.+\*\*$/.test(line.trim()) ||
-      /^(chapter overview|overview|important topics)\s*:?$/i.test(plainLine) ||
-      (!/[.!?।]$/.test(plainLine) && plainLine.length > 0)
-    );
+  const closeOverviewManager = () => {
+    if (isSavingOverview) return;
+    generationRef.current?.abort();
+    setLoadingDraft(false);
+    setIsOverviewManagerOpen(false);
   };
+  useDialogFocus(isOverviewManagerOpen, managerRef, closeOverviewManager);
 
   const renderInlineBold = (text: string) =>
     text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
@@ -71,30 +79,21 @@ export default function ChapterPage({
     });
 
   const renderOverviewText = (text: string, bodyClassName: string) => {
-    const lines = text.replace(/\r\n/g, "\n").split("\n");
-    const hasMeaningfulLine = lines.some((line) => line.trim());
-
-    if (!hasMeaningfulLine) return null;
-
+    const lines = text.replace(/\r\n?/g, "\n").split("\n").map(line => line.trim()).filter(Boolean);
     return (
-      <div>
+      <div className="chapter-overview-prose">
         {lines.map((line, index) => {
-          const trimmedLine = line.trim();
-
-          if (!trimmedLine) return <div key={index} className="h-1" aria-hidden="true" />;
-
-          if (isOverviewHeading(trimmedLine)) {
-            return (
-              <h4 key={index} className="mb-2 mt-6 text-base font-semibold leading-relaxed text-slate-900 first:mt-0">
-                {renderInlineBold(trimmedLine.replace(/^\*\*(.*?)\*\*$/, "$1"))}
-              </h4>
-            );
-          }
-
-          return (
-            <p key={index} className={`${bodyClassName} mb-6 leading-relaxed text-justify`}>
-              {renderInlineBold(trimmedLine)}
-            </p>
+          // Older saved overviews use short bilingual topic labels without markup.
+          const legacyTopic = line.length <= 120 &&
+            /^[^.!?।:]+\([^()]+\)$/.test(line) &&
+            index + 1 < lines.length && /[.!?।]$/.test(lines[index + 1]);
+          const heading = isOverviewHeading(line) || legacyTopic;
+          return heading ? (
+            <h4 key={index}>
+              {renderInlineBold(line.replace(/^#{1,6}\s+/, "").replace(/^\*\*(.*?)\*\*$/, "$1"))}
+            </h4>
+          ) : (
+            <p key={index} className={bodyClassName}>{renderInlineBold(line)}</p>
           );
         })}
       </div>
@@ -103,26 +102,46 @@ export default function ChapterPage({
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     const loadPublishedOverview = async () => {
+      setLoadingPublished(true);
+      setLoadError(null);
+      setIsOverviewManagerOpen(false);
+      setLoadingGuide(false);
+      setLoadingDraft(false);
+      setIsSavingOverview(false);
       setGuideData(null);
       setShowChapterOverview(false);
       setApiWarning(null);
       try {
         const params = new URLSearchParams({ subjectId, chapterId });
-        const response = await fetch(`/api/chapter-overviews?${params.toString()}`);
-        if (!response.ok) return;
+        const response = await fetch(`/api/chapter-overviews?${params.toString()}`, { signal: controller.signal });
+        if (response.status === 404) return;
+        if (!response.ok) throw new Error("Unable to load saved overview.");
         const overview: ChapterOverviewData = await response.json();
         if (!cancelled) {
           setGuideData(overview);
           setShowChapterOverview(true);
         }
       } catch {
-        // A saved overview is optional; the regular guide remains available.
+        if (!cancelled) setLoadError("The saved overview could not be loaded. Please retry.");
+      } finally {
+        window.clearTimeout(timeout);
+        if (!cancelled) setLoadingPublished(false);
       }
     };
     void loadPublishedOverview();
-    return () => { cancelled = true; };
-  }, [subjectId, chapterId]);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeout);
+      generationRef.current?.abort();
+      saveRef.current?.abort();
+      generationRef.current = null;
+      saveRef.current = null;
+    };
+  }, [subjectId, chapterId, loadAttempt]);
 
   // Retrieve complete chapter object from curriculum reference
   const activeChapterObj = (() => {
@@ -136,19 +155,26 @@ export default function ChapterPage({
 
   // Generate the AI chapter overview
   const generateChapterGuide = async (forManagement = false) => {
-    setShowChapterOverview(true);
-    setLoadingGuide(true);
-    setApiWarning(null);
+    if (loadingPublished || loadingGuide || loadingDraft || isSavingOverview) return;
+    const controller = new AbortController();
+    generationRef.current?.abort();
+    generationRef.current = controller;
+    let timedOut = false;
+    const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 60000);
+    if (forManagement) { setLoadingDraft(true); setManagementMessage(null); }
+    else { setShowChapterOverview(true); setLoadingGuide(true); setApiWarning(null); }
 
     try {
       const res = await fetch("/api/generate-chapter-guide", {
         method: "POST",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           subject: subjectName,
-          chapter: chapterName,
+          chapter: chapterName.trim() || chapterBanglaName.trim(),
+          chapterBanglaName,
           classLevel: profile.classLevel,
           group: profile.group,
         }),
@@ -159,82 +185,35 @@ export default function ChapterPage({
       }
 
       const data: ChapterOverviewData = await res.json();
-      setGuideData(data);
+      if (controller.signal.aborted) return;
       if (forManagement) {
-        const draft = copyOverview(data);
-        setDraftOverview(draft);
-        setOverviewEditorText(formatOverviewForEditor(draft));
-      }
+        setOverviewEditorText(formatOverviewForEditor(data));
+      } else setGuideData(data);
     } catch (error) {
-      console.error(error);
-      setApiWarning("Chapter guide could not be generated right now.");
+      if (controller.signal.aborted && !timedOut) return;
+      const message = timedOut ? "Generation took too long. Please retry." : "Chapter guide could not be generated right now. Please retry.";
+      if (forManagement) setManagementMessage(message);
+      else setApiWarning(message);
     } finally {
-      setLoadingGuide(false);
+      window.clearTimeout(timeout);
+      if (generationRef.current === controller) {
+        generationRef.current = null;
+        setLoadingGuide(false);
+        setLoadingDraft(false);
+      }
     }
   };
 
   const openOverviewManager = () => {
     const draft = guideData ? copyOverview(guideData) : { introduction: "", importantTopics: [] };
-    setDraftOverview(draft);
     setOverviewEditorText(formatOverviewForEditor(draft));
     setManagementMessage(null);
     setIsOverviewManagerOpen(true);
   };
 
-  const formatOverviewForEditor = (overview: ChapterOverviewData) => [
-    "CHAPTER OVERVIEW",
-    overview.introduction.trim(),
-    "",
-    "IMPORTANT TOPICS",
-    ...overview.importantTopics.flatMap((topic, index) => [
-      `${index + 1}. ${topic.topic.trim()}`,
-      topic.description.trim(),
-      "",
-    ]),
-  ].join("\n").trim();
-
-  const parseOverviewFromEditor = (text: string): ChapterOverviewData | null => {
-    const normalized = text.replace(/\r\n/g, "\n").trim();
-    const sections = normalized.split(/^\s*IMPORTANT TOPICS\s*:?\s*$/im);
-    const introduction = (sections[0] || "")
-      .replace(/^\s*CHAPTER OVERVIEW\s*:?\s*/i, "")
-      .trim();
-
-    if (!introduction) return null;
-
-    const importantTopics: ChapterOverviewData["importantTopics"] = [];
-    let activeTopic: { topic: string; description: string[] } | null = null;
-
-    for (const line of (sections[1] || "").split("\n")) {
-      const topicMatch = line.match(/^\s*\d+[.)]\s+(.+?)\s*$/);
-
-      if (topicMatch) {
-        if (activeTopic) {
-          importantTopics.push({
-            topic: activeTopic.topic,
-            description: activeTopic.description.join("\n").trim(),
-          });
-        }
-        activeTopic = { topic: topicMatch[1].trim().replace(/^\*\*(.*?)\*\*$/, "$1"), description: [] };
-      } else if (activeTopic) {
-        activeTopic.description.push(line.trim());
-      }
-    }
-
-    if (activeTopic) {
-      importantTopics.push({
-        topic: activeTopic.topic,
-        description: activeTopic.description.join("\n").trim(),
-      });
-    }
-
-    return {
-      introduction,
-      importantTopics: importantTopics.filter((topic) => topic.topic && topic.description),
-    };
-  };
 
   const saveOverviewForStudents = async () => {
+    if (loadingDraft || isSavingOverview) return;
     if (!overviewAdminToken.trim()) {
       setManagementMessage("Enter the overview management token to save.");
       return;
@@ -246,23 +225,31 @@ export default function ChapterPage({
     }
     setIsSavingOverview(true);
     setManagementMessage(null);
+    const controller = new AbortController();
+    saveRef.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
     try {
       const response = await fetch("/api/chapter-overviews", {
         method: "PUT",
+        signal: controller.signal,
         headers: { "Content-Type": "application/json", "x-overview-admin-token": overviewAdminToken },
         body: JSON.stringify({ subjectId, chapterId, overview: overviewToSave }),
       });
       const data = await response.json();
+      if (controller.signal.aborted) return;
       if (!response.ok) throw new Error(data.error || "The overview could not be saved.");
       setGuideData(data);
-      setDraftOverview(data);
       setOverviewEditorText(formatOverviewForEditor(data));
       setShowChapterOverview(true);
+      setApiWarning(null);
       setIsOverviewManagerOpen(false);
     } catch (error) {
-      setManagementMessage(error instanceof Error ? error.message : "The overview could not be saved.");
+      if (saveRef.current === controller) setManagementMessage(controller.signal.aborted
+        ? "Saving could not be confirmed. Your text is still here; please retry."
+        : error instanceof Error ? error.message : "The overview could not be saved.");
     } finally {
-      setIsSavingOverview(false);
+      window.clearTimeout(timeout);
+      if (saveRef.current === controller) setIsSavingOverview(false);
     }
   };
 
@@ -271,20 +258,15 @@ export default function ChapterPage({
       ...chapterProgress,
       [key]: !chapterProgress[key]
     };
+    if (key === "readOverview") {
+      updated.watchedIntroVideo = updated.readOverview;
+    }
     onUpdateProgress(updated);
   };
 
-  const progressKeys: Array<keyof ChapterProgress> = [
-    "readOverview",
-    "watchedIntroVideo",
-    "readTextbook",
-    "watchedLectures",
-    "solvedExercises",
-    "solvedBoardQuestions",
-    "madeNotes",
-    "timedExams",
-    "revisionCompleted",
-  ];
+  const progressKeys = CHAPTER_PREPARATION_KEYS;
+  const isPlaceholderOverview = guideData?.introduction.trim().toLowerCase() === "test editing" &&
+    guideData.importantTopics.length === 0;
 
   const totalSteps = progressKeys.length;
 
@@ -293,14 +275,12 @@ export default function ChapterPage({
   ).length;
 
   const percentProgress = () => {
-    if (totalSteps === 0) return 0;
     return Math.round((completedSteps / totalSteps) * 100);
   };
 
 
-  const hasExpandedOverview = showChapterOverview && Boolean(guideData);
 
-  const renderRecommendedResources = (stacked: boolean) => (
+  const renderRecommendedResources = () => (
     <section className="subject-panel rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm md:p-6">
       <div className="mb-4 flex items-center gap-2.5">
         <div
@@ -314,11 +294,11 @@ export default function ChapterPage({
         </div>
         <div>
           <h3 className="text-sm font-bold text-slate-900">Recommended Resources</h3>
-          <p className="text-[10px] text-slate-400">Trusted places to continue learning</p>
+          <p className="text-xs text-slate-500">Useful learning websites</p>
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 gap-3 ${stacked ? "" : "sm:grid-cols-2"}`}>
+      <div className="grid grid-cols-1 gap-3">
         {[...STUDY_RESOURCES]
           .sort(
             (a, b) =>
@@ -349,7 +329,7 @@ export default function ChapterPage({
                 <h4 className="text-xs font-bold text-slate-800 transition-colors group-hover:text-slate-950">
                   {resource.name}
                 </h4>
-                <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-slate-500">
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">
                   {resource.description}
                 </p>
               </div>
@@ -358,6 +338,80 @@ export default function ChapterPage({
           ))}
       </div>
     </section>
+  );
+
+  const renderStudyPlan = () => (
+          <section className="subject-panel rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Progress</p>
+                <h3 className="mt-1 text-base font-bold text-slate-900">Study Plan</h3>
+              </div>
+              <span
+                className="rounded-full px-2.5 py-1 text-xs font-bold"
+                style={{
+                  color: "var(--subject-accent)",
+                  backgroundColor: "color-mix(in srgb, var(--subject-accent) 9%, white)"
+                }}
+              >
+                {completedSteps}/{totalSteps}
+              </span>
+            </div>
+
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${percentProgress()}%`,
+                  backgroundColor: "var(--subject-accent)"
+                }}
+              />
+            </div>
+
+            <div className="mt-4 space-y-1.5">
+              {[
+                { key: "readOverview", label: "Read the overview & watch an introductory video" },
+                { key: "readTextbook", label: "Read the chapter & mark difficulties" },
+                { key: "watchedLectures", label: "Clarify difficult points" },
+                { key: "solvedExercises", label: "Practise chapter exercises" },
+                { key: "solvedBoardQuestions", label: "Solve past board questions" },
+                { key: "madeNotes", label: "Review mistakes and retry difficult questions" },
+                { key: "timedExams", label: "Take a timed test" },
+                { key: "revisionCompleted", label: "Complete final revision" }
+              ].map((item) => {
+                const isDone = Boolean(chapterProgress[item.key as keyof ChapterProgress]);
+                const StatusIcon = isDone ? CheckCircle : Circle;
+
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    aria-pressed={isDone}
+                    onClick={() => handleChecklistToggle(item.key as keyof ChapterProgress)}
+                    className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                      isDone
+                        ? "text-slate-700"
+                        : "bg-slate-50/65 text-slate-600 hover:bg-slate-100"
+                    }`}
+                    style={
+                      isDone
+                        ? {
+                            backgroundColor: "color-mix(in srgb, var(--subject-accent) 8%, white)"
+                          }
+                        : undefined
+                    }
+                  >
+                    <span className="text-[13px] font-medium leading-relaxed">{item.label}</span>
+                    <StatusIcon
+                      className={`h-4 w-4 shrink-0 transition-colors ${isDone ? "" : "text-slate-300 group-hover:text-slate-400"}`}
+                      style={isDone ? { color: "var(--subject-accent)" } : undefined}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
   );
 
   return (
@@ -430,11 +484,26 @@ export default function ChapterPage({
         </div>
       </section>
 
+      <section className="subject-panel rounded-2xl border bg-white lg:hidden">
+        <button type="button" onClick={() => setMobilePlanOpen(open => !open)}
+          aria-expanded={mobilePlanOpen} aria-controls="mobile-chapter-study-plan"
+          className="flex w-full items-center justify-between gap-3 rounded-2xl p-4 text-left text-sm font-semibold text-slate-800 focus-visible:outline-2 focus-visible:outline-indigo-500">
+          <span>Study Plan · {completedSteps}/{totalSteps} completed</span>
+          <ChevronDown className={`h-4 w-4 transition-transform motion-reduce:transition-none ${mobilePlanOpen ? "rotate-180" : ""}`} />
+        </button>
+        <div id="mobile-chapter-study-plan" hidden={!mobilePlanOpen}>{renderStudyPlan()}</div>
+      </section>
+
       {/* Main content: learning guide + supporting resources */}
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)]">
         {/* Main learning guide */}
         <div className="space-y-5">
-          {!showChapterOverview ? (
+          {loadingPublished || loadError ? (
+            <section className="subject-panel rounded-2xl border bg-white p-8 text-center" aria-live="polite">
+              <p className="text-sm text-slate-500">{loadingPublished ? "Loading saved overview…" : loadError}</p>
+              {!loadingPublished && <button type="button" onClick={() => setLoadAttempt(value => value + 1)} className="mt-3 rounded-lg border px-4 py-2 text-sm font-semibold">Retry</button>}
+            </section>
+          ) : !showChapterOverview ? (
             <section
               className="subject-panel flex min-h-[290px] flex-col justify-center rounded-2xl border bg-white p-7 shadow-sm md:p-8"
               style={{
@@ -454,7 +523,7 @@ export default function ChapterPage({
                   <Sparkles className="h-5 w-5" />
                 </div>
 
-                <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                <p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
                   Intelligent chapter guide
                 </p>
                 <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
@@ -472,6 +541,9 @@ export default function ChapterPage({
                 >
                   <Sparkles className="h-4 w-4" />
                   Generate chapter guide
+                </button>
+                <button type="button" onClick={openOverviewManager} className="ml-3 mt-5 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-white hover:text-slate-800">
+                  <Settings2 className="h-4 w-4" /> Manage overview
                 </button>
               </div>
             </section>
@@ -499,7 +571,7 @@ export default function ChapterPage({
                     <BookOpen className="h-4.5 w-4.5" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
                       Learning guide
                     </p>
                     <h2 className="text-lg font-bold tracking-tight text-slate-900 md:text-xl">
@@ -511,7 +583,8 @@ export default function ChapterPage({
                 <button
                   type="button"
                   onClick={openOverviewManager}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-slate-400 transition-colors hover:bg-white hover:text-slate-700"
+                  disabled={loadingGuide}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
                   title="Manage overview"
                 >
                   <Settings2 className="h-3.5 w-3.5" />
@@ -527,59 +600,25 @@ export default function ChapterPage({
                 ) : apiWarning ? (
                   <div className="rounded-xl border border-red-100 bg-red-50 p-5 text-center">
                     <p className="text-sm text-red-600">{apiWarning}</p>
+                    <button type="button" onClick={() => void generateChapterGuide()} className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700">Retry</button>
                   </div>
+                ) : isPlaceholderOverview ? (
+                  <p className="text-sm leading-relaxed text-slate-500">This chapter overview is not ready yet. You can use the Study Plan and video lessons while it is being prepared.</p>
                 ) : guideData ? (
                   <div className="mx-auto max-w-3xl text-left">
-                    <div className="text-[15px] leading-8 text-slate-700 md:text-base">
-                      {renderOverviewText(guideData.introduction, "text-slate-700")}
-                    </div>
-
-                    {guideData.importantTopics.length > 0 && (
-                      <div className="mt-7 border-t border-slate-100 pt-6">
-                        <div className="mb-4 flex items-center gap-2.5">
-                          <span
-                            className="h-5 w-1 rounded-full"
-                            style={{ backgroundColor: "var(--subject-accent)" }}
-                            aria-hidden="true"
-                          />
-                          <h3 className="text-lg font-bold text-slate-900">Important Topics</h3>
-                        </div>
-
-                        <div className="space-y-1">
-                          {guideData.importantTopics.map((item, index) => (
-                            <article
-                              key={index}
-                              className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 border-b border-slate-100 py-4 last:border-b-0"
-                            >
-                              <span
-                                className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold"
-                                style={{
-                                  color: "var(--subject-accent)",
-                                  backgroundColor: "color-mix(in srgb, var(--subject-accent) 9%, white)"
-                                }}
-                              >
-                                {index + 1}
-                              </span>
-                              <div className="min-w-0">
-                                <h4 className="mb-1.5 text-[15px] font-bold leading-relaxed text-slate-900">
-                                  {item.topic}
-                                </h4>
-                                <div className="text-sm leading-7 text-slate-600 md:text-[15px]">
-                                  {renderOverviewText(item.description, "text-slate-600")}
-                                </div>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    {renderOverviewText([
+                      guideData.introduction,
+                      ...guideData.importantTopics.flatMap(item => [
+                        `**${item.topic}**`, item.description,
+                      ]),
+                    ].join("\n\n"), "text-slate-700")}
                   </div>
                 ) : null}
               </div>
             </section>
           )}
 
-          {!hasExpandedOverview && renderRecommendedResources(false)}
+
         </div>
 
         {/* Supporting column */}
@@ -597,10 +636,10 @@ export default function ChapterPage({
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-red-400">Video lessons</p>
-                <h3 className="mt-0.5 text-sm font-bold text-slate-900">Watch recommended lectures</h3>
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-red-600">Video lessons</p>
+                <h3 className="mt-0.5 text-sm font-bold text-slate-900">Find video lessons for this chapter</h3>
                 <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-                  Open curated YouTube lessons for this chapter.
+                  Browse YouTube search results and your saved lessons.
                 </p>
               </div>
               <span className="text-lg text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-red-400">
@@ -609,85 +648,17 @@ export default function ChapterPage({
             </div>
           </button>
 
-          {/* Compact Study Plan list */}
-          <section className="subject-panel rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Progress</p>
-                <h3 className="mt-1 text-base font-bold text-slate-900">Study Plan</h3>
-              </div>
-              <span
-                className="rounded-full px-2.5 py-1 text-xs font-bold"
-                style={{
-                  color: "var(--subject-accent)",
-                  backgroundColor: "color-mix(in srgb, var(--subject-accent) 9%, white)"
-                }}
-              >
-                {completedSteps}/{totalSteps}
-              </span>
-            </div>
+          <div className="hidden lg:block">{renderStudyPlan()}</div>
 
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${percentProgress()}%`,
-                  backgroundColor: "var(--subject-accent)"
-                }}
-              />
-            </div>
-
-            <div className="mt-4 space-y-1.5">
-              {[
-                { key: "readOverview", label: "Read the chapter overview" },
-                { key: "watchedIntroVideo", label: "Watch an introductory video" },
-                { key: "readTextbook", label: "Read the chapter & mark difficulties" },
-                { key: "watchedLectures", label: "Clarify difficult points" },
-                { key: "solvedExercises", label: "Practise chapter exercises" },
-                { key: "solvedBoardQuestions", label: "Solve past board questions" },
-                { key: "madeNotes", label: "Revise and retry weak areas" },
-                { key: "timedExams", label: "Take a timed test" },
-                { key: "revisionCompleted", label: "Complete revision session" }
-              ].map((item) => {
-                const isDone = Boolean(chapterProgress[item.key as keyof ChapterProgress]);
-
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    aria-pressed={isDone}
-                    onClick={() => handleChecklistToggle(item.key as keyof ChapterProgress)}
-                    className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                      isDone
-                        ? "text-slate-700"
-                        : "bg-slate-50/65 text-slate-600 hover:bg-slate-100"
-                    }`}
-                    style={
-                      isDone
-                        ? {
-                            backgroundColor: "color-mix(in srgb, var(--subject-accent) 8%, white)"
-                          }
-                        : undefined
-                    }
-                  >
-                    <span className="text-xs font-medium leading-relaxed">{item.label}</span>
-                    <CheckCircle
-                      className={`h-4 w-4 shrink-0 transition-colors ${isDone ? "" : "text-slate-300 group-hover:text-slate-400"}`}
-                      style={isDone ? { color: "var(--subject-accent)" } : undefined}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {hasExpandedOverview && renderRecommendedResources(true)}
+          {renderRecommendedResources()}
         </aside>
       </div>
 
       {/* Overview management modal */}
       {isOverviewManagerOpen && (
         <div
+          ref={managerRef}
+          tabIndex={-1}
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
@@ -696,7 +667,7 @@ export default function ChapterPage({
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
             <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur md:px-6">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Management</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Management</p>
                 <h2 className="mt-1 text-lg font-bold text-slate-900">Manage overview</h2>
                 <p className="mt-1 text-xs text-slate-500">
                   Generate, edit and publish the overview students will see.
@@ -704,7 +675,8 @@ export default function ChapterPage({
               </div>
               <button
                 type="button"
-                onClick={() => setIsOverviewManagerOpen(false)}
+                onClick={closeOverviewManager}
+                disabled={isSavingOverview}
                 className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 aria-label="Close overview management"
               >
@@ -716,11 +688,11 @@ export default function ChapterPage({
               <button
                 type="button"
                 onClick={() => void generateChapterGuide(true)}
-                disabled={loadingGuide}
+                disabled={loadingDraft || isSavingOverview}
                 className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Sparkles className="h-4 w-4" />
-                {loadingGuide ? "Generating draft…" : "Generate new draft"}
+                {loadingDraft ? "Generating draft…" : "Generate new draft"}
               </button>
 
               <div>
@@ -728,11 +700,12 @@ export default function ChapterPage({
                   Complete overview
                 </label>
                 <p className="mb-2 text-xs leading-relaxed text-slate-500">
-                  Edit or paste the whole overview here. Keep <strong>CHAPTER OVERVIEW</strong>, <strong>IMPORTANT TOPICS</strong>, and the numbered topic lines; paragraph breaks will stay separate and topic titles stay bold.
+                  Edit or paste the whole overview here. Paragraphs are preserved. Use **Title** or # Title for bold headings; numbered topics under IMPORTANT TOPICS are also supported.
                 </p>
                 <textarea
                   id="complete-overview-editor"
                   value={overviewEditorText}
+                  readOnly={loadingDraft || isSavingOverview}
                   onChange={(event) => setOverviewEditorText(event.target.value)}
                   rows={22}
                   className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/40 px-3 py-3 text-sm leading-relaxed text-slate-800 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-100"
@@ -762,7 +735,8 @@ export default function ChapterPage({
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                 <button
                   type="button"
-                  onClick={() => setIsOverviewManagerOpen(false)}
+                  onClick={closeOverviewManager}
+                  disabled={isSavingOverview}
                   className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100"
                 >
                   Cancel
@@ -770,7 +744,7 @@ export default function ChapterPage({
                 <button
                   type="button"
                   onClick={() => void saveOverviewForStudents()}
-                  disabled={isSavingOverview}
+                  disabled={isSavingOverview || loadingDraft}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSavingOverview ? "Saving…" : "Save for students"}

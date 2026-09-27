@@ -297,7 +297,9 @@ app.put("/api/chapter-overviews", async (req, res) => {
 
 // API: Generate Chapter Study Guide
 app.post("/api/generate-chapter-guide", async (req, res) => {
-  const { subject, chapter, classLevel, group } = req.body;
+  const { subject, classLevel, group } = req.body;
+  const chapterBanglaName = typeof req.body.chapterBanglaName === "string" ? req.body.chapterBanglaName.trim() : "";
+  const chapter = (typeof req.body.chapter === "string" ? req.body.chapter.trim() : "") || chapterBanglaName;
 
   if (!subject || !chapter) {
     return res.status(400).json({
@@ -331,6 +333,7 @@ Class: ${classLevel || "Not specified"}
 Group: ${group || "Not specified"}
 Subject: ${subject}
 Chapter: ${chapter}
+Bangla chapter name: ${chapterBanglaName || chapter}
 
 IMPORTANT RULES:
 
