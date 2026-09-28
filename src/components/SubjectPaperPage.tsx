@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { ArrowLeft, Atom, Beaker, BookOpen, Calculator, Check, ChevronRight, Dna, Laptop } from "lucide-react";
+import { useId, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, Atom, Beaker, BookOpen, Calculator, Check, ChevronDown, ChevronRight, Dna, Laptop } from "lucide-react";
 import type { Chapter, Subject } from "../data/curriculum";
 import type { AdditionalSubject, DailyRoutineTask, RoutineBlock, SubjectProgressMap } from "../types";
 import { getChapterProgressPercentage } from "../utils/studyProgress";
-import { getStudyLogTasks, localDateKey } from "../utils/routineTasks";
 import SubjectStudyLog from "./SubjectStudyLog";
+import DifficultPoints from "./DifficultPoints";
+import { chapterRowNumber } from "../utils/subjectOutline";
+import useDisclosureScroll from "../hooks/useDisclosureScroll";
 
 interface SubjectPaperPageProps {
   subject: Subject;
@@ -17,15 +19,43 @@ interface SubjectPaperPageProps {
   onBack: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSetRoutineCompletion: (task: DailyRoutineTask, completed: boolean) => boolean;
+  onOpenPlanner: (task?: DailyRoutineTask) => void;
 }
 
 type ChapterFilter = "all" | "started" | "notStarted" | "revised";
 
-export default function SubjectPaperPage({
+function OutlineSection({ title, count, itemLabel, open, onToggle, children }: {
+  title: string; count: number; itemLabel: string; open: boolean;
+  onToggle: () => void; children: ReactNode;
+}) {
+  const id = useId();
+  const panelRef = useRef<HTMLElement>(null);
+  const revealRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const prepareScroll = useDisclosureScroll(open, panelRef, revealRef, contentRef);
+  return <section ref={panelRef} className="subject-outline-section">
+    <h3><button type="button" className="subject-section-toggle" aria-expanded={open} aria-controls={id}
+      onClick={() => { prepareScroll(); onToggle(); }}>
+      <span className="min-w-0 flex-1 break-words">{title}</span>
+      <span className="subject-section-count">{count} {count === 1 ? itemLabel.slice(0, -1) : itemLabel}</span>
+      <ChevronDown className="subject-section-chevron h-4 w-4 shrink-0" aria-hidden="true" />
+    </button></h3>
+    <div ref={revealRef} id={id} className="subject-section-reveal" data-expanded={open} inert={!open} aria-hidden={!open}>
+      <div className="subject-section-clip"><div ref={contentRef} className="flow-root">{children}</div></div>
+    </div>
+  </section>;
+}
+
+export default function SubjectPaperPage(props: SubjectPaperPageProps) {
+  return <SubjectPaperContent key={`${props.subject.chapters[0]?.class}:${props.subject.id}`} {...props} />;
+}
+
+function SubjectPaperContent({
   subject, subjects, additionalSubjects, routineBlocks, dailyRoutineTasks,
-  mastery, chapterProgress, onBack, onSelectChapter, onSetRoutineCompletion,
+  mastery, chapterProgress, onBack, onSelectChapter, onSetRoutineCompletion, onOpenPlanner,
 }: SubjectPaperPageProps) {
   const [chapterFilter, setChapterFilter] = useState<ChapterFilter>("all");
+  const [filterClosedSections, setFilterClosedSections] = useState<string[]>([]);
   const subjectClass = subject.chapters[0]?.class ?? "";
   const name = `${subject.name} ${subject.banglaName}`.toLowerCase();
   const SubjectIcon = name.includes("physics") ? Atom
@@ -36,7 +66,7 @@ export default function SubjectPaperPage({
 
   const chapters = subject.chapters.map((chapter, index) => ({
     chapter,
-    number: index + 1,
+    number: chapterRowNumber(chapter.chapterNumber, index + 1),
     percentage: getChapterProgressPercentage(chapterProgress[chapter.id]),
   }));
   const counts = {
@@ -58,10 +88,21 @@ export default function SubjectPaperPage({
   const sections = hasSections
     ? Array.from(new Set(chapters.map(({ chapter }) => chapter.section || "Other chapters")))
     : ["Chapters"];
-  const todaysHomework = getStudyLogTasks(
-    localDateKey(new Date()), routineBlocks, dailyRoutineTasks, subjects, additionalSubjects
-  ).filter((task) => task.subjectKey === `subject:${subject.id}`
-    && !task.completed && Boolean(task.block.chapterId || task.block.homeworkText?.trim()));
+  const hasLessons = subject.chapters.some(chapter => /^Lesson\s/i.test(chapter.chapterNumber));
+  const itemLabel = hasLessons ? "lessons" : "chapters";
+  const [openSections, setOpenSections] = useState<string[]>([]);
+  const selectFilter = (filter: ChapterFilter) => {
+    setChapterFilter(filter);
+    setFilterClosedSections([]);
+  };
+  const toggleSection = (section: string) => {
+    if (chapterFilter !== "all") {
+      setFilterClosedSections(current => current.includes(section) ? current.filter(value => value !== section) : [...current, section]);
+      return;
+    }
+    const next = openSections.includes(section) ? openSections.filter(value => value !== section) : [...openSections, section];
+    setOpenSections(next);
+  };
 
   return (
     <div className="subject-page subject-overview space-y-4">
@@ -94,35 +135,30 @@ export default function SubjectPaperPage({
         </div>
       </header>
 
-      {todaysHomework.length > 0 && (
-        <a href="#subject-study-log" className="subject-homework-summary subject-panel flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm text-slate-700">
-          <span>Today: {todaysHomework.length} pending homework {todaysHomework.length === 1 ? "task" : "tasks"}</span>
-          <span className="subject-accent-text shrink-0 text-xs font-semibold">View homework ↓</span>
-        </a>
-      )}
-
       <div className="subject-overview-columns">
-        <section aria-labelledby="subject-chapters-heading" className="subject-panel min-w-0 rounded-2xl border bg-white p-4 sm:p-5">
-          <h2 id="subject-chapters-heading" className="text-base font-bold text-slate-800">Chapters</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">Select a chapter to continue studying.</p>
-          <div role="group" aria-label="Filter chapters" className="mt-4 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
+        <section aria-labelledby="subject-chapters-heading" className="subject-panel subject-chapters-panel min-w-0 rounded-2xl border bg-white p-4 sm:p-5">
+          <div>
+          <h2 id="subject-chapters-heading" className="text-base font-semibold text-slate-800">{hasLessons ? "Units & lessons" : "Chapters"}</h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">{hasSections ? "Expand a section and select an item to continue studying." : "Select a chapter to continue studying."}</p>
+          <div role="group" aria-label={`Filter ${itemLabel}`} className="mt-4 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
             {filters.map(({ key, label }) => (
-              <button key={key} type="button" onClick={() => setChapterFilter(key)} aria-pressed={chapterFilter === key}
+              <button key={key} type="button" onClick={() => selectFilter(key)} aria-pressed={chapterFilter === key}
                 className="subject-filter min-h-9 cursor-pointer rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors">
                 {label} ({counts[key]})
               </button>
             ))}
           </div>
-          <p className="sr-only" role="status">{visible.length} chapters shown</p>
+          <p className="sr-only" role="status">{visible.length} {itemLabel} match this filter</p>
+          </div>
+          <div>
           {visible.length > 0 ? (
-            <div className="mt-4 space-y-5">
+            <div className="subject-outline-groups">
               {sections.map((section) => {
                 const sectionChapters = visible.filter(({ chapter }) => !hasSections || (chapter.section || "Other chapters") === section);
                 if (!sectionChapters.length) return null;
-                return (
-                  <section key={section}>
-                    {hasSections && <h3 className="mb-2 text-sm font-semibold text-slate-600">{section}</h3>}
-                    <div className="rounded-xl border border-slate-100">
+                const expanded = !hasSections || (chapterFilter === "all" ? openSections.includes(section) : !filterClosedSections.includes(section));
+                const list = (
+                    <div className="subject-chapter-list">
                       {sectionChapters.map(({ chapter, number, percentage }) => (
                         <button key={chapter.id} type="button" onClick={() => onSelectChapter(chapter)}
                           className="subject-chapter subject-chapter-row group w-full cursor-pointer border-b border-slate-100 px-3 py-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl last:border-b-0">
@@ -144,21 +180,27 @@ export default function SubjectPaperPage({
                         </button>
                       ))}
                     </div>
-                  </section>
                 );
+                return hasSections ? <OutlineSection key={section} title={section} count={sectionChapters.length}
+                  itemLabel={itemLabel} open={expanded} onToggle={() => toggleSection(section)}>{list}</OutlineSection>
+                  : <div key={section}>{list}</div>;
               })}
             </div>
           ) : (
             <div className="py-7 text-center">
-              <p className="text-sm text-slate-500">No chapters match this filter.</p>
-              <button type="button" onClick={() => setChapterFilter("all")} className="subject-accent-text mt-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-slate-50">Show all chapters</button>
+              <p className="text-sm text-slate-500">No {itemLabel} match this filter.</p>
+              <button type="button" onClick={() => selectFilter("all")} className="subject-accent-text mt-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-slate-50">Show all {itemLabel}</button>
             </div>
           )}
+          </div>
         </section>
 
+        <div className="subject-support-column">
         <div id="subject-study-log" tabIndex={-1} className="min-w-0 scroll-mt-24 rounded-2xl">
           <SubjectStudyLog subject={subject} subjects={subjects} additionalSubjects={additionalSubjects}
-            routineBlocks={routineBlocks} records={dailyRoutineTasks} onSetCompletion={onSetRoutineCompletion} />
+            routineBlocks={routineBlocks} records={dailyRoutineTasks} onSetCompletion={onSetRoutineCompletion} onOpenPlanner={onOpenPlanner} />
+        </div>
+        <DifficultPoints key={subject.id} subjectContext={{ subjectId: subject.id, subjectName: subject.name }} />
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@
  */
 
 import React, { useState } from "react";
+import DifficultPoints from "./DifficultPoints";
 import { DiaryEntry, UserProfile } from "../types";
 import { Search, Plus, BookOpen, Trash2, Hash, Tag, Feather, AlertCircle, AlertTriangle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -28,6 +29,7 @@ export default function StudyDiary({
   onDeleteEntry
 }: StudyDiaryProps) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [notebookView, setNotebookView] = useState<"entries" | "points">("entries");
   const [searchTerm, setSearchTerm] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -129,7 +131,7 @@ export default function StudyDiary({
         </div>
 
         <button
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => { setNotebookView("entries"); setShowAddForm(!showAddForm); }}
           className="py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
           id="toggle-add-diary-btn"
         >
@@ -138,6 +140,13 @@ export default function StudyDiary({
         </button>
       </div>
 
+      <div className="flex gap-2" aria-label="Notebook views">
+        <button type="button" aria-pressed={notebookView === "entries"} onClick={() => setNotebookView("entries")}
+          className={`rounded-lg px-3 py-2 text-sm font-semibold ${notebookView === "entries" ? "bg-indigo-50 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}>Notebook entries</button>
+        <button type="button" aria-pressed={notebookView === "points"} onClick={() => setNotebookView("points")}
+          className={`rounded-lg px-3 py-2 text-sm font-semibold ${notebookView === "points" ? "bg-indigo-50 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}>Difficult points</button>
+      </div>
+      {notebookView === "points" ? <DifficultPoints /> : <>
       {/* Add Journal Form */}
       {showAddForm && (
         <form onSubmit={handleSubmit} className="p-5 bg-slate-50 rounded-xl border border-slate-100 space-y-4 animate-fade-in" id="add-diary-form">
@@ -339,6 +348,7 @@ export default function StudyDiary({
         )}
       </div>
 
+      </>}
       {/* Delete Notebook Entry Confirmation Modal */}
       <AnimatePresence>
         {deleteId !== null && (

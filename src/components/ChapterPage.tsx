@@ -9,12 +9,12 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import useDialogFocus from "../hooks/useDialogFocus";
+import DifficultPoints from "./DifficultPoints";
 import { CHAPTER_PREPARATION_KEYS } from "../utils/studyProgress";
 import { formatOverviewForEditor, parseOverviewFromEditor, isOverviewHeading } from "../utils/chapterOverview";
 import { ChapterOverviewData, ChapterProgress, UserProfile } from "../types";
 import { BookOpen, CheckCircle, Sparkles, ArrowLeft, Settings2, X, Circle, ChevronDown } from "lucide-react";
 import { NCTB_CURRICULUM } from "../data/curriculum";
-import { STUDY_RESOURCES } from '../data/resources';
 
 interface ChapterPageProps {
   subjectId: string;
@@ -280,65 +280,6 @@ export default function ChapterPage({
 
 
 
-  const renderRecommendedResources = () => (
-    <section className="subject-panel rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-4 flex items-center gap-2.5">
-        <div
-          className="flex h-9 w-9 items-center justify-center rounded-lg"
-          style={{
-            color: "var(--subject-accent)",
-            backgroundColor: "color-mix(in srgb, var(--subject-accent) 9%, white)"
-          }}
-        >
-          <BookOpen className="h-4 w-4" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-slate-900">Recommended Resources</h3>
-          <p className="text-xs text-slate-500">Useful learning websites</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3">
-        {[...STUDY_RESOURCES]
-          .sort(
-            (a, b) =>
-              ["NCTB", "10 Minute School", "Shikho", "Khan Academy"].indexOf(a.name) -
-              ["NCTB", "10 Minute School", "Shikho", "Khan Academy"].indexOf(b.name)
-          )
-          .slice(0, 4)
-          .map((resource) => (
-            <a
-              key={resource.name}
-              href={resource.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex min-h-[92px] items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/55 p-3.5 transition-all hover:border-slate-300 hover:bg-white hover:shadow-sm"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white">
-                {resource.logoUrl ? (
-                  <img
-                    src={resource.logoUrl}
-                    alt={`${resource.name} logo`}
-                    className="h-8 w-8 object-contain"
-                  />
-                ) : (
-                  <BookOpen className="h-4 w-4 text-slate-400" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-slate-800 transition-colors group-hover:text-slate-950">
-                  {resource.name}
-                </h4>
-                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">
-                  {resource.description}
-                </p>
-              </div>
-              <span className="text-sm text-slate-300 transition-transform group-hover:translate-x-0.5">→</span>
-            </a>
-          ))}
-      </div>
-    </section>
-  );
 
   const renderStudyPlan = () => (
           <section className="subject-panel rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
@@ -529,6 +470,7 @@ export default function ChapterPage({
                 <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
                   Understand the chapter before you dive deeper
                 </h2>
+                <DifficultPoints key={subjectId + ":" + chapterId} context={{ subjectId, subjectName, chapterId, chapterName: chapterBanglaName || chapterName }} />
                 <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500">
                   Generate a concise overview and important topics for this chapter.
                 </p>
@@ -592,6 +534,7 @@ export default function ChapterPage({
                 </button>
               </div>
 
+              <DifficultPoints key={subjectId + ":" + chapterId} context={{ subjectId, subjectName, chapterId, chapterName: chapterBanglaName || chapterName }} />
               <div className="px-5 py-6 md:px-7 md:py-7">
                 {loadingGuide ? (
                   <div className="rounded-xl bg-slate-50 p-8 text-center">
@@ -650,7 +593,6 @@ export default function ChapterPage({
 
           <div className="hidden lg:block">{renderStudyPlan()}</div>
 
-          {renderRecommendedResources()}
         </aside>
       </div>
 

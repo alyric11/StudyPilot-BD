@@ -9,12 +9,14 @@
  */
 
 import { lazy, Suspense, useState, useEffect, useRef, type CSSProperties } from "react";
-import { getSubjectAccentColor, getSubjectCardStyles } from "./colorPalettes";
+import { getSubjectAccentColor } from "./colorPalettes";
 import { AdditionalSubject, ChapterProgress, RoutineEditRequest } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import DashboardSubjectCard from "./components/DashboardSubjectCard";
+import DashboardSupport, { PersonalSubjectsPanel, RecommendedResourcesPanel } from "./components/DashboardSupport";
+import OptionalSubjectSelector from "./components/OptionalSubjectSelector";
 import { getStudyProgress } from "./utils/studyProgress";
 import {
   getDailyRoutineTasks,
@@ -75,7 +77,6 @@ import {
   Sun,
   Sunset,
   Moon,
-  Lightbulb,
   BarChart3
 } from "lucide-react";
 
@@ -154,7 +155,6 @@ export default function App() {
   const [additionalSubjectToEdit, setAdditionalSubjectToEdit] = useState<AdditionalSubject | null>(null);
   const [additionalSubjectToRemove, setAdditionalSubjectToRemove] = useState<AdditionalSubject | null>(null);
   const [showSelectableSubjects, setShowSelectableSubjects] = useState(false);
-  const selectableSubjectButtonsRef = useRef<HTMLDivElement>(null);
   const [newAdditionalSubjectName, setNewAdditionalSubjectName] = useState("");
   const [editedAdditionalSubjectName, setEditedAdditionalSubjectName] = useState("");
   const addSubjectDialogRef = useRef<HTMLDivElement>(null);
@@ -650,6 +650,18 @@ export default function App() {
                   mastery={subjectMasteries[selectedSubjectPaper] || 0}
                   chapterProgress={studentProgress[selectedSubjectPaper] || {}}
                   onSetRoutineCompletion={handleSetDailyRoutineCompletion}
+                  onOpenPlanner={(task) => {
+                    if (task) {
+                      setSelectedChapter(null);
+                      setSelectedSubjectPaper(null);
+                      setShowVideoLessons(false);
+                      plannerHandoffRef.current = true;
+                      setRoutineEditRequest({ routineId: task.block.id, occurrenceDate: task.date, requestId: crypto.randomUUID() });
+                      setActiveSection("planner");
+                    } else {
+                      navigateToSection("planner");
+                    }
+                  }}
                   onBack={() => setSelectedSubjectPaper(null)}
                   onSelectChapter={(chapter) =>
                     setSelectedChapter({
@@ -805,222 +817,31 @@ export default function App() {
                             )}
                           </div>
 
-                          {/* Additional Subjects */}
-                          {additionalSubjects.length > 0 && (
-                            <div className="dashboard-panel space-y-4">
-                              <div className="flex items-center justify-between gap-3">
-                                <div>
-                                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
-                                    Additional Subjects
-                                  </h3>
-                                  <p className="text-[10px] text-slate-500 mt-1">
-                                    Personal subjects added outside the NCTB curriculum.
-                                  </p>
-                                </div>
-                                <span className="text-[10px] font-bold text-slate-400 shrink-0">
-                                  {additionalSubjects.length} / 6
-                                </span>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {additionalSubjects.map((subject) => (
-                                  <div
-                                    key={subject.id}
-                                    style={{ "--subject-hover-color": getSubjectAccentColor("personal") } as CSSProperties}
-                                    className={`subject-card-live flex items-center justify-between gap-3 rounded-xl border p-3 ${getSubjectCardStyles("personal").card}`}
-                                  >
-                                    <div className="min-w-0 flex-1">
-                                      <div className="break-words text-sm font-semibold text-slate-800">
-                                        {subject.name}
-                                      </div>
-                                      <div className="text-[10px] text-slate-400 mt-0.5">
-                                        Personal subject
-                                      </div>
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setEditedAdditionalSubjectName(subject.name);
-                                        setAdditionalSubjectToEdit(subject);
-                                      }}
-                                      className="shrink-0 px-1.5 py-1 text-[10px] font-bold text-slate-400 transition-colors hover:text-indigo-600 cursor-pointer"
-                                    >
-                                      Edit
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
 
 
                           {/* Selectable Subjects */}
                           {getSelectableSubjectGroups().length > 0 && (
-                            <div className="dashboard-panel flex flex-col gap-5">
-                              {showSelectableSubjects && (
-                                <>
-                                  <div>
-                                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">
-                                      Selectable Subjects
-                                    </h3>
-                                    <p className="text-[10px] text-slate-500 mt-1">
-                                      Select the subjects you want to study.
-                                    </p>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    {getSelectableSubjectGroups().map((group) => {
-                                      const isSelected = group.papers.some((paper) =>
-                                        selectedSubjectIds.includes(paper.id)
-                                      );
-
-                                      return (
-                                        <button
-                                          key={group.id}
-                                          type="button"
-                                          onClick={() =>
-                                            toggleSubjectGroupSelection(
-                                              group.papers.map((paper) => paper.id)
-                                            )
-                                          }
-                                          aria-pressed={isSelected}
-                                          className={`flex items-center justify-between gap-3 p-3 rounded-lg border text-left transition-colors ${isSelected
-                                            ? "bg-indigo-50/70 border-indigo-200 text-indigo-700 shadow-xs"
-                                            : "bg-white border-slate-200/80 text-slate-600 hover:bg-indigo-50/40 hover:border-indigo-100"
-                                            }`}
-                                        >
-                                          <div className="min-w-0">
-                                            <div className="text-xs font-bold truncate">
-                                              {group.banglaName}
-                                            </div>
-
-                                            <div className="text-[10px] text-slate-500 truncate">
-                                              {group.name}
-                                            </div>
-                                          </div>
-
-                                          <div
-                                            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected
-                                              ? "bg-indigo-600 border-indigo-600"
-                                              : "bg-white border-slate-300"
-                                              }`}
-                                          >
-                                            {isSelected && (
-                                              <CheckCircle className="w-3 h-3 text-white" />
-                                            )}
-                                          </div>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </>
-                              )}
-
-                              <div
-                                ref={selectableSubjectButtonsRef}
-                                className="pt-1 w-full flex flex-col items-start gap-2 text-left"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const buttonsTop =
-                                      selectableSubjectButtonsRef.current?.getBoundingClientRect().top;
-
-                                    setShowSelectableSubjects((current) => !current);
-
-                                    if (!showSelectableSubjects && buttonsTop !== undefined) {
-                                      requestAnimationFrame(() => {
-                                        const newButtonsTop =
-                                          selectableSubjectButtonsRef.current?.getBoundingClientRect().top;
-
-                                        if (newButtonsTop !== undefined) {
-                                          window.scrollBy({
-                                            top: newButtonsTop - buttonsTop,
-                                            behavior: "instant",
-                                          });
-                                        }
-                                      });
-                                    }
-                                  }}
-                                  aria-expanded={showSelectableSubjects}
-                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50/60 text-indigo-700 text-[11px] font-bold hover:bg-indigo-50 transition-colors"
-                                >
-                                  <span className="text-base leading-none">+</span>
-                                  Add Optional Subject
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setShowAddSubjectModal(true)}
-                                  disabled={additionalSubjects.length >= 6}
-                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50/60 text-indigo-700 text-[11px] font-bold hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <span className="text-base leading-none">+</span>
-                                  Add Personal Subject
-                                </button>
-                              </div>
-                            </div>
+                            <OptionalSubjectSelector
+                              groups={getSelectableSubjectGroups()}
+                              selectedIds={selectedSubjectIds}
+                              open={showSelectableSubjects}
+                              onToggle={() => setShowSelectableSubjects(current => !current)}
+                              onSelect={toggleSubjectGroupSelection}
+                            />
                           )}
                         </div>
 
-                        {/* Right column - Study tips & guidelines */}
-                        <div className="dashboard-support space-y-4">
-
-                          {/* Today's Tasks */}
-
-
-                          {/* Study Strategy Tips */}
-                          <div className="dashboard-panel dashboard-tips space-y-4">
-                            <div className="flex items-center gap-2 text-slate-800 font-display font-bold text-sm">
-                              <div className="p-1.5 bg-amber-50 text-amber-500 rounded-lg">
-                                <Lightbulb className="w-4 h-4" />
-                              </div>
-                              <span>Study Strategy Tips</span>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="p-3 bg-indigo-50/30 border border-indigo-100/50 rounded-xl space-y-1.5">
-                                <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100/40 px-1.5 py-0.2 rounded uppercase">
-                                  NCTB Preparation
-                                </span>
-
-                                <h4 className="text-xs font-bold text-slate-800 font-display">
-                                  Active Textbook Mapping
-                                </h4>
-
-                                <p className="text-[10px] text-slate-500 leading-relaxed">
-                                  Always study the textbook first. 80% of board Creative Questions are designed directly from textbook experiments and derivations.
-                                </p>
-                              </div>
-
-                              <div className="p-3 bg-emerald-50/30 border border-emerald-100/50 rounded-xl space-y-1.5">
-                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100/40 px-1.5 py-0.2 rounded uppercase">
-                                  Efficiency
-                                </span>
-
-                                <h4 className="text-xs font-bold text-slate-800 font-display">
-                                  Formula Revision Logs
-                                </h4>
-
-                                <p className="text-[10px] text-slate-500 leading-relaxed">
-                                  Keep logging equations and definitions in your Personal Notebook tab. Quick reviews help keep concepts fresh for solving board math sums!
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Info box about current build */}
-                          <div className="dashboard-panel dashboard-about space-y-3 text-left">
-                            <div className="flex items-center gap-2 font-semibold text-sm text-slate-700">
-                              <BookOpen className="w-4 h-4" />
-                              NCTB Core Companion MVP
-                            </div>
-                            <p className="text-[10px] text-slate-500 leading-relaxed">
-                              This platform is tailored to help students prepare for SSC and HSC exams cleanly. You can check off chapters, generate AI plans, log tasks, and run formula diaries safely offline!
-                            </p>
-                          </div>
-                        </div>
+                        <DashboardSupport>
+                          <PersonalSubjectsPanel
+                            subjects={additionalSubjects}
+                            onEdit={(subject) => {
+                              setEditedAdditionalSubjectName(subject.name);
+                              setAdditionalSubjectToEdit(subject);
+                            }}
+                            onAdd={() => setShowAddSubjectModal(true)}
+                          />
+                          <RecommendedResourcesPanel />
+                        </DashboardSupport>
                       </div>
                     </div>
                   )}
