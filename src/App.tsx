@@ -642,6 +642,8 @@ export default function App() {
                 />
               ) : selectedSubjectPaper ? (
                 <SubjectPaperPage
+                  examYear={profile.examYear}
+                  classLevel={profile.classLevel}
                   subject={selectedSubject!}
                   subjects={activeSubjects}
                   additionalSubjects={additionalSubjects}

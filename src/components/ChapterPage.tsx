@@ -13,7 +13,7 @@ import DifficultPoints from "./DifficultPoints";
 import { CHAPTER_PREPARATION_KEYS } from "../utils/studyProgress";
 import { formatOverviewForEditor, parseOverviewFromEditor, isOverviewHeading } from "../utils/chapterOverview";
 import { ChapterOverviewData, ChapterProgress, UserProfile } from "../types";
-import { BookOpen, CheckCircle, Sparkles, ArrowLeft, Settings2, X, Circle, ChevronDown } from "lucide-react";
+import { CheckCircle, Sparkles, ArrowLeft, Settings2, X, Circle, ChevronDown } from "lucide-react";
 import { NCTB_CURRICULUM } from "../data/curriculum";
 
 interface ChapterPageProps {
@@ -281,25 +281,22 @@ export default function ChapterPage({
 
 
 
-  const renderStudyPlan = () => (
-          <section className="subject-panel rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm">
+  const renderStudyPlan = (showHeading = true) => (
+          <section>
+            {showHeading && (
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Progress</p>
-                <h3 className="mt-1 text-base font-bold text-slate-900">Study Plan</h3>
+                <h3 className="text-base font-semibold text-slate-900">Study Plan</h3>
               </div>
               <span
-                className="rounded-full px-2.5 py-1 text-xs font-bold"
-                style={{
-                  color: "var(--subject-accent)",
-                  backgroundColor: "color-mix(in srgb, var(--subject-accent) 9%, white)"
-                }}
+                className="shrink-0 pt-0.5 text-xs text-slate-500"
               >
-                {completedSteps}/{totalSteps}
+                {completedSteps}/{totalSteps} completed
               </span>
             </div>
+            )}
 
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className={`${showHeading ? "mt-3 " : ""}h-1.5 overflow-hidden rounded-full bg-slate-100`}>
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -361,11 +358,6 @@ export default function ChapterPage({
       <section
         className="subject-panel rounded-2xl border bg-white shadow-sm"
         id="chapter-page-header"
-        style={{
-          borderColor: "color-mix(in srgb, var(--subject-accent) 18%, #e2e8f0)",
-          background:
-            "linear-gradient(135deg, color-mix(in srgb, var(--subject-accent) 7%, white), white 72%)"
-        }}
       >
         <div className="flex items-start gap-4 p-4 md:p-5">
           <button
@@ -382,10 +374,9 @@ export default function ChapterPage({
             <div className="flex flex-wrap items-center gap-2">
               {activeChapterObj?.chapterNumber && (
                 <span
-                  className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em]"
+                  className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold"
                   style={{
                     color: "var(--subject-accent)",
-                    borderColor: "color-mix(in srgb, var(--subject-accent) 25%, transparent)",
                     backgroundColor: "color-mix(in srgb, var(--subject-accent) 8%, white)"
                   }}
                 >
@@ -393,34 +384,23 @@ export default function ChapterPage({
                 </span>
               )}
 
-              {activeChapterObj && (
-                <>
-                  <span className="rounded-full border border-slate-200 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                    📚 {activeChapterObj.nctbBookName}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                    {activeChapterObj.class}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                    {activeChapterObj.group}
-                  </span>
-                </>
-              )}
             </div>
 
             <h1 className="mt-3 break-words text-2xl font-bold leading-tight tracking-tight text-slate-900 md:text-3xl">
               {chapterBanglaName && (
                 <span className="font-bangla-title">{chapterBanglaName}</span>
               )}
-              {chapterBanglaName && chapterName && (
-                <span className="mx-2 hidden font-normal text-slate-300 sm:inline">|</span>
-              )}
-              {chapterName && (
-                <span className="mt-1 block font-normal text-slate-500 sm:mt-0 sm:inline">
+              {chapterName && chapterName !== chapterBanglaName && (
+                <span className={chapterBanglaName ? "mt-2 block text-base font-normal leading-relaxed tracking-normal text-slate-500 md:text-lg" : "block"}>
                   {chapterName}
                 </span>
               )}
             </h1>
+            {activeChapterObj && (
+              <p className="mt-3 break-words text-xs leading-relaxed text-slate-500">
+                {[activeChapterObj.nctbBookName, activeChapterObj.class, activeChapterObj.group].filter(Boolean).join(" · ")}
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -432,7 +412,7 @@ export default function ChapterPage({
           <span>Study Plan · {completedSteps}/{totalSteps} completed</span>
           <ChevronDown className={`h-4 w-4 transition-transform motion-reduce:transition-none ${mobilePlanOpen ? "rotate-180" : ""}`} />
         </button>
-        <div id="mobile-chapter-study-plan" hidden={!mobilePlanOpen}>{renderStudyPlan()}</div>
+        <div id="mobile-chapter-study-plan" className="border-t border-slate-100 p-4" hidden={!mobilePlanOpen}>{renderStudyPlan(false)}</div>
       </section>
 
       {/* Main content: learning guide + supporting resources */}
@@ -446,91 +426,54 @@ export default function ChapterPage({
             </section>
           ) : !showChapterOverview ? (
             <section
-              className="subject-panel flex min-h-[290px] flex-col justify-center rounded-2xl border bg-white p-7 shadow-sm md:p-8"
-              style={{
-                borderColor: "color-mix(in srgb, var(--subject-accent) 18%, #e2e8f0)",
-                background:
-                  "linear-gradient(135deg, color-mix(in srgb, var(--subject-accent) 6%, white), white 72%)"
-              }}
+              className="subject-panel overflow-hidden rounded-2xl border bg-white shadow-sm"
             >
-              <div className="max-w-xl">
-                <div
-                  className="flex h-11 w-11 items-center justify-center rounded-xl"
-                  style={{
-                    color: "var(--subject-accent)",
-                    backgroundColor: "color-mix(in srgb, var(--subject-accent) 10%, white)"
-                  }}
-                >
-                  <Sparkles className="h-5 w-5" />
-                </div>
-
-                <p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                  Intelligent chapter guide
-                </p>
-                <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
-                  Understand the chapter before you dive deeper
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 md:px-7">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Chapter Overview
                 </h2>
-                <DifficultPoints key={subjectId + ":" + chapterId} context={{ subjectId, subjectName, chapterId, chapterName: chapterBanglaName || chapterName }} />
-                <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500">
+                <button type="button" onClick={openOverviewManager} aria-label="Manage overview" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-indigo-500">
+                  <Settings2 className="h-3.5 w-3.5" /> Manage
+                </button>
+              </div>
+              <DifficultPoints key={subjectId + ":" + chapterId} context={{ subjectId, subjectName, chapterId, chapterName: chapterBanglaName || chapterName }} />
+              <div className="px-5 py-6 md:px-7 md:py-7">
+                <p className="max-w-lg text-sm leading-6 text-slate-500">
                   Generate a concise overview and important topics for this chapter.
                 </p>
 
                 <button
                   type="button"
                   onClick={() => void generateChapterGuide()}
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                   style={{ backgroundColor: "var(--subject-accent)" }}
                 >
                   <Sparkles className="h-4 w-4" />
                   Generate chapter guide
-                </button>
-                <button type="button" onClick={openOverviewManager} className="ml-3 mt-5 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-white hover:text-slate-800">
-                  <Settings2 className="h-4 w-4" /> Manage overview
                 </button>
               </div>
             </section>
           ) : (
             <section
               className="subject-panel overflow-hidden rounded-2xl border bg-white shadow-sm"
-              style={{ borderColor: "color-mix(in srgb, var(--subject-accent) 18%, #e2e8f0)" }}
             >
               <div
-                className="flex items-center justify-between gap-4 border-b px-5 py-4 md:px-7"
-                style={{
-                  borderColor: "color-mix(in srgb, var(--subject-accent) 12%, #e2e8f0)",
-                  background:
-                    "linear-gradient(90deg, color-mix(in srgb, var(--subject-accent) 6%, white), white)"
-                }}
+                className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 md:px-7"
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded-xl"
-                    style={{
-                      color: "var(--subject-accent)",
-                      backgroundColor: "color-mix(in srgb, var(--subject-accent) 10%, white)"
-                    }}
-                  >
-                    <BookOpen className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                      Learning guide
-                    </p>
-                    <h2 className="text-lg font-bold tracking-tight text-slate-900 md:text-xl">
+                    <h2 className="text-lg font-semibold text-slate-900">
                       Chapter Overview
                     </h2>
-                  </div>
-                </div>
 
                 <button
                   type="button"
                   onClick={openOverviewManager}
                   disabled={loadingGuide}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-indigo-500"
                   title="Manage overview"
+                  aria-label="Manage overview"
                 >
                   <Settings2 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Manage</span>
+                  <span>Manage</span>
                 </button>
               </div>
 
@@ -565,33 +508,34 @@ export default function ChapterPage({
         </div>
 
         {/* Supporting column */}
-        <aside className="space-y-4">
+        <aside className="subject-panel rounded-2xl border bg-white p-5 shadow-sm md:px-7">
+          <div className="hidden lg:block">{renderStudyPlan()}</div>
+          <div className="lg:mt-5 lg:border-t lg:border-slate-100 lg:pt-5">
           <button
             type="button"
             onClick={onWatchVideoLessons}
-            className="subject-panel group w-full rounded-2xl border border-red-100 bg-white p-4 text-left shadow-sm transition-all hover:border-red-200 hover:shadow-md"
+            className="group w-full rounded-lg p-2 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-indigo-500"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50">
-                <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
+              <div className="shrink-0">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
                   <path fill="#FF0000" d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.6 4.6 12 4.6 12 4.6s-5.6 0-7.5.5a3 3 0 0 0-2.1 2.1A31 31 0 0 0 2 12a31 31 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.9.5 7.5.5 7.5.5s5.6 0 7.5-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 22 12a31 31 0 0 0-.4-4.8Z" />
                   <path fill="white" d="m10 15.5 5-3.5-5-3.5v7Z" />
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-red-600">Video lessons</p>
-                <h3 className="mt-0.5 text-sm font-bold text-slate-900">Find video lessons for this chapter</h3>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-                  Browse YouTube search results and your saved lessons.
+                <h3 className="text-sm font-semibold text-slate-900">Video lessons</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Browse lessons and your saved videos.
                 </p>
               </div>
-              <span className="text-lg text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-red-400">
+              <span className="text-lg text-slate-400 group-hover:text-slate-600" aria-hidden="true">
                 →
               </span>
             </div>
           </button>
 
-          <div className="hidden lg:block">{renderStudyPlan()}</div>
+          </div>
 
         </aside>
       </div>

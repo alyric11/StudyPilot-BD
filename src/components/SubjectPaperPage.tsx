@@ -2,7 +2,8 @@ import { useId, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Atom, Beaker, BookOpen, Calculator, Check, ChevronDown, ChevronRight, Dna, Laptop } from "lucide-react";
 import type { Chapter, Subject } from "../data/curriculum";
 import type { AdditionalSubject, DailyRoutineTask, RoutineBlock, SubjectProgressMap } from "../types";
-import { getChapterProgressPercentage } from "../utils/studyProgress";
+import { CHAPTER_PREPARATION_KEYS, getChapterProgressPercentage, getStudyProgress } from "../utils/studyProgress";
+import { getStudyPace } from "../utils/paceCalculator";
 import SubjectStudyLog from "./SubjectStudyLog";
 import DifficultPoints from "./DifficultPoints";
 import { chapterRowNumber } from "../utils/subjectOutline";
@@ -16,6 +17,8 @@ interface SubjectPaperPageProps {
   dailyRoutineTasks: DailyRoutineTask[];
   mastery: number;
   chapterProgress: SubjectProgressMap;
+  examYear: string;
+  classLevel: string;
   onBack: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSetRoutineCompletion: (task: DailyRoutineTask, completed: boolean) => boolean;
@@ -53,10 +56,17 @@ export default function SubjectPaperPage(props: SubjectPaperPageProps) {
 function SubjectPaperContent({
   subject, subjects, additionalSubjects, routineBlocks, dailyRoutineTasks,
   mastery, chapterProgress, onBack, onSelectChapter, onSetRoutineCompletion, onOpenPlanner,
+  examYear, classLevel,
 }: SubjectPaperPageProps) {
   const [chapterFilter, setChapterFilter] = useState<ChapterFilter>("all");
   const [filterClosedSections, setFilterClosedSections] = useState<string[]>([]);
   const subjectClass = subject.chapters[0]?.class ?? "";
+  const pace = getStudyPace({
+    totalChapters: getStudyProgress(subject, chapterProgress).total,
+    completedChapters: subject.chapters.filter(chapter =>
+      CHAPTER_PREPARATION_KEYS.every(key => chapterProgress[chapter.id]?.[key] === true)).length,
+    examYear, classLevel, today: new Date(),
+  });
   const name = `${subject.name} ${subject.banglaName}`.toLowerCase();
   const SubjectIcon = name.includes("physics") ? Atom
     : name.includes("chemistry") ? Beaker
@@ -116,8 +126,8 @@ function SubjectPaperContent({
             <SubjectIcon className="h-5 w-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            {subjectClass && <span className="subject-badge inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold">{subjectClass}</span>}
-            <h1 className="mt-1 break-words text-xl font-bold leading-snug text-slate-800">{subject.banglaName || subject.name}</h1>
+            {subjectClass && <span className="text-xs font-medium text-slate-500">{subjectClass}</span>}
+            <h1 className="mt-1 break-words text-xl font-bold leading-snug text-slate-800 sm:text-2xl">{subject.banglaName || subject.name}</h1>
             {subject.banglaName && subject.banglaName !== subject.name && (
               <p className="mt-0.5 text-sm text-slate-500">{subject.name}</p>
             )}
@@ -140,11 +150,11 @@ function SubjectPaperContent({
           <div>
           <h2 id="subject-chapters-heading" className="text-base font-semibold text-slate-800">{hasLessons ? "Units & lessons" : "Chapters"}</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">{hasSections ? "Expand a section and select an item to continue studying." : "Select a chapter to continue studying."}</p>
-          <div role="group" aria-label={`Filter ${itemLabel}`} className="mt-4 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
+          <div role="group" aria-label={`Filter ${itemLabel}`} className="mt-4 flex flex-wrap gap-1 border-b border-slate-100 pb-3">
             {filters.map(({ key, label }) => (
               <button key={key} type="button" onClick={() => selectFilter(key)} aria-pressed={chapterFilter === key}
-                className="subject-filter min-h-9 cursor-pointer rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors">
-                {label} ({counts[key]})
+                className="subject-filter min-h-9 cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors">
+                {label} <span className="font-normal">({counts[key]})</span>
               </button>
             ))}
           </div>
@@ -163,7 +173,7 @@ function SubjectPaperContent({
                         <button key={chapter.id} type="button" onClick={() => onSelectChapter(chapter)}
                           className="subject-chapter subject-chapter-row group w-full cursor-pointer border-b border-slate-100 px-3 py-3 text-left transition-colors first:rounded-t-xl last:rounded-b-xl last:border-b-0">
                           <span className="subject-chapter-number flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-50 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">{number}</span>
-                          <span className="subject-chapter-name min-w-0 break-words text-sm font-semibold leading-relaxed text-slate-800">{chapter.banglaName || chapter.name}</span>
+                          <span className="subject-chapter-name min-w-0 break-words text-sm font-medium leading-relaxed text-slate-800">{chapter.banglaName || chapter.name}</span>
                           <span className="subject-chapter-status text-xs text-slate-500">
                             {percentage === 0 ? "Not started" : percentage === 100 ? (
                               <span className="inline-flex items-center gap-1.5"><Check className="h-3.5 w-3.5 subject-accent-text" aria-hidden="true" />Completed</span>
@@ -196,10 +206,27 @@ function SubjectPaperContent({
         </section>
 
         <div className="subject-support-column">
-        <div id="subject-study-log" tabIndex={-1} className="min-w-0 scroll-mt-24 rounded-2xl">
-          <SubjectStudyLog subject={subject} subjects={subjects} additionalSubjects={additionalSubjects}
-            routineBlocks={routineBlocks} records={dailyRoutineTasks} onSetCompletion={onSetRoutineCompletion} onOpenPlanner={onOpenPlanner} />
-        </div>
+          <div className="subject-panel subject-companion min-w-0 rounded-2xl border bg-white p-4 sm:p-5">
+            <div id="subject-study-log" tabIndex={-1} className="min-w-0 scroll-mt-24 rounded-lg">
+              <SubjectStudyLog subject={subject} subjects={subjects} additionalSubjects={additionalSubjects}
+                routineBlocks={routineBlocks} records={dailyRoutineTasks} onSetCompletion={onSetRoutineCompletion} onOpenPlanner={onOpenPlanner} />
+            </div>
+          {pace && <section aria-labelledby="subject-pace-heading" className="mt-5 border-t border-slate-100 pt-5">
+            <h3 id="subject-pace-heading" className="text-sm font-semibold text-slate-600">Study pace</h3>
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-700">
+              {pace.status === "ok" ? `About ${pace.chaptersPerWeek} chapters per week`
+                : pace.status === "exam_soon" ? "Exam is close. Focus on revision and your weakest chapters."
+                : pace.status === "exam_passed" ? "Your exam date has passed. Update your exam year in your profile."
+                : "All chapters done! Use the time for revision and board questions."}
+            </p>
+            {pace.status === "ok" && <div className="mt-1 space-y-1 text-xs leading-relaxed text-slate-500">
+              <p>{pace.remainingChapters} chapters left · {pace.weeksLeft} weeks to your estimated exam</p>
+            </div>}
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              {pace.status === "ok" && "Last 25% kept for revision. "}Estimated exam date. Adjust your pace to your school's routine.
+            </p>
+          </section>}
+          </div>
         <DifficultPoints key={subject.id} subjectContext={{ subjectId: subject.id, subjectName: subject.name }} />
         </div>
       </div>
