@@ -608,6 +608,7 @@ export default function App() {
                 <VideoLessonsPage
                   chapter={selectedChapter!}
                   classLevel={profile.classLevel}
+                  subjectAccent={workspaceSubject ? getSubjectAccentColor(workspaceSubject.color) : "#64748b"}
                   onBack={() => setShowVideoLessons(false)}
                 />
               ) : selectedChapter ? (
@@ -683,7 +684,7 @@ export default function App() {
                 <>
                   {/* Cockpit - Dashboard view */}
                   {activeSection === 'dashboard' && (
-                    <div className="w-full max-w-[1440px] mx-auto px-0 sm:px-1 lg:px-2 space-y-4 text-left" id="cockpit-dashboard-view">
+                    <div className="w-full max-w-[1440px] mx-auto space-y-4 text-left" id="cockpit-dashboard-view">
 
                       {/* Onboarding Summary Header card */}
                       <div className="dashboard-panel flex flex-col md:flex-row md:items-center justify-between gap-4" id="dashboard-header-block">

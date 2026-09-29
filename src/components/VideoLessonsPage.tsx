@@ -3,7 +3,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { createPortal } from "react-dom";
 import {
   AlertTriangle,
-  ArrowLeft,
   BookmarkCheck,
   BookmarkPlus,
   Pause,
@@ -13,6 +12,7 @@ import {
   Youtube
 } from "lucide-react";
 import useDialogFocus from "../hooks/useDialogFocus";
+import StudyPageHeader from "./StudyPageHeader";
 
 interface VideoLessonsPageProps {
   chapter: {
@@ -23,6 +23,7 @@ interface VideoLessonsPageProps {
     chapterBanglaName: string;
   };
   classLevel: string;
+  subjectAccent: string;
   onBack: () => void;
 }
 
@@ -51,6 +52,7 @@ interface SavedRecommendedVideo extends VideoResult {
 export default function VideoLessonsPage({
   chapter,
   classLevel,
+  subjectAccent,
   onBack
 }: VideoLessonsPageProps) {
   const [videos, setVideos] = useState<VideoResult[]>([]);
@@ -374,43 +376,20 @@ export default function VideoLessonsPage({
 
   return (
     <>
-      <div className="space-y-5">
+      <div className="mx-auto w-full max-w-[1440px] space-y-4">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:p-6">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-3 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all cursor-pointer shrink-0"
-            title="Go Back"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-
-          <div className="hidden sm:block w-px h-16 bg-slate-200 shrink-0" />
-
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">
-              Video Lessons
-            </p>
-
-            <h1 className="text-xl md:text-3xl font-display font-bold text-slate-800 break-words leading-tight mt-1">
-              {chapter.chapterBanglaName}
-              <span className="text-slate-400 font-normal">
-                {" | "}
-                {chapter.chapterName}
-              </span>
-            </h1>
-          </div>
-        </div>
-      </div>
+      <StudyPageHeader subjectName={chapter.subjectName}
+        title={chapter.chapterName} banglaTitle={chapter.chapterBanglaName}
+        context={`${chapter.subjectName} · Video Lessons`} accent={subjectAccent}
+        onBack={onBack} backLabel={`Go back to ${chapter.chapterBanglaName || chapter.chapterName}`} />
 
       {/* Video Lessons Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.8fr)_minmax(320px,1fr)] gap-5 items-start">
+      <div className="grid grid-cols-1 gap-4 items-start xl:grid-cols-[minmax(0,1.8fr)_minmax(340px,1fr)]">
         {/* Left Column - Recommended Videos */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:p-6">
-          <div className="flex items-end justify-between gap-4">
+        <div className="study-panel p-4 sm:p-5">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
             <div>
-              <h2 className="text-lg font-bold text-slate-800 font-display">
+              <h2 className="text-base font-semibold text-slate-800">
                 Video Lessons
               </h2>
 
@@ -422,7 +401,7 @@ export default function VideoLessonsPage({
             <button
               type="button"
               onClick={handleRecommendationToggle}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+              className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
                 recommendationsEnabled
                   ? "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
@@ -445,7 +424,7 @@ export default function VideoLessonsPage({
           </div>
 
           {loading && (
-            <div className="mt-5 rounded-xl bg-slate-50 p-8 text-center">
+            <div className="mt-4 rounded-xl bg-slate-50 p-4 text-center">
               <p className="text-sm text-slate-500">
                 Finding relevant video lessons...
               </p>
@@ -453,13 +432,13 @@ export default function VideoLessonsPage({
           )}
 
           {!loading && error && (
-            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-center">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
 
           {!loading && !error && displayedVideos.length === 0 && (
-            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-8 text-center">
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
               <Play className="w-8 h-8 text-slate-400 mx-auto mb-3" />
 
               <p className="text-sm font-medium text-slate-700">
@@ -471,7 +450,7 @@ export default function VideoLessonsPage({
           )}
 
           {!loading && displayedVideos.length > 0 && (
-            <div className="mt-5 space-y-4">
+            <div className="mt-4 space-y-3">
               {displayedVideos.map((video) => {
                 const isSavedRecommendation = savedRecommendedIds.has(
                   video.id.videoId
@@ -487,12 +466,12 @@ export default function VideoLessonsPage({
                         <img
                           src={video.snippet.thumbnails.medium.url}
                           alt=""
-                          className="w-full sm:w-48 h-28 object-cover"
+                          className="aspect-video w-full shrink-0 object-cover sm:h-28 sm:w-40"
                         />
                       )}
 
-                      <div className="p-4 flex-1">
-                        <h3 className="text-sm font-bold text-slate-800">
+                      <div className="min-w-0 flex-1 p-3">
+                        <h3 className="break-words text-sm font-semibold leading-relaxed text-slate-800">
                           {video.snippet.title}
                         </h3>
 
@@ -561,10 +540,10 @@ export default function VideoLessonsPage({
         </div>
 
         {/* Right Column - Saved Videos */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 md:p-6">
+        <div className="study-panel p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-slate-800 font-display">
+              <h2 className="text-base font-semibold text-slate-800">
                 My Saved Videos
               </h2>
 
@@ -585,7 +564,7 @@ export default function VideoLessonsPage({
               setSaveError(null);
             }}
             disabled={savedVideos.length >= 3}
-            className="mt-5 w-full flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
             Add YouTube Video
@@ -636,13 +615,13 @@ export default function VideoLessonsPage({
           )}
 
           {savedVideos.length === 0 ? (
-            <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
+            <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center">
               <p className="text-sm text-slate-500">
                 No saved videos yet.
               </p>
             </div>
           ) : (
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-3">
               {savedVideos.map((videoId) => (
                 <div
                   key={videoId}

@@ -398,13 +398,18 @@ body {
   color: #243247;
 }
 
-.dashboard-panel {
+.dashboard-panel,
+.subject-page .subject-panel,
+.study-panel {
   min-width: 0;
-  padding: 20px;
   border: 1px solid #e4eaf1;
-  border-radius: 18px;
+  border-radius: 16px;
   background: #fff;
   box-shadow: 0 2px 6px rgb(36 50 71 / 3%);
+}
+
+.dashboard-panel {
+  padding: 20px;
 }
 
 .dashboard-columns {
@@ -441,6 +446,8 @@ body {
 
 #cockpit-dashboard-view h2 {
   font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -502,7 +509,7 @@ body {
   --resource-border: #e5edf6;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   min-width: 0;
   container-type: inline-size;
 }
@@ -1191,7 +1198,7 @@ body {
   .dashboard-columns {
     grid-template-columns: minmax(0, 1.8fr) minmax(340px, 1fr);
     grid-template-rows: min-content 1fr;
-    gap: 18px;
+    gap: 16px;
   }
 
   .dashboard-subjects {
@@ -1532,10 +1539,10 @@ body {
   }
 }
 
-@container subject-overview (min-width: 900px) {
+@media (min-width: 1280px) {
   .subject-overview-columns {
     grid-template-columns: minmax(0, 1.8fr) minmax(340px, 1fr);
-    gap: 18px;
+    gap: 16px;
   }
   .subject-chapters-panel {
     grid-column: 1;
@@ -1544,7 +1551,7 @@ body {
     display: flex;
     flex-direction: column;
     grid-column: 2;
-    gap: 18px;
+    gap: 16px;
     min-width: 0;
   }
   .subject-support-column > * {
@@ -1558,12 +1565,6 @@ body {
   --subject-accent-line: color-mix(in srgb, var(--subject-accent) 15%, white);
   /* Match the landing-page canvas; local accents carry the subject identity. */
   background: #f8fafc;
-}
-
-.subject-page .subject-panel {
-  border-color: #e4eaf1;
-  background: #fff;
-  box-shadow: 0 2px 6px rgb(36 50 71 / 3%);
 }
 
 .subject-page .subject-icon,

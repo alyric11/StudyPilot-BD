@@ -95,7 +95,7 @@ export default function SubjectStudyLog({
     const nextChapter = next?.block.chapterId ? subject.chapters.find(chapter => chapter.id === next.block.chapterId) : undefined;
 
     return (
-        <aside className="subject-panel subject-study-log rounded-2xl border bg-white p-4 sm:p-5" aria-labelledby="subject-study-log-heading">
+        <aside className="subject-study-log min-w-0" aria-labelledby="subject-study-log-heading">
             <div className="flex items-center gap-2">
                 <div className="subject-icon rounded-lg bg-sky-50 p-2 text-sky-700">
                     <CalendarDays className="h-4 w-4" />

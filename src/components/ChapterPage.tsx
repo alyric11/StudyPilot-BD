@@ -13,7 +13,8 @@ import DifficultPoints from "./DifficultPoints";
 import { CHAPTER_PREPARATION_KEYS } from "../utils/studyProgress";
 import { formatOverviewForEditor, parseOverviewFromEditor, isOverviewHeading } from "../utils/chapterOverview";
 import { ChapterOverviewData, ChapterProgress, UserProfile } from "../types";
-import { CheckCircle, Sparkles, ArrowLeft, Settings2, X, Circle, ChevronDown } from "lucide-react";
+import { CheckCircle, Sparkles, Settings2, X, Circle, ChevronDown } from "lucide-react";
+import StudyPageHeader from "./StudyPageHeader";
 import { NCTB_CURRICULUM } from "../data/curriculum";
 
 interface ChapterPageProps {
@@ -286,7 +287,7 @@ export default function ChapterPage({
             {showHeading && (
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Study Plan</h3>
+                <h3 className="text-base font-semibold text-slate-800">Study Plan</h3>
               </div>
               <span
                 className="shrink-0 pt-0.5 text-xs text-slate-500"
@@ -353,59 +354,16 @@ export default function ChapterPage({
   );
 
   return (
-    <div className="subject-page space-y-5" id="chapter-page-root">
+    <div className="subject-page mx-auto w-full max-w-[1440px] space-y-4" id="chapter-page-root">
       {/* Chapter identity */}
-      <section
-        className="subject-panel rounded-2xl border bg-white shadow-sm"
-        id="chapter-page-header"
-      >
-        <div className="flex items-start gap-4 p-4 md:p-5">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mt-0.5 shrink-0 rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:text-slate-800"
-            title="Go Back"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
+      <StudyPageHeader id="chapter-page-header" subjectName={subjectName}
+        title={chapterName} banglaTitle={chapterBanglaName}
+        context={activeChapterObj
+          ? [activeChapterObj.chapterNumber, activeChapterObj.nctbBookName || subjectName, activeChapterObj.class, activeChapterObj.group].filter(Boolean).join(" · ")
+          : subjectName}
+        onBack={onBack} backLabel={`Go back to ${subjectName}`} />
 
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              {activeChapterObj?.chapterNumber && (
-                <span
-                  className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold"
-                  style={{
-                    color: "var(--subject-accent)",
-                    backgroundColor: "color-mix(in srgb, var(--subject-accent) 8%, white)"
-                  }}
-                >
-                  {activeChapterObj.chapterNumber}
-                </span>
-              )}
-
-            </div>
-
-            <h1 className="mt-3 break-words text-2xl font-bold leading-tight tracking-tight text-slate-900 md:text-3xl">
-              {chapterBanglaName && (
-                <span className="font-bangla-title">{chapterBanglaName}</span>
-              )}
-              {chapterName && chapterName !== chapterBanglaName && (
-                <span className={chapterBanglaName ? "mt-2 block text-base font-normal leading-relaxed tracking-normal text-slate-500 md:text-lg" : "block"}>
-                  {chapterName}
-                </span>
-              )}
-            </h1>
-            {activeChapterObj && (
-              <p className="mt-3 break-words text-xs leading-relaxed text-slate-500">
-                {[activeChapterObj.nctbBookName, activeChapterObj.class, activeChapterObj.group].filter(Boolean).join(" · ")}
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="subject-panel rounded-2xl border bg-white lg:hidden">
+      <section className="subject-panel rounded-2xl border bg-white xl:hidden">
         <button type="button" onClick={() => setMobilePlanOpen(open => !open)}
           aria-expanded={mobilePlanOpen} aria-controls="mobile-chapter-study-plan"
           className="flex w-full items-center justify-between gap-3 rounded-2xl p-4 text-left text-sm font-semibold text-slate-800 focus-visible:outline-2 focus-visible:outline-indigo-500">
@@ -416,11 +374,11 @@ export default function ChapterPage({
       </section>
 
       {/* Main content: learning guide + supporting resources */}
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(300px,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(340px,1fr)]">
         {/* Main learning guide */}
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-4">
           {loadingPublished || loadError ? (
-            <section className="subject-panel rounded-2xl border bg-white p-8 text-center" aria-live="polite">
+            <section className="subject-panel rounded-2xl border bg-white p-4 text-center sm:p-5" aria-live="polite">
               <p className="text-sm text-slate-500">{loadingPublished ? "Loading saved overview…" : loadError}</p>
               {!loadingPublished && <button type="button" onClick={() => setLoadAttempt(value => value + 1)} className="mt-3 rounded-lg border px-4 py-2 text-sm font-semibold">Retry</button>}
             </section>
@@ -428,8 +386,8 @@ export default function ChapterPage({
             <section
               className="subject-panel overflow-hidden rounded-2xl border bg-white shadow-sm"
             >
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 md:px-7">
-                <h2 className="text-lg font-semibold text-slate-900">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-4 sm:p-5">
+                <h2 className="text-base font-semibold text-slate-800">
                   Chapter Overview
                 </h2>
                 <button type="button" onClick={openOverviewManager} aria-label="Manage overview" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-indigo-500">
@@ -437,7 +395,7 @@ export default function ChapterPage({
                 </button>
               </div>
               <DifficultPoints key={subjectId + ":" + chapterId} context={{ subjectId, subjectName, chapterId, chapterName: chapterBanglaName || chapterName }} />
-              <div className="px-5 py-6 md:px-7 md:py-7">
+              <div className="p-4 sm:p-5">
                 <p className="max-w-lg text-sm leading-6 text-slate-500">
                   Generate a concise overview and important topics for this chapter.
                 </p>
@@ -458,9 +416,9 @@ export default function ChapterPage({
               className="subject-panel overflow-hidden rounded-2xl border bg-white shadow-sm"
             >
               <div
-                className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-5 md:px-7"
+                className="flex items-center justify-between gap-3 border-b border-slate-100 p-4 sm:p-5"
               >
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className="text-base font-semibold text-slate-800">
                       Chapter Overview
                     </h2>
 
@@ -478,9 +436,9 @@ export default function ChapterPage({
               </div>
 
               <DifficultPoints key={subjectId + ":" + chapterId} context={{ subjectId, subjectName, chapterId, chapterName: chapterBanglaName || chapterName }} />
-              <div className="px-5 py-6 md:px-7 md:py-7">
+              <div className="p-4 sm:p-5">
                 {loadingGuide ? (
-                  <div className="rounded-xl bg-slate-50 p-8 text-center">
+                  <div className="rounded-xl bg-slate-50 p-4 text-center">
                     <p className="text-sm text-slate-500">Generating your chapter overview...</p>
                   </div>
                 ) : apiWarning ? (
@@ -508,9 +466,9 @@ export default function ChapterPage({
         </div>
 
         {/* Supporting column */}
-        <aside className="subject-panel rounded-2xl border bg-white p-5 shadow-sm md:px-7">
-          <div className="hidden lg:block">{renderStudyPlan()}</div>
-          <div className="lg:mt-5 lg:border-t lg:border-slate-100 lg:pt-5">
+        <aside className="subject-panel rounded-2xl border bg-white p-4 sm:p-5">
+          <div className="hidden xl:block">{renderStudyPlan()}</div>
+          <div className="xl:mt-4 xl:border-t xl:border-slate-100 xl:pt-4">
           <button
             type="button"
             onClick={onWatchVideoLessons}

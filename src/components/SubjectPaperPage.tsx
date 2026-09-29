@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, Atom, Beaker, BookOpen, Calculator, Check, ChevronDown, ChevronRight, Dna, Laptop } from "lucide-react";
+import { Check, ChevronDown, ChevronRight } from "lucide-react";
+import StudyPageHeader from "./StudyPageHeader";
 import type { Chapter, Subject } from "../data/curriculum";
 import type { AdditionalSubject, DailyRoutineTask, RoutineBlock, SubjectProgressMap } from "../types";
 import { CHAPTER_PREPARATION_KEYS, getChapterProgressPercentage, getStudyProgress } from "../utils/studyProgress";
@@ -67,12 +68,6 @@ function SubjectPaperContent({
       CHAPTER_PREPARATION_KEYS.every(key => chapterProgress[chapter.id]?.[key] === true)).length,
     examYear, classLevel, today: new Date(),
   });
-  const name = `${subject.name} ${subject.banglaName}`.toLowerCase();
-  const SubjectIcon = name.includes("physics") ? Atom
-    : name.includes("chemistry") ? Beaker
-    : name.includes("biology") ? Dna
-    : name.includes("math") ? Calculator
-    : name.includes("ict") || name.includes("information") ? Laptop : BookOpen;
 
   const chapters = subject.chapters.map((chapter, index) => ({
     chapter,
@@ -116,23 +111,8 @@ function SubjectPaperContent({
 
   return (
     <div className="subject-page subject-overview space-y-4">
-      <header className="subject-panel subject-overview-header rounded-2xl border bg-white p-4 sm:p-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <button type="button" onClick={onBack} aria-label="Go back to subjects"
-            className="shrink-0 cursor-pointer rounded-xl border border-slate-200 p-2.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <span className="subject-icon hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:flex">
-            <SubjectIcon className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            {subjectClass && <span className="text-xs font-medium text-slate-500">{subjectClass}</span>}
-            <h1 className="mt-1 break-words text-xl font-bold leading-snug text-slate-800 sm:text-2xl">{subject.banglaName || subject.name}</h1>
-            {subject.banglaName && subject.banglaName !== subject.name && (
-              <p className="mt-0.5 text-sm text-slate-500">{subject.name}</p>
-            )}
-          </div>
-        </div>
+      <StudyPageHeader subjectName={subject.name} title={subject.name} banglaTitle={subject.banglaName}
+        context={subjectClass || classLevel} onBack={onBack} backLabel="Go back to subjects">
         <div className="subject-overview-progress">
           <div className="mb-2 flex items-center justify-between gap-4 text-xs">
             <span className="font-medium text-slate-600">Subject progress</span>
@@ -143,7 +123,7 @@ function SubjectPaperContent({
             <div className="subject-progress-fill h-full rounded-full" style={{ width: `${mastery}%` }} />
           </div>
         </div>
-      </header>
+      </StudyPageHeader>
 
       <div className="subject-overview-columns">
         <section aria-labelledby="subject-chapters-heading" className="subject-panel subject-chapters-panel min-w-0 rounded-2xl border bg-white p-4 sm:p-5">

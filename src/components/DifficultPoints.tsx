@@ -114,7 +114,7 @@ export default function DifficultPoints({ context, subjectContext }: {
         </button>)}
       </div>
       <button type="button" className="subject-log-action mt-2" onClick={() => { setChapter(""); setSelected(null); setPanel("list"); }}>View all points →</button>
-    </aside> : context ? <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3 md:px-7">
+    </aside> : context ? <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
       <button type="button" className={button} style={accent} onClick={() => beginWrite(null)}><Plus size={15} />Note a difficult point</button>
       <button type="button" className={button + " text-slate-600"} onClick={() => { setSelected(null); setPanel("list"); }}><ListChecks size={15} />My points · {open.length} open</button>
     </div> : list}
