@@ -15,7 +15,6 @@
  */
 
 import express from "express";
-import { AI_ENABLED } from "./src/config/features";
 import { mkdir, readFile, rename, writeFile } from "fs/promises";
 import path from "path";
 import dotenv from "dotenv";
@@ -26,20 +25,6 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-
-// Block AI before any generation handler, including its sample responses.
-app.use([
-  "/api/generate-chapter-guide",
-  "/api/tutor-chat",
-  "/api/generate-quiz",
-  "/api/generate-study-plan",
-], (_req, res, next) => {
-  if (!AI_ENABLED) {
-    res.status(503).json({ error: "AI temporarily unavailable.", code: "AI_DISABLED" });
-    return;
-  }
-  next();
-});
 
 const PORT = 3000;
 const overviewAdminToken = process.env.OVERVIEW_ADMIN_TOKEN;

@@ -220,6 +220,9 @@ export default function StudyPlanner({
   const [routineChapterId, setRoutineChapterId] = useState<string | null>(null);
   const [routineStart, setRoutineStart] = useState("17:00");
   const [routineEnd, setRoutineEnd] = useState("18:00");
+  const [subjectPickerOpenRequest, setSubjectPickerOpenRequest] = useState(0);
+  const [startPickerOpenRequest, setStartPickerOpenRequest] = useState(0);
+  const [endPickerOpenRequest, setEndPickerOpenRequest] = useState(0);
   const [routineError, setRoutineError] = useState<string | null>(null);
   const routineErrorRef = React.useRef<HTMLDivElement>(null);
   const [routineToDelete, setRoutineToDelete] =
@@ -1258,6 +1261,7 @@ export default function StudyPlanner({
                     days={DAYS}
                     selectedDate={weekAnchorDate}
                     onDateSelect={handleRoutineDateSelect}
+                    onSelectionComplete={() => setSubjectPickerOpenRequest((request) => request + 1)}
                   />
 
                   {/* Subject */}
@@ -1265,6 +1269,9 @@ export default function StudyPlanner({
                     value={selectedRoutineSubjectKey}
                     options={routineSubjectOptions}
                     onChange={handleRoutineSubjectSelect}
+                    onSelectionComplete={() => setStartPickerOpenRequest((request) => request + 1)}
+                    openRequest={subjectPickerOpenRequest}
+                    onOpenRequestHandled={() => setSubjectPickerOpenRequest(0)}
                   />
 
                   {/* Start */}
@@ -1272,7 +1279,10 @@ export default function StudyPlanner({
                     value={routineStart}
                     onChange={handleStartTimeChange}
                     label="Start"
+                    onPeriodSelectionComplete={() => setEndPickerOpenRequest((request) => request + 1)}
                     closeOnPeriodChange
+                    openRequest={startPickerOpenRequest}
+                    onOpenRequestHandled={() => setStartPickerOpenRequest(0)}
                   />
 
                   {/* End */}
@@ -1280,6 +1290,8 @@ export default function StudyPlanner({
                     value={routineEnd}
                     onChange={setRoutineEnd}
                     label="End"
+                    openRequest={endPickerOpenRequest}
+                    onOpenRequestHandled={() => setEndPickerOpenRequest(0)}
                   />
                 </div>
 

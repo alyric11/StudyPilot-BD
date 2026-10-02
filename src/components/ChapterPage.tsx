@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
+import { AI_ENABLED } from "../config/features";
 import useDialogFocus from "../hooks/useDialogFocus";
 import DifficultPoints from "./DifficultPoints";
 import { CHAPTER_PREPARATION_KEYS } from "../utils/studyProgress";
@@ -156,6 +157,7 @@ export default function ChapterPage({
 
   // Generate the AI chapter overview
   const generateChapterGuide = async (forManagement = false) => {
+    if (!AI_ENABLED) return;
     if (loadingPublished || loadingGuide || loadingDraft || isSavingOverview) return;
     const controller = new AbortController();
     generationRef.current?.abort();
@@ -397,10 +399,10 @@ export default function ChapterPage({
               <DifficultPoints key={subjectId + ":" + chapterId} context={{ subjectId, subjectName, chapterId, chapterName: chapterBanglaName || chapterName }} />
               <div className="p-4 sm:p-5">
                 <p className="max-w-lg text-sm leading-6 text-slate-500">
-                  Generate a concise overview and important topics for this chapter.
+                  {AI_ENABLED ? "Generate a concise overview and important topics for this chapter." : "AI temporarily unavailable. You can still view saved overviews or add one manually through Manage."}
                 </p>
 
-                <button
+                {AI_ENABLED && <button
                   type="button"
                   onClick={() => void generateChapterGuide()}
                   className="mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
@@ -408,7 +410,7 @@ export default function ChapterPage({
                 >
                   <Sparkles className="h-4 w-4" />
                   Generate chapter guide
-                </button>
+                </button>}
               </div>
             </section>
           ) : (
@@ -529,7 +531,7 @@ export default function ChapterPage({
             </div>
 
             <div className="space-y-5 p-5 md:p-6">
-              <button
+              {AI_ENABLED && <button
                 type="button"
                 onClick={() => void generateChapterGuide(true)}
                 disabled={loadingDraft || isSavingOverview}
@@ -537,7 +539,7 @@ export default function ChapterPage({
               >
                 <Sparkles className="h-4 w-4" />
                 {loadingDraft ? "Generating draft…" : "Generate new draft"}
-              </button>
+              </button>}
 
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700" htmlFor="complete-overview-editor">

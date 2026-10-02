@@ -10,6 +10,7 @@
 
 import { lazy, Suspense, useState, useEffect, useRef, type CSSProperties } from "react";
 import { getSubjectAccentColor } from "./colorPalettes";
+import { AI_ENABLED } from "./config/features";
 import { AdditionalSubject, ChapterProgress, RoutineEditRequest } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
@@ -912,11 +913,11 @@ export default function App() {
 
         {/* Footer bar */}
         <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 bg-white/95 py-2.5 text-center text-[10px] text-slate-400 backdrop-blur-sm lg:left-[260px]">
-          StudyPilot BD • Your study companion
+          StudyPilot BD • Your study companion{!AI_ENABLED && " • AI temporarily unavailable"}
         </footer>
 
         {/* Global AI Tutor */}
-        <Suspense fallback={null}>
+        {AI_ENABLED && <Suspense fallback={null}>
           <AITutor
             profile={profile}
             context={
@@ -946,7 +947,7 @@ export default function App() {
                   }
             }
           />
-        </Suspense>
+        </Suspense>}
 
         {/* Toast Notification Container */}
         <div className="fixed bottom-4 right-4 z-50 pointer-events-none w-[calc(100%-2rem)] max-w-sm">

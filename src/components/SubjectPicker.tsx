@@ -15,6 +15,7 @@ interface SubjectPickerProps {
   value: string;
   options: SubjectPickerOption[];
   onChange: (option: SubjectPickerOption) => void;
+  onSelectionComplete?: () => void;
   openRequest?: number;
   onOpenRequestHandled?: () => void;
 }
@@ -23,6 +24,7 @@ export default function SubjectPicker({
   value,
   options,
   onChange,
+  onSelectionComplete,
   openRequest = 0,
   onOpenRequestHandled,
 }: SubjectPickerProps) {
@@ -33,7 +35,6 @@ export default function SubjectPicker({
   const pickerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
     left: 0,
@@ -46,13 +47,8 @@ export default function SubjectPicker({
 
   const closePicker = useCallback(() => {
     if (!isOpen || isClosing) return;
-
     setIsClosing(true);
-    closeTimerRef.current = setTimeout(() => {
-      setIsOpen(false);
-      setIsClosing(false);
-    }, shouldReduceMotion ? 0 : 200);
-  }, [isClosing, isOpen, shouldReduceMotion]);
+  }, [isClosing, isOpen]);
 
   const updateDropdownPosition = useCallback(() => {
     const button = buttonRef.current;
@@ -75,7 +71,6 @@ export default function SubjectPicker({
       return;
     }
 
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     claimPopup();
     updateDropdownPosition();
     setIsClosing(false);
@@ -85,11 +80,6 @@ export default function SubjectPicker({
 
   useEffect(() => {
     if (openRequest === 0) return;
-
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
 
     claimPopup();
     updateDropdownPosition();
@@ -144,15 +134,9 @@ export default function SubjectPicker({
     return () => window.cancelAnimationFrame(frame);
   }, [isOpen, isClosing]);
 
-  useEffect(
-    () => () => {
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    },
-    []
-  );
-
   const selectSubject = (option: SubjectPickerOption) => {
     onChange(option);
+    onSelectionComplete?.();
     closePicker();
     buttonRef.current?.focus();
   };
@@ -263,17 +247,21 @@ export default function SubjectPicker({
                     clipPath: "inset(0 0 0 0 round 12px)",
                   }
             }
-            transition={
-              isClosing
-                ? {
-                    duration: shouldReduceMotion ? 0 : 0.2,
-                    ease: [0.4, 0, 1, 1],
-                  }
-                : {
-                    duration: shouldReduceMotion ? 0 : 0.3,
-                    ease: [0.16, 1, 0.3, 1],
-                  }
-            }
+            transition={{
+              clipPath: {
+                duration: shouldReduceMotion ? 0 : 0.42,
+                ease: [0.25, 0.1, 0.25, 1],
+              },
+              opacity: {
+                duration: shouldReduceMotion ? 0 : 0.3,
+                ease: [0.25, 0.1, 0.25, 1],
+              },
+            }}
+            onAnimationComplete={() => {
+              if (!isClosing) return;
+              setIsOpen(false);
+              setIsClosing(false);
+            }}
             inert={isClosing}
             data-planner-popup
             data-placement={dropdownPosition.placement}

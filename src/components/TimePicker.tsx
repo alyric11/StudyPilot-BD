@@ -11,6 +11,7 @@ interface TimePickerProps {
   onChange: (value: string) => void;
   label?: string;
   onPeriodChange?: (value: string) => void;
+  onPeriodSelectionComplete?: () => void;
   closeOnPeriodChange?: boolean;
   openRequest?: number;
   onOpenRequestHandled?: () => void;
@@ -54,6 +55,7 @@ export default function TimePicker({
   onChange,
   label,
   onPeriodChange,
+  onPeriodSelectionComplete,
   closeOnPeriodChange = false,
   openRequest = 0,
   onOpenRequestHandled
@@ -65,7 +67,6 @@ export default function TimePicker({
   const pickerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
     left: 0,
@@ -80,13 +81,8 @@ export default function TimePicker({
     if (!open || isClosing) {
       return;
     }
-
     setIsClosing(true);
-    closeTimerRef.current = setTimeout(() => {
-      setOpen(false);
-      setIsClosing(false);
-    }, shouldReduceMotion ? 0 : 200);
-  }, [isClosing, open, shouldReduceMotion]);
+  }, [isClosing, open]);
 
   const updateDropdownPosition = useCallback(() => {
     const button = buttonRef.current;
@@ -114,7 +110,6 @@ export default function TimePicker({
       return;
     }
 
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     claimPopup();
     updateDropdownPosition();
     setIsClosing(false);
@@ -167,21 +162,7 @@ export default function TimePicker({
   }, [isClosing, open]);
 
   useEffect(() => {
-    return () => {
-      if (closeTimerRef.current) {
-        clearTimeout(closeTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     if (openRequest === 0) return;
-
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-
     claimPopup();
     updateDropdownPosition();
     setIsClosing(false);
@@ -202,6 +183,7 @@ export default function TimePicker({
       onPeriodChange?.(nextTime);
 
       if (closeOnPeriodChange) {
+        onPeriodSelectionComplete?.();
         closePicker();
       }
     }
@@ -293,11 +275,21 @@ export default function TimePicker({
                 : { opacity: 0, clipPath: "inset(0 0 100% 0 round 12px)" }
               : { opacity: 1, clipPath: "inset(0 0 0 0 round 12px)" }
           }
-          transition={
-            isClosing
-              ? { duration: shouldReduceMotion ? 0 : 0.2, ease: [0.4, 0, 1, 1] }
-              : { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }
-          }
+          transition={{
+            clipPath: {
+              duration: shouldReduceMotion ? 0 : 0.42,
+              ease: [0.25, 0.1, 0.25, 1],
+            },
+            opacity: {
+              duration: shouldReduceMotion ? 0 : 0.3,
+              ease: [0.25, 0.1, 0.25, 1],
+            },
+          }}
+          onAnimationComplete={() => {
+            if (!isClosing) return;
+            setOpen(false);
+            setIsClosing(false);
+          }}
           inert={isClosing}
           data-planner-popup
           data-placement={dropdownPosition.placement}

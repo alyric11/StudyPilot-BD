@@ -16,6 +16,7 @@ interface DayPickerProps {
   days: DayOption[];
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
+  onSelectionComplete?: () => void;
   openDaysRequest?: number;
 }
 
@@ -42,7 +43,7 @@ const calendarDays = (month: Date) => {
 };
 
 export default function DayPicker({
-  value, onChange, days, selectedDate, onDateSelect, openDaysRequest,
+  value, onChange, days, selectedDate, onDateSelect, onSelectionComplete, openDaysRequest,
 }: DayPickerProps) {
   const shouldReduceMotion = useReducedMotion();
   const pickerId = useId();
@@ -55,7 +56,6 @@ export default function DayPicker({
   const dayButtonRef = useRef<HTMLButtonElement>(null);
   const calendarButtonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
     left: 0,
@@ -69,11 +69,7 @@ export default function DayPicker({
   const closePicker = useCallback(() => {
     if (!openMenu || isClosing) return;
     setIsClosing(true);
-    closeTimerRef.current = setTimeout(() => {
-      setOpenMenu(null);
-      setIsClosing(false);
-    }, shouldReduceMotion ? 0 : 200);
-  }, [isClosing, openMenu, shouldReduceMotion]);
+  }, [isClosing, openMenu]);
 
   const updateDropdownPosition = useCallback((menu = openMenu) => {
     const button = menu === "calendar" ? calendarButtonRef.current : dayButtonRef.current;
@@ -112,10 +108,6 @@ export default function DayPicker({
     };
   }, [openMenu, updateDropdownPosition]);
 
-  useEffect(() => () => {
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-  }, []);
-
   const claimPopup = usePlannerPopup(closePicker);
 
   const togglePicker = (menu: "days" | "calendar") => {
@@ -123,7 +115,6 @@ export default function DayPicker({
       closePicker();
       return;
     }
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     claimPopup();
     updateDropdownPosition(menu);
     if (menu === "calendar") {
@@ -152,12 +143,14 @@ export default function DayPicker({
 
   const selectDay = (day: DayOption) => {
     onChange(String(day.value));
+    onSelectionComplete?.();
     closePicker();
     dayButtonRef.current?.focus();
   };
 
   const selectDate = (date: Date) => {
     onDateSelect(toDayStart(date));
+    onSelectionComplete?.();
     closePicker();
     calendarButtonRef.current?.focus();
   };
@@ -241,13 +234,23 @@ export default function DayPicker({
               ? dropdownPosition.placement === "above"
                 ? { opacity: 0, clipPath: "inset(100% 0 0 0 round 12px)" }
                 : { opacity: 0, clipPath: "inset(0 0 100% 0 round 12px)" }
-              : { opacity: 1, clipPath: "inset(0 0 0 0 round 12px)" }
+                : { opacity: 1, clipPath: "inset(0 0 0 0 round 12px)" }
           }
-          transition={
-            isClosing
-              ? { duration: shouldReduceMotion ? 0 : 0.2, ease: [0.4, 0, 1, 1] }
-              : { duration: shouldReduceMotion ? 0 : 0.3, ease: [0.16, 1, 0.3, 1] }
-          }
+          transition={{
+            clipPath: {
+              duration: shouldReduceMotion ? 0 : 0.42,
+              ease: [0.25, 0.1, 0.25, 1],
+            },
+            opacity: {
+              duration: shouldReduceMotion ? 0 : 0.3,
+              ease: [0.25, 0.1, 0.25, 1],
+            },
+          }}
+          onAnimationComplete={() => {
+            if (!isClosing) return;
+            setOpenMenu(null);
+            setIsClosing(false);
+          }}
           inert={isClosing}
           data-planner-popup
           data-placement={dropdownPosition.placement}
