@@ -1,3 +1,4 @@
+import { studentFetch } from "../utils/studentFetch";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { createPortal } from "react-dom";
@@ -17,7 +18,7 @@ const button = "inline-flex min-h-9 items-center justify-center rounded-lg borde
 const field = "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400";
 
 async function request(url: string, options?: RequestInit) {
-  const response = await fetch(url, options);
+  const response = await studentFetch(url, options);
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "The request failed. Please retry.");
   return data;

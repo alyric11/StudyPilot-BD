@@ -1,3 +1,4 @@
+import { studentFetch } from "../utils/studentFetch";
 /**
  * STUDYPILOT BD - Interactive Chapter Learning Hub
  * 
@@ -118,7 +119,7 @@ export default function ChapterPage({
       setApiWarning(null);
       try {
         const params = new URLSearchParams({ subjectId, chapterId });
-        const response = await fetch(`/api/chapter-overviews?${params.toString()}`, { signal: controller.signal });
+        const response = await studentFetch(`/api/chapter-overviews?${params.toString()}`, { signal: controller.signal });
         if (response.status === 404) return;
         if (!response.ok) throw new Error("Unable to load saved overview.");
         const overview: ChapterOverviewData = await response.json();
@@ -232,7 +233,7 @@ export default function ChapterPage({
     saveRef.current = controller;
     const timeout = window.setTimeout(() => controller.abort(), 20000);
     try {
-      const response = await fetch("/api/chapter-overviews", {
+      const response = await studentFetch("/api/chapter-overviews", {
         method: "PUT",
         signal: controller.signal,
         headers: { "Content-Type": "application/json", "x-overview-admin-token": overviewAdminToken },

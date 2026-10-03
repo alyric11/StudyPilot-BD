@@ -17,7 +17,9 @@
 import express from "express";
 import { AI_ENABLED } from "./src/config/features";
 import { validatePublishedVideos, type ChapterVideo } from "./src/utils/chapterVideos";
-import { mkdir, readFile, rename, writeFile } from "fs/promises";
+import { sharedContent, chapterKey } from "./server/sharedContent";
+import { verifiedStudentAccess } from "./server/studentAccess";
+import { getServerFirestore } from "./server/firebaseAdmin";
 import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -42,16 +44,10 @@ app.use([
   next();
 });
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error("PORT must be a number between 1 and 65535.");
 const overviewAdminToken = process.env.OVERVIEW_ADMIN_TOKEN;
-const chapterOverviewStorePath = path.join(process.cwd(), "data", "chapter-overviews.json");
-const chapterVideoStorePath = path.join(process.cwd(), "data", "chapter-videos.json");
-let chapterVideoWrites: Promise<unknown> = Promise.resolve();
-
-async function readPublishedVideos(): Promise<Record<string, ChapterVideo[]>> {
-  try { return JSON.parse(await readFile(chapterVideoStorePath, "utf8")); }
-  catch (error: any) { if (error?.code === "ENOENT") return {}; throw error; }
-}
+app.use(["/api/chapter-videos", "/api/chapter-overviews"], verifiedStudentAccess());
 
 app.post("/api/chapter-videos/admin", (req, res) => {
   if (!overviewAdminToken || req.header("x-overview-admin-token") !== overviewAdminToken) {
@@ -62,10 +58,10 @@ app.post("/api/chapter-videos/admin", (req, res) => {
 
 app.get("/api/chapter-videos", async (req, res) => {
   const { subjectId, chapterId } = req.query;
-  if (typeof subjectId !== "string" || typeof chapterId !== "string") {
+  if (typeof subjectId !== "string" || !/^[\w-]{1,100}$/.test(subjectId) || typeof chapterId !== "string" || !/^[\w-]{1,100}$/.test(chapterId)) {
     res.status(400).json({ error: "Subject and chapter are required." }); return;
   }
-  try { res.json((await readPublishedVideos())[`${subjectId}:${chapterId}`] || []); }
+  try { res.json((await sharedContent.read(chapterKey(subjectId, chapterId))).videos || []); }
   catch { res.status(500).json({ error: "Could not load saved chapter videos." }); }
 });
 
@@ -81,15 +77,7 @@ app.put("/api/chapter-videos", async (req, res) => {
   let cleaned: ChapterVideo[];
   try { cleaned = validatePublishedVideos(videos); }
   catch (error) { res.status(400).json({ error: (error as Error).message }); return; }
-  const write = chapterVideoWrites.catch(() => {}).then(async () => {
-    const store = await readPublishedVideos();
-    store[`${subjectId}:${chapterId}`] = cleaned;
-    await mkdir(path.dirname(chapterVideoStorePath), { recursive: true });
-    await writeFile(`${chapterVideoStorePath}.tmp`, JSON.stringify(store, null, 2), "utf8");
-    await rename(`${chapterVideoStorePath}.tmp`, chapterVideoStorePath);
-  });
-  chapterVideoWrites = write;
-  try { await write; res.json(cleaned); }
+  try { await sharedContent.write(chapterKey(subjectId, chapterId), { videos: cleaned }); res.json(cleaned); }
   catch { res.status(500).json({ error: "Could not save chapter videos. Please retry." }); }
 });
 
@@ -97,26 +85,6 @@ type StoredChapterOverview = {
   introduction: string;
   importantTopics: Array<{ topic: string; description: string }>;
 };
-
-async function readChapterOverviews(): Promise<Record<string, StoredChapterOverview>> {
-  try {
-    return JSON.parse(await readFile(chapterOverviewStorePath, "utf8"));
-  } catch (error: any) {
-    if (error?.code === "ENOENT") return {};
-    throw error;
-  }
-}
-
-async function writeChapterOverviews(overviews: Record<string, StoredChapterOverview>) {
-  await mkdir(path.dirname(chapterOverviewStorePath), { recursive: true });
-  const temporaryPath = `${chapterOverviewStorePath}.tmp`;
-  await writeFile(temporaryPath, JSON.stringify(overviews, null, 2), "utf8");
-  await rename(temporaryPath, chapterOverviewStorePath);
-}
-
-function getOverviewKey(subjectId: string, chapterId: string) {
-  return `${subjectId}:${chapterId}`;
-}
 
 // Lazy initialization of GoogleGenAI SDK to avoid crashing if API key is not set.
 let aiClient: GoogleGenAI | null = null;
@@ -311,11 +279,11 @@ app.get("/api/chapter-overviews", async (req, res) => {
   }
 
   try {
-    const overview = (await readChapterOverviews())[getOverviewKey(subjectId, chapterId)];
+    const overview = (await sharedContent.read(chapterKey(subjectId, chapterId))).overview;
     if (!overview) return res.status(404).json({ error: "No published overview found." });
     return res.json(overview);
   } catch (error) {
-    console.error("Chapter overview retrieval failed:", error);
+    console.error("Chapter overview retrieval failed.");
     return res.status(500).json({ error: "Unable to retrieve the chapter overview." });
   }
 });
@@ -348,12 +316,10 @@ app.put("/api/chapter-overviews", async (req, res) => {
   }
 
   try {
-    const overviews = await readChapterOverviews();
-    overviews[getOverviewKey(subjectId, chapterId)] = cleanedOverview;
-    await writeChapterOverviews(overviews);
+    await sharedContent.write(chapterKey(subjectId, chapterId), { overview: cleanedOverview });
     return res.json(cleanedOverview);
   } catch (error) {
-    console.error("Chapter overview save failed:", error);
+    console.error("Chapter overview save failed.");
     return res.status(500).json({ error: "Unable to save the chapter overview." });
   }
 });
@@ -970,6 +936,7 @@ app.get("/api/video-lessons", async (req, res) => {
 
 // Serve frontend assets
 async function startServer() {
+  getServerFirestore(); // Require valid server configuration; shared content has no local-file fallback.
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -979,7 +946,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app.get("/{*splat}", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
@@ -989,4 +956,4 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch(error => { console.error("Server startup failed:", error); process.exitCode = 1; });

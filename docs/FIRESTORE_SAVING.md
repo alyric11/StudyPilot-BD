@@ -22,3 +22,5 @@ Shared chapter overviews and administrator-published lesson videos still use the
 6. Delete the test records and check both browsers. Also sign into a different student account and confirm it does not show the first student's personal records.
 
 Local unit tests use an injected transport to check merging, backups, retries, and account separation. They do not verify the rules actually published in the console or live Firebase credentials. The manual checks above remain necessary before deployment.
+
+Update: Shared chapter content now uses Firestore through protected server endpoints; see HOSTING.md. The earlier server-file description above records the previous implementation.
