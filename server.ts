@@ -16,6 +16,7 @@
 
 import express from "express";
 import { AI_ENABLED } from "./src/config/features";
+import { validatePublishedVideos, type ChapterVideo } from "./src/utils/chapterVideos";
 import { mkdir, readFile, rename, writeFile } from "fs/promises";
 import path from "path";
 import dotenv from "dotenv";
@@ -44,6 +45,53 @@ app.use([
 const PORT = 3000;
 const overviewAdminToken = process.env.OVERVIEW_ADMIN_TOKEN;
 const chapterOverviewStorePath = path.join(process.cwd(), "data", "chapter-overviews.json");
+const chapterVideoStorePath = path.join(process.cwd(), "data", "chapter-videos.json");
+let chapterVideoWrites: Promise<unknown> = Promise.resolve();
+
+async function readPublishedVideos(): Promise<Record<string, ChapterVideo[]>> {
+  try { return JSON.parse(await readFile(chapterVideoStorePath, "utf8")); }
+  catch (error: any) { if (error?.code === "ENOENT") return {}; throw error; }
+}
+
+app.post("/api/chapter-videos/admin", (req, res) => {
+  if (!overviewAdminToken || req.header("x-overview-admin-token") !== overviewAdminToken) {
+    res.status(403).json({ error: "Incorrect admin password or management is not configured." }); return;
+  }
+  res.json({ authorized: true });
+});
+
+app.get("/api/chapter-videos", async (req, res) => {
+  const { subjectId, chapterId } = req.query;
+  if (typeof subjectId !== "string" || typeof chapterId !== "string") {
+    res.status(400).json({ error: "Subject and chapter are required." }); return;
+  }
+  try { res.json((await readPublishedVideos())[`${subjectId}:${chapterId}`] || []); }
+  catch { res.status(500).json({ error: "Could not load saved chapter videos." }); }
+});
+
+app.put("/api/chapter-videos", async (req, res) => {
+  if (!overviewAdminToken || req.header("x-overview-admin-token") !== overviewAdminToken) {
+    res.status(403).json({ error: "Video management is not authorized." }); return;
+  }
+  const { subjectId, chapterId, videos } = req.body;
+  if (typeof subjectId !== "string" || !/^[\w-]{1,100}$/.test(subjectId) ||
+      typeof chapterId !== "string" || !/^[\w-]{1,100}$/.test(chapterId)) {
+    res.status(400).json({ error: "A valid subject and chapter are required." }); return;
+  }
+  let cleaned: ChapterVideo[];
+  try { cleaned = validatePublishedVideos(videos); }
+  catch (error) { res.status(400).json({ error: (error as Error).message }); return; }
+  const write = chapterVideoWrites.catch(() => {}).then(async () => {
+    const store = await readPublishedVideos();
+    store[`${subjectId}:${chapterId}`] = cleaned;
+    await mkdir(path.dirname(chapterVideoStorePath), { recursive: true });
+    await writeFile(`${chapterVideoStorePath}.tmp`, JSON.stringify(store, null, 2), "utf8");
+    await rename(`${chapterVideoStorePath}.tmp`, chapterVideoStorePath);
+  });
+  chapterVideoWrites = write;
+  try { await write; res.json(cleaned); }
+  catch { res.status(500).json({ error: "Could not save chapter videos. Please retry." }); }
+});
 
 type StoredChapterOverview = {
   introduction: string;
@@ -767,6 +815,10 @@ app.get("/api/video-details", async (req, res) => {
 // API: Search YouTube video lessons
 app.get("/api/video-lessons", async (req, res) => {
   const { classLevel, subject, chapterBanglaName, chapterName } = req.query;
+  // Video Lessons can request a bounded candidate pool; existing callers keep five.
+  const resultLimit = req.query.limit === "10" ? 10 : 5;
+  const excludedIds = new Set(typeof req.query.exclude === "string"
+    ? req.query.exclude.split(",").filter(id => /^[\w-]{11}$/.test(id)).slice(0, 8) : []);
 
   if (!subject || !chapterName) {
     return res.status(400).json({
@@ -807,7 +859,7 @@ app.get("/api/video-lessons", async (req, res) => {
       part: "snippet",
       q: query,
       type: "video",
-      maxResults: "5",
+      maxResults: String(resultLimit + excludedIds.size),
       key: youtubeApiKey
     });
 
@@ -827,6 +879,7 @@ app.get("/api/video-lessons", async (req, res) => {
     const data = await response.json();
 
     const filteredItems = (data.items || []).filter((item: any) => {
+      if (excludedIds.has(item.id?.videoId)) return false;
       const title = item.snippet?.title?.toLowerCase() || "";
 
       if (
@@ -904,7 +957,7 @@ app.get("/api/video-lessons", async (req, res) => {
         return totalSeconds >= 300;
       });
 
-    res.json(videosWithDetails.slice(0, 5));
+    res.json(videosWithDetails.slice(0, resultLimit));
 
   } catch (error) {
     console.error("YouTube search error:", error);

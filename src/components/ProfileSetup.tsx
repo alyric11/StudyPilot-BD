@@ -14,12 +14,13 @@ import { GraduationCap, School, Calendar, MapPin, User, Mail, Phone, ArrowRight,
 
 interface ProfileSetupProps {
   initialProfile: UserProfile | null;
+  accountEmail?: string;
   onSave: (profile: UserProfile) => void;
 }
 
-export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupProps) {
+export default function ProfileSetup({ initialProfile, accountEmail, onSave }: ProfileSetupProps) {
   const [name, setName] = useState(initialProfile?.name || "");
-  const [email, setEmail] = useState(initialProfile?.email || "");
+  const [email, setEmail] = useState(accountEmail || initialProfile?.email || "");
   const [phone, setPhone] = useState(initialProfile?.phone || "");
   const [school, setSchool] = useState(initialProfile?.school || "");
   const [classLevel, setClassLevel] = useState(initialProfile?.classLevel || "Class 9");
@@ -90,9 +91,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
     }
 
     // 3. School validation
-    if (!trimmedSchool) {
-      newErrors.school = "School/College Name is required.";
-    } else if (trimmedSchool.length < 4) {
+    if (trimmedSchool && trimmedSchool.length < 4) {
       newErrors.school = "Please specify a valid school name (minimum 4 characters).";
     } else if (trimmedSchool.length > 100) {
       newErrors.school = "School name cannot exceed 100 characters.";
@@ -202,6 +201,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
               <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <input
                 id="email-input"
+                readOnly={!!accountEmail}
                 type="text"
                 placeholder="Enter Your Email Address"
                 value={email}
@@ -240,7 +240,7 @@ export default function ProfileSetup({ initialProfile, onSave }: ProfileSetupPro
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="school-input">School / College Name</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="school-input">School / College Name (Optional)</label>
             <div className="relative">
               <School className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <input

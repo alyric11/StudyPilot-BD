@@ -11,6 +11,10 @@
 import { lazy, Suspense, useState, useEffect, useRef, type CSSProperties } from "react";
 import { getSubjectAccentColor } from "./colorPalettes";
 import { AI_ENABLED } from "./config/features";
+import { signOut } from "firebase/auth";
+import { auth } from "./config/firebase";
+import { useAccount } from "./auth/AccountContext";
+import { accountError } from "./auth/messages";
 import { AdditionalSubject, ChapterProgress, RoutineEditRequest } from "./types";
 import useStudentData from "./hooks/useStudentData";
 import { NCTB_CURRICULUM } from "./data/curriculum";
@@ -100,6 +104,7 @@ const getTimeGreeting = () => {
 };
 
 export default function App() {
+  const { user } = useAccount();
   const { text: timeGreeting, Icon: TimeGreetingIcon } = getTimeGreeting();
 
   // Authentication & Profile state
@@ -209,8 +214,7 @@ export default function App() {
     additionalSubjects,
     handleAddAdditionalSubject,
     handleUpdateAdditionalSubject,
-    handleDeleteAdditionalSubject,
-    resetStudentData
+    handleDeleteAdditionalSubject
   } = useStudentData(showToast);
 
   useEffect(() => {
@@ -249,18 +253,14 @@ export default function App() {
     return () => window.cancelAnimationFrame(frame);
   }, [activeSection, selectedSubjectPaper, selectedChapter?.chapterId, showVideoLessons, loaded]);
 
-  // Reset local app data and log out - using state overlay modal instead of alert
+  // Logging out preserves this account's study records.
   const handleLogOut = () => {
     setShowLogoutConfirm(true);
   };
 
-  const handleConfirmLogOut = () => {
-    resetStudentData();
-    setActiveSection("dashboard");
-    setSelectedChapter(null);
-    setSelectedSubjectPaper(null);
-    setShowLogoutConfirm(false);
-    showToast("Account reset. Successfully logged out!", "info");
+  const handleConfirmLogOut = async () => {
+    try { await signOut(auth); }
+    catch (error) { setShowLogoutConfirm(false); showToast(accountError(error), "error"); }
   };
 
   // Fetch active subjects for the student:
@@ -470,7 +470,11 @@ export default function App() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12 md:p-8 font-sans">
-        <ProfileSetup initialProfile={null} onSave={handleSaveProfile} />
+        <div className="w-full max-w-2xl">
+          <button type="button" onClick={() => void signOut(auth).catch(e => showToast(accountError(e), "error"))} className="mb-4 rounded-lg px-3 py-2 text-sm font-semibold text-indigo-700">Log out</button>
+          {toast && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{toast.message}</p>}
+          <ProfileSetup initialProfile={null} accountEmail={user.email || ""} onSave={value => handleSaveProfile({ ...value, email: user.email || "" })} />
+        </div>
       </div>
     );
   }
@@ -583,7 +587,7 @@ export default function App() {
                   id="sidebar-link-logout"
                 >
                   <LogOut className="w-4 h-4 shrink-0" />
-                  Reset & Log Out
+                  Log Out
                 </button>
               </div>
             </div>
@@ -1222,13 +1226,11 @@ export default function App() {
                   <div className="p-2.5 bg-rose-50 rounded-xl">
                     <AlertTriangle className="w-6 h-6" />
                   </div>
-                  <h3 id="reset-heading" className="text-lg font-display font-bold tracking-tight">Reset Data & Logout?</h3>
+                  <h3 id="reset-heading" className="text-lg font-display font-bold tracking-tight">Log out?</h3>
                 </div>
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Are you sure you want to reset your local StudyPilot data and log out?
-                  This will clear all your <strong>subject progress checklists</strong>,
-                  <strong>homework logs</strong>, and <strong>study diary entries</strong> from this browser.
-                  This action cannot be undone.
+                  Your study records will stay saved for this account in this browser.
+                  Sign in again to continue. Saving records across devices will be added next.
                 </p>
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <button
@@ -1236,14 +1238,14 @@ export default function App() {
                     onClick={() => setShowLogoutConfirm(false)}
                     className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-500 hover:text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
                   >
-                    Keep My Data
+                    Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirmLogOut}
                     className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow transition-colors cursor-pointer"
                   >
-                    Yes, Reset & Logout
+                    Log Out
                   </button>
                 </div>
               </motion.div>

@@ -14,8 +14,8 @@ export interface DifficultPoint extends PointContext {
 }
 export const DIFFICULT_POINTS_KEY = "sp_difficult_points";
 
-export function readDifficultPoints(): DifficultPoint[] {
-  const raw = localStorage.getItem(DIFFICULT_POINTS_KEY);
+export function readDifficultPoints(storage: Pick<Storage, "getItem"> = localStorage): DifficultPoint[] {
+  const raw = storage.getItem(DIFFICULT_POINTS_KEY);
   if (!raw) return [];
   const value = JSON.parse(raw);
   if (!Array.isArray(value) || value.some(item => !item ||
@@ -26,8 +26,8 @@ export function readDifficultPoints(): DifficultPoint[] {
   return value;
 }
 
-export function updateDifficultPoints(change: (points: DifficultPoint[]) => DifficultPoint[]) {
-  const next = change(readDifficultPoints());
-  localStorage.setItem(DIFFICULT_POINTS_KEY, JSON.stringify(next));
+export function updateDifficultPoints(change: (points: DifficultPoint[]) => DifficultPoint[], storage: Pick<Storage, "getItem" | "setItem"> = localStorage) {
+  const next = change(readDifficultPoints(storage));
+  storage.setItem(DIFFICULT_POINTS_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event("difficult-points-changed"));
 }

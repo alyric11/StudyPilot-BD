@@ -1,3 +1,4 @@
+import { useAccount } from "../auth/AccountContext";
 import { useEffect, useRef, useState } from "react";
 import {
     UserProfile,
@@ -22,6 +23,7 @@ export default function useStudentData(
         type?: "success" | "error" | "info" | "warning"
     ) => void
 ) {
+    const { storage } = useAccount();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [studentProgress, setStudentProgress] =
         useState<StudentProgress>({});
@@ -37,7 +39,7 @@ export default function useStudentData(
     useEffect(() => {
         // Load student profile
         try {
-            const savedProfile = localStorage.getItem("sp_profile");
+            const savedProfile = storage.getItem("sp_profile");
 
             if (savedProfile) {
                 const parsed = JSON.parse(savedProfile);
@@ -54,7 +56,7 @@ export default function useStudentData(
                     console.warn(
                         "Invalid profile format in storage, resetting."
                     );
-                    localStorage.removeItem("sp_profile");
+                    storage.removeItem("sp_profile");
                 }
             }
         } catch (err) {
@@ -62,12 +64,12 @@ export default function useStudentData(
                 "Failed to parse student profile from local storage:",
                 err
             );
-            localStorage.removeItem("sp_profile");
+            storage.removeItem("sp_profile");
         }
 
         // Load student progress
         try {
-            const savedProgress = localStorage.getItem("sp_progress");
+            const savedProgress = storage.getItem("sp_progress");
 
             if (savedProgress) {
                 const parsed = JSON.parse(savedProgress);
@@ -78,7 +80,7 @@ export default function useStudentData(
                     console.warn(
                         "Corrupted progress data, resetting progress map."
                     );
-                    localStorage.removeItem("sp_progress");
+                    storage.removeItem("sp_progress");
                 }
             }
         } catch (err) {
@@ -86,12 +88,12 @@ export default function useStudentData(
                 "Failed to parse student progress from local storage:",
                 err
             );
-            localStorage.removeItem("sp_progress");
+            storage.removeItem("sp_progress");
         }
 
         // Load homework
         try {
-            const savedHomework = localStorage.getItem("sp_homework");
+            const savedHomework = storage.getItem("sp_homework");
 
             if (savedHomework) {
                 const parsed = JSON.parse(savedHomework);
@@ -130,7 +132,7 @@ export default function useStudentData(
                 ];
 
                 setHomeworks(demoHw);
-                localStorage.setItem(
+                storage.setItem(
                     "sp_homework",
                     JSON.stringify(demoHw)
                 );
@@ -140,12 +142,12 @@ export default function useStudentData(
                 "Failed to parse homework data from local storage:",
                 err
             );
-            localStorage.removeItem("sp_homework");
+            storage.removeItem("sp_homework");
         }
 
         // Load weekly routine
         try {
-            const savedRoutine = localStorage.getItem("sp_routine");
+            const savedRoutine = storage.getItem("sp_routine");
 
             if (savedRoutine) {
                 const parsed = JSON.parse(savedRoutine);
@@ -156,7 +158,7 @@ export default function useStudentData(
                     console.warn(
                         "Invalid routine data, resetting routine."
                     );
-                    localStorage.removeItem("sp_routine");
+                    storage.removeItem("sp_routine");
                 }
             }
         } catch (err) {
@@ -164,12 +166,12 @@ export default function useStudentData(
                 "Failed to parse routine data from local storage:",
                 err
             );
-            localStorage.removeItem("sp_routine");
+            storage.removeItem("sp_routine");
         }
 
         // Dated sessions are stored separately from the recurring schedule.
         try {
-            const records = parseDailyRoutineTasks(localStorage.getItem("sp_daily_routine_tasks"));
+            const records = parseDailyRoutineTasks(storage.getItem("sp_daily_routine_tasks"));
             dailyRoutineTasksRef.current = records;
             setDailyRoutineTasks(records);
         } catch (err) {
@@ -178,7 +180,7 @@ export default function useStudentData(
 
         // Load study diary
         try {
-            const savedDiary = localStorage.getItem("sp_diary");
+            const savedDiary = storage.getItem("sp_diary");
 
             if (savedDiary) {
                 const parsed = JSON.parse(savedDiary);
@@ -215,7 +217,7 @@ export default function useStudentData(
                 ];
 
                 setDiaryEntries(demoDiary);
-                localStorage.setItem(
+                storage.setItem(
                     "sp_diary",
                     JSON.stringify(demoDiary)
                 );
@@ -225,12 +227,12 @@ export default function useStudentData(
                 "Failed to parse diary entries from local storage:",
                 err
             );
-            localStorage.removeItem("sp_diary");
+            storage.removeItem("sp_diary");
         }
 
         // Load student-created additional subjects
         try {
-            const savedAdditionalSubjects = localStorage.getItem(
+            const savedAdditionalSubjects = storage.getItem(
                 "sp_additional_subjects"
             );
 
@@ -249,17 +251,17 @@ export default function useStudentData(
                             .slice(0, 4)
                     );
                 } else {
-                    localStorage.removeItem("sp_additional_subjects");
+                    storage.removeItem("sp_additional_subjects");
                 }
             }
         } catch (err) {
             console.error("Failed to parse additional subjects:", err);
-            localStorage.removeItem("sp_additional_subjects");
+            storage.removeItem("sp_additional_subjects");
         }
 
         // Load student's selected optional subjects
         try {
-            const savedSubjects = localStorage.getItem(
+            const savedSubjects = storage.getItem(
                 "sp_selected_subjects"
             );
 
@@ -272,7 +274,7 @@ export default function useStudentData(
                     console.warn(
                         "Invalid selected subjects data, resetting."
                     );
-                    localStorage.removeItem("sp_selected_subjects");
+                    storage.removeItem("sp_selected_subjects");
                 }
             }
         } catch (err) {
@@ -280,7 +282,7 @@ export default function useStudentData(
                 "Failed to parse selected subjects from local storage:",
                 err
             );
-            localStorage.removeItem("sp_selected_subjects");
+            storage.removeItem("sp_selected_subjects");
         }
 
         setLoaded(true);
@@ -288,7 +290,7 @@ export default function useStudentData(
 
     const handleSaveProfile = (newProfile: UserProfile) => {
         setProfile(newProfile);
-        localStorage.setItem(
+        storage.setItem(
             "sp_profile",
             JSON.stringify(newProfile)
         );
@@ -328,7 +330,7 @@ export default function useStudentData(
             });
 
             setStudentProgress(initialProg);
-            localStorage.setItem(
+            storage.setItem(
                 "sp_progress",
                 JSON.stringify(initialProg)
             );
@@ -354,7 +356,7 @@ export default function useStudentData(
         };
 
         setStudentProgress(updated);
-        localStorage.setItem(
+        storage.setItem(
             "sp_progress",
             JSON.stringify(updated)
         );
@@ -372,7 +374,7 @@ export default function useStudentData(
         const updated = [...routineBlocks, block];
 
         setRoutineBlocks(updated);
-        localStorage.setItem(
+        storage.setItem(
             "sp_routine",
             JSON.stringify(updated)
         );
@@ -390,7 +392,7 @@ export default function useStudentData(
         );
 
         setRoutineBlocks(updated);
-        localStorage.setItem(
+        storage.setItem(
             "sp_routine",
             JSON.stringify(updated)
         );
@@ -404,7 +406,7 @@ export default function useStudentData(
         if (routineBlocks.some((item) => item.id === block.id)) return;
         const updated = [...routineBlocks, block];
         setRoutineBlocks(updated);
-        localStorage.setItem("sp_routine", JSON.stringify(updated));
+        storage.setItem("sp_routine", JSON.stringify(updated));
         showToast("Routine block restored.", "success");
     };
 
@@ -417,7 +419,7 @@ export default function useStudentData(
         );
 
         setRoutineBlocks(updated);
-        localStorage.setItem("sp_routine", JSON.stringify(updated));
+        storage.setItem("sp_routine", JSON.stringify(updated));
         showToast("Routine updated successfully!", "success");
     };
 
@@ -432,7 +434,7 @@ export default function useStudentData(
         );
 
         try {
-            localStorage.setItem(
+            storage.setItem(
                 "sp_daily_routine_tasks",
                 JSON.stringify(updated)
             );
@@ -466,7 +468,7 @@ export default function useStudentData(
         }
 
         try {
-            localStorage.setItem(
+            storage.setItem(
                 "sp_daily_routine_tasks",
                 JSON.stringify(updated)
             );
@@ -506,7 +508,7 @@ export default function useStudentData(
         ];
 
         try {
-            localStorage.setItem(
+            storage.setItem(
                 "sp_daily_routine_tasks",
                 JSON.stringify(updated)
             );
@@ -542,7 +544,7 @@ export default function useStudentData(
         const updated = [hw, ...homeworks];
 
         setHomeworks(updated);
-        localStorage.setItem(
+        storage.setItem(
             "sp_homework",
             JSON.stringify(updated)
         );
@@ -563,7 +565,7 @@ export default function useStudentData(
         );
 
         setHomeworks(updated);
-        localStorage.setItem(
+        storage.setItem(
             "sp_homework",
             JSON.stringify(updated)
         );
@@ -589,7 +591,7 @@ export default function useStudentData(
         );
 
         setHomeworks(updated);
-        localStorage.setItem(
+        storage.setItem(
             "sp_homework",
             JSON.stringify(updated)
         );
@@ -612,7 +614,7 @@ export default function useStudentData(
         const updated = [entry, ...diaryEntries];
 
         setDiaryEntries(updated);
-        localStorage.setItem(
+        storage.setItem(
             "sp_diary",
             JSON.stringify(updated)
         );
@@ -629,7 +631,7 @@ export default function useStudentData(
         );
 
         setDiaryEntries(updated);
-        localStorage.setItem(
+        storage.setItem(
             "sp_diary",
             JSON.stringify(updated)
         );
@@ -650,7 +652,7 @@ export default function useStudentData(
 
         setSelectedSubjectIds(updated);
 
-        localStorage.setItem(
+        storage.setItem(
             "sp_selected_subjects",
             JSON.stringify(updated)
         );
@@ -677,7 +679,7 @@ export default function useStudentData(
 
         setSelectedSubjectIds(updated);
 
-        localStorage.setItem(
+        storage.setItem(
             "sp_selected_subjects",
             JSON.stringify(updated)
         );
@@ -715,7 +717,7 @@ export default function useStudentData(
 
         const updated = [...additionalSubjects, subject];
         setAdditionalSubjects(updated);
-        localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
+        storage.setItem("sp_additional_subjects", JSON.stringify(updated));
 
         showToast(`"${trimmedName}" added to Additional Subjects.`, "success");
         return true;
@@ -725,7 +727,7 @@ export default function useStudentData(
         const updated = additionalSubjects.filter((subject) => subject.id !== id);
 
         setAdditionalSubjects(updated);
-        localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
+        storage.setItem("sp_additional_subjects", JSON.stringify(updated));
 
         showToast("Additional subject removed.", "info");
     };
@@ -750,13 +752,13 @@ export default function useStudentData(
         );
 
         setAdditionalSubjects(updated);
-        localStorage.setItem("sp_additional_subjects", JSON.stringify(updated));
+        storage.setItem("sp_additional_subjects", JSON.stringify(updated));
         showToast("Personal subject updated.", "success");
         return true;
     };
 
     const resetStudentData = () => {
-        localStorage.clear();
+        storage.clear();
 
         setProfile(null);
         setStudentProgress({});

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Plus, ListChecks, X, MoreHorizontal, Check, AlertTriangle } from "lucide-react";
 import useDialogFocus from "../hooks/useDialogFocus";
+import { useAccount } from "../auth/AccountContext";
 import { readDifficultPoints, updateDifficultPoints, type DifficultPoint, type PointContext } from "../utils/difficultPoints";
 
 const notice = "Saved in this browser only. Clearing site data or resetting the app removes these notes.";
@@ -13,6 +14,7 @@ export default function DifficultPoints({ context, subjectContext }: {
   context?: PointContext;
   subjectContext?: { subjectId: string; subjectName: string };
 }) {
+  const { storage } = useAccount();
   const [points, setPoints] = useState<DifficultPoint[]>([]);
   const [error, setError] = useState("");
   const [panel, setPanel] = useState<"list" | "write" | "resolve" | "delete" | null>(null);
@@ -28,7 +30,7 @@ export default function DifficultPoints({ context, subjectContext }: {
   useDialogFocus(!!panel, dialogRef, close);
   useEffect(() => {
     const load = () => {
-      try { setPoints(readDifficultPoints()); setError(""); }
+      try { setPoints(readDifficultPoints(storage)); setError(""); }
       catch { setError("Saved points could not be read. Your existing data has not been changed."); }
     };
     load();
@@ -54,7 +56,7 @@ export default function DifficultPoints({ context, subjectContext }: {
     setError(""); setMenu(null); setPanel("write");
   };
   const commit = (change: (items: DifficultPoint[]) => DifficultPoint[]) => {
-    try { updateDifficultPoints(change); setError(""); setPanel(context || subjectContext ? "list" : null); return true; }
+    try { updateDifficultPoints(change, storage); setError(""); setPanel(context || subjectContext ? "list" : null); return true; }
     catch { setError("Could not save the change in this browser. Your text is still here. Please try again."); return false; }
   };
   const rows = (items: DifficultPoint[]) => items.map(point => (
