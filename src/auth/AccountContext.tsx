@@ -1,8 +1,9 @@
 import { createContext, useContext } from "react";
 import type { User } from "firebase/auth";
 import type { StudentStorage } from "../utils/accountStorage";
+import type { StudentCloud } from "../cloud/studentCloud";
 
-export const AccountContext = createContext<{ user: User; storage: StudentStorage } | null>(null);
+export const AccountContext = createContext<{ user: User; storage: StudentStorage; cloud?: StudentCloud } | null>(null);
 export function useAccount() {
   const account = useContext(AccountContext);
   if (!account) throw new Error("Student screens require a verified account.");

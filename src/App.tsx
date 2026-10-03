@@ -1,3 +1,4 @@
+import { CloudSaveStatus } from "./cloud/CloudSession";
 /**
  * STUDYPILOT BD - Main App Orchestrator and Global State Manager
  * 
@@ -473,6 +474,7 @@ export default function App() {
         <div className="w-full max-w-2xl">
           <button type="button" onClick={() => void signOut(auth).catch(e => showToast(accountError(e), "error"))} className="mb-4 rounded-lg px-3 py-2 text-sm font-semibold text-indigo-700">Log out</button>
           {toast && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{toast.message}</p>}
+          <div className="mb-4"><CloudSaveStatus /></div>
           <ProfileSetup initialProfile={null} accountEmail={user.email || ""} onSave={value => handleSaveProfile({ ...value, email: user.email || "" })} />
         </div>
       </div>
@@ -918,6 +920,7 @@ export default function App() {
         {/* Footer bar */}
         <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-100 bg-white/95 py-2.5 text-center text-[10px] text-slate-400 backdrop-blur-sm lg:left-[260px]">
           StudyPilot BD • Your study companion{!AI_ENABLED && " • AI temporarily unavailable"}
+          <CloudSaveStatus />
         </footer>
 
         {/* Global AI Tutor */}
@@ -1229,8 +1232,8 @@ export default function App() {
                   <h3 id="reset-heading" className="text-lg font-display font-bold tracking-tight">Log out?</h3>
                 </div>
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Your study records will stay saved for this account in this browser.
-                  Sign in again to continue. Saving records across devices will be added next.
+                  Your saved cloud records will be available when you sign in on another device.
+                  Wait for “Saved online” before logging out. Pending changes remain in this browser until you sign in here again.
                 </p>
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <button

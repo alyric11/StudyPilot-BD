@@ -77,6 +77,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
     return () => controller.abort();
   }, [chapter.subjectId, chapter.chapterId, loadAttempt]);
   useEffect(() => {
+    const load = () => {
     try {
       const value = JSON.parse(storage.getItem(personalKey) || "[]");
       if (!Array.isArray(value) || value.some(id => typeof id !== "string" || !/^[\w-]{11}$/.test(id))) throw new Error();
@@ -84,6 +85,9 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
       const details = JSON.parse(storage.getItem(detailsKey) || "{}");
       if (details && typeof details === "object" && !Array.isArray(details)) setPersonalDetails(details);
     } catch { setPersonalError("Your saved videos could not be read. They have not been changed."); }
+    };
+    load();
+    return storage.subscribe?.(load);
   }, [storage, personalKey, detailsKey]);
   // Enrich older ID-only personal saves without performing a video search.
   useEffect(() => {

@@ -1,4 +1,6 @@
-export type StudentStorage = Pick<Storage, "getItem" | "setItem" | "removeItem" | "clear">;
+export type StudentStorage = Pick<Storage, "getItem" | "setItem" | "removeItem" | "clear"> & {
+  subscribe?: (listener: () => void) => () => void;
+};
 
 export function createAccountStorage(storage: Storage, uid: string): StudentStorage {
   if (!uid) throw new Error("A signed-in account is required.");

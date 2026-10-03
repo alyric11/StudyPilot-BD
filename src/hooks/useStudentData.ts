@@ -37,6 +37,10 @@ export default function useStudentData(
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
+      const load = () => {
+        setProfile(null); setStudentProgress({}); setHomeworks([]); setRoutineBlocks([]);
+        setDailyRoutineTasks([]); dailyRoutineTasksRef.current = [];
+        setDiaryEntries([]); setSelectedSubjectIds([]); setAdditionalSubjects([]);
         // Load student profile
         try {
             const savedProfile = storage.getItem("sp_profile");
@@ -286,7 +290,10 @@ export default function useStudentData(
         }
 
         setLoaded(true);
-    }, []);
+      };
+      load();
+      return storage.subscribe?.(load);
+    }, [storage]);
 
     const handleSaveProfile = (newProfile: UserProfile) => {
         setProfile(newProfile);

@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createUserWithEmailAndPassword, onIdTokenChanged, reload, sendEmailVerification,
   sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
-import App from "../App";
-import { AccountContext } from "./AccountContext";
+import CloudSession from "../cloud/CloudSession";
 import { accountError } from "./messages";
 import { canImportLegacy, createAccountStorage, importLegacy } from "../utils/accountStorage";
 
@@ -18,7 +17,7 @@ function StudentSession({ user }: { user: User }) {
   const [error, setError] = useState("");
   useEffect(() => {
     try {
-      setOfferImport(!account.storage.getItem("sp_profile") && canImportLegacy(localStorage, user.email || ""));
+      setOfferImport(!account.storage.getItem("sp_profile") && !localStorage.getItem(`studypilot:user:${user.uid}:__cloud_ready`) && canImportLegacy(localStorage, user.email || ""));
       setReady(true);
     } catch { setError("Browser storage is unavailable. Enable site storage and reload to protect your study records."); }
   }, [account]);
@@ -39,7 +38,7 @@ function StudentSession({ user }: { user: User }) {
       </section>
     </div>
   );
-  return <AccountContext.Provider value={account}><App key={user.uid} /></AccountContext.Provider>;
+  return <CloudSession user={user} />;
 }
 
 export default function AccountGate() {
@@ -131,7 +130,7 @@ export default function AccountGate() {
             {mode === "login" && <button disabled={busy} className={secondary} onClick={() => switchMode("reset")}>Forgot password?</button>}
           </div>
         </>}
-        <p className="text-xs leading-relaxed text-slate-500">Accounts are available across devices. Study records are still saved in this browser until cloud saving is added.</p>
+        <p className="text-xs leading-relaxed text-slate-500">Sign in to access your study records across devices. Your email must be verified before opening your study space.</p>
       </section>
     </main>
   );
