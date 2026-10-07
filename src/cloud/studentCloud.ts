@@ -2,7 +2,7 @@ import { collection, deleteField, doc, onSnapshot, writeBatch } from "firebase/f
 import { auth, db } from "../config/firebase";
 import { createAccountStorage, type StudentStorage } from "../utils/accountStorage";
 import { readPersonalVideoIds } from "../utils/chapterVideos";
-import { applyPatch, combinePatches, diffRecords, readableDatedRecords, restoreRecords, type CloudRecord, type RecordPatch } from "../utils/cloudRecords";
+import { applyPatch, cloudWriteData, combinePatches, diffRecords, readableDatedRecords, restoreRecords, type CloudRecord, type RecordPatch } from "../utils/cloudRecords";
 
 export type CloudState = { phase: "connecting" | "choose" | "ready" | "error"; status: string; pending: number; error: string };
 export interface CloudTransport {
@@ -29,7 +29,7 @@ function firebaseTransport(uid: string): CloudTransport {
         for (const [id, patch] of entries.slice(start, start + 400)) {
           const fields: Record<string, unknown> = { ...patch.fields };
           if (!patch.reset) patch.removed.forEach(key => { fields[key] = deleteField(); });
-          const data = { key: patch.key, item: patch.item, kind: patch.kind, order: patch.order, deleted: patch.deleted, fields };
+          const data = cloudWriteData(patch, fields);
           // Reset only newly created/restored/deleted records; normal updates merge changed leaf fields.
           batch.set(doc(reference, id), data, patch.reset ? { mergeFields: ["key", "item", "kind", "order", "deleted", "fields"] } : { merge: true });
         }

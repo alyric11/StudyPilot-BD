@@ -12,6 +12,11 @@ export interface RecordPatch extends Omit<CloudRecord, "fields"> {
   removed: string[];
   reset: boolean;
 }
+// Firestore treats an empty map in a merge as replacement, not a no-op.
+export function cloudWriteData(patch: RecordPatch, fields: Record<string, unknown>) {
+  const data = { key: patch.key, item: patch.item, kind: patch.kind, order: patch.order, deleted: patch.deleted };
+  return patch.reset || Object.keys(fields).length ? { ...data, fields } : data;
+}
 const object = (value: unknown): value is Record<string, Json> => !!value && typeof value === "object" && !Array.isArray(value);
 const safe = (name: string) => !["__proto__", "constructor", "prototype"].includes(name);
 export const recordId = (record: Pick<CloudRecord, "key" | "item">) => encodeURIComponent(JSON.stringify([record.key, record.item]));
@@ -134,7 +139,13 @@ export function restoreRecords(records: Iterable<CloudRecord>): Record<string, s
     const kind = rows[0].kind;
     let value: Json;
     if (kind === "single") { if (!active.length) continue; value = inflate(active[0].fields); }
-    else if (kind === "array") value = active.map(row => inflate(row.fields));
+    else if (kind === "array") value = active.map(row => {
+      // Older order-only Firestore merges erased string payloads. The stable
+      // document identity still identifies the saved YouTube link exactly.
+      if (key.startsWith("sp_saved_videos_") && !key.endsWith("_details") &&
+        !Object.keys(row.fields).length && /^[\w-]{11}$/.test(row.item)) return row.item;
+      return inflate(row.fields);
+    });
     else if (kind === "map") value = Object.fromEntries(active.map(row => [row.item, inflate(row.fields)]));
     else {
       const progress: Record<string, Json> = {};

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyPatch, combinePatches, diffRecords, recordsForKey, restoreRecords } from "./cloudRecords";
+import { applyPatch, cloudWriteData, combinePatches, diffRecords, recordsForKey, restoreRecords } from "./cloudRecords";
 import { createStudentCloud, type CloudTransport } from "../cloud/studentCloud";
 
 const raw = JSON.stringify;
@@ -156,4 +156,23 @@ test("unreadable older personal video entries do not block saving valid links an
  assert.deepEqual(JSON.parse(cloud.storage.getItem(key)!), ["abcdefghijk", "ABCDEFGHIJK"]);
  assert.equal(JSON.parse(cloud.exportBackup()).savedVideosBeforeRepair["__video_backup:" + key], original);
  } finally { cloud.stop(); }
+});
+
+test("order-only cloud updates omit the empty map that would erase saved payloads", () => {
+  const key = "sp_saved_videos_physics_vector";
+  const patches = diffRecords(key, raw(["abcdefghij1", "abcdefghij2"]), raw(["abcdefghij2", "abcdefghij1"]));
+  for (const patch of patches.values()) {
+    assert.deepEqual(patch.fields, {});
+    assert.equal("fields" in cloudWriteData(patch, {}), false);
+    assert.equal("fields" in cloudWriteData({ ...patch, reset: true }, {}), true);
+  }
+});
+
+test("saved video identities recover erased payloads without restoring deleted videos", () => {
+  const key = "sp_saved_videos_physics2_p2_11_ch3";
+  const rows = [...recordsForKey(key, raw(["oDTeoyM9xDs", "oLt-FGy4R2E", "po6P9CZar1Y"])).values()];
+  rows.forEach(row => { row.fields = {}; });
+  rows[1].deleted = true;
+  assert.deepEqual(JSON.parse(restoreRecords(rows)[key]), ["oDTeoyM9xDs", "po6P9CZar1Y"]);
+  assert.deepEqual(rows.map(row => row.fields), [{}, {}, {}]);
 });
