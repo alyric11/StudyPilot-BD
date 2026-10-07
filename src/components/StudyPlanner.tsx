@@ -563,6 +563,11 @@ export default function StudyPlanner({
             )}
             <textarea data-homework-input-for={block.id} value={isEditing ? homeworkDraft : ""}
               onChange={event => setHomeworkDraft(event.target.value)} rows={2}
+              onKeyDown={event => {
+                if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+                event.preventDefault();
+                if (homeworkDraft.trim() || homeworkChapterId) saveRoutineHomework();
+              }}
               placeholder="e.g. Read pages 12–15 and solve questions 1–3"
               aria-label="Homework for this date"
               className="planner-focus mt-2 w-full resize-y rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
