@@ -261,9 +261,14 @@ body {
 
 .routine-card-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(72px, 100%), 1fr));
   gap: 4px;
   margin-top: 4px;
+}
+
+.routine-card-actions > button {
+  min-width: 0;
+  width: 100%;
 }
 
 .routine-card-action,
