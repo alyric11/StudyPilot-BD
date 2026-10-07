@@ -252,7 +252,7 @@ export default function useStudentData(
                                     typeof subject.id === "string" &&
                                     typeof subject.name === "string"
                             )
-                            .slice(0, 4)
+                            .slice(0, 6)
                     );
                 } else {
                     storage.removeItem("sp_additional_subjects");
