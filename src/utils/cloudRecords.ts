@@ -16,6 +16,17 @@ const object = (value: unknown): value is Record<string, Json> => !!value && typ
 const safe = (name: string) => !["__proto__", "constructor", "prototype"].includes(name);
 export const recordId = (record: Pick<CloudRecord, "key" | "item">) => encodeURIComponent(JSON.stringify([record.key, record.item]));
 
+// Older browser copies may contain incomplete dated snapshots. They cannot be
+// addressed as cloud documents, but must not block saving valid homework.
+export function readableDatedRecords(raw: string | null): string | null {
+  if (raw === null) return null;
+  const rows: unknown = JSON.parse(raw);
+  if (!Array.isArray(rows)) throw new Error("Invalid dated routine records.");
+  const valid = rows.filter(row => object(row) && typeof row.date === "string" &&
+    object(row.block) && typeof row.block.id === "string");
+  return valid.length === rows.length ? raw : JSON.stringify(valid);
+}
+
 function flatten(value: Json, path: string[] = [], result: Record<string, Json> = {}) {
   if (object(value) && Object.keys(value).length) {
     for (const [key, child] of Object.entries(value)) {
@@ -82,7 +93,7 @@ export function recordsForKey(key: string, raw: string | null): Map<string, Clou
 }
 
 export function diffRecords(key: string, before: string | null, after: string | null): Map<string, RecordPatch> {
-  const previous = recordsForKey(key, before), next = recordsForKey(key, after);
+  const previous = recordsForKey(key, key === "sp_daily_routine_tasks" ? readableDatedRecords(before) : before), next = recordsForKey(key, after);
   const patches = new Map<string, RecordPatch>();
   for (const [id, old] of previous) {
     if (!next.has(id)) patches.set(id, { ...old, deleted: true, fields: {}, removed: [], reset: false });

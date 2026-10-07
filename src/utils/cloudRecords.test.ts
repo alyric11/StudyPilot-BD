@@ -125,3 +125,21 @@ test("pending field edits overlay remote updates without removing another device
   try { assert.deepEqual(JSON.parse(cloud.storage.getItem("sp_diary")!), [{ id: "a", title: "Remote title", content: "Local pending" }, { id: "b", title: "New note" }]); }
   finally { cloud.stop(); }
 });
+
+
+test("invalid older dated snapshots cannot block homework saves; original is backed up", () => {
+  const base = memoryStorage(); const h = harness();
+  const valid = { date: "2026-10-07", block: { id: "routine-a", homeworkText: "Old" }, completed: false };
+  const corrupt = raw([{}, null, { block: { id: "missing-date" } }, valid]);
+  base.setItem("studypilot:user:lyric:__cloud_ready", "true");
+  base.setItem("studypilot:user:lyric:sp_daily_routine_tasks", corrupt);
+  const cloud = createStudentCloud(base, "lyric", h.transport); cloud.start();
+  try {
+    cloud.storage.setItem("sp_daily_routine_tasks", raw([{ ...valid, block: { ...valid.block, homeworkText: "New homework" } }]));
+    assert.equal(cloud.getState().pending, 1);
+    assert.equal(JSON.parse(cloud.storage.getItem("sp_daily_routine_tasks")!)[0].block.homeworkText, "New homework");
+    assert.equal(JSON.parse(cloud.exportBackup()).datedTasksBeforeRepair, corrupt);
+    assert.throws(() => cloud.storage.setItem("sp_daily_routine_tasks", raw([{}])));
+    assert.equal(JSON.parse(cloud.storage.getItem("sp_daily_routine_tasks")!)[0].block.homeworkText, "New homework");
+  } finally { cloud.stop(); }
+});

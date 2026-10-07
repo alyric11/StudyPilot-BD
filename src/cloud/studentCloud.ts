@@ -1,7 +1,7 @@
 import { collection, deleteField, doc, onSnapshot, writeBatch } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
 import { createAccountStorage, type StudentStorage } from "../utils/accountStorage";
-import { applyPatch, combinePatches, diffRecords, restoreRecords, type CloudRecord, type RecordPatch } from "../utils/cloudRecords";
+import { applyPatch, combinePatches, diffRecords, readableDatedRecords, restoreRecords, type CloudRecord, type RecordPatch } from "../utils/cloudRecords";
 
 export type CloudState = { phase: "connecting" | "choose" | "ready" | "error"; status: string; pending: number; error: string };
 export interface CloudTransport {
@@ -137,6 +137,10 @@ export function createStudentCloud(base: Storage, uid: string, transport: CloudT
     if (stopped || state.phase !== "ready") throw new Error("Cloud saving is not ready.");
     const previous = local.getItem(key);
     if (previous === value) return;
+    if (key === "sp_daily_routine_tasks" && readableDatedRecords(previous) !== previous) {
+      const backupKey = prefix + "__dated_tasks_backup";
+      if (!base.getItem(backupKey)) base.setItem(backupKey, previous!);
+    }
     const changes = diffRecords(key, previous, value);
     // Leave room below Firestore's 1 MiB per-document limit.
     for (const patch of changes.values()) {
@@ -228,7 +232,7 @@ export function createStudentCloud(base: Storage, uid: string, transport: CloudT
       }
       applyRemote(); base.setItem(readyKey, "true"); publish({ phase: "ready", error: "", status: savedStatus() }); schedule();
     },
-    exportBackup: () => JSON.stringify({ accountId: uid, current: ownEntries(), beforeCloud: JSON.parse(base.getItem(prefix + "__browser_backup") || "null"), pending: [...pending] }, null, 2),
+    exportBackup: () => JSON.stringify({ accountId: uid, current: ownEntries(), beforeCloud: JSON.parse(base.getItem(prefix + "__browser_backup") || "null"), datedTasksBeforeRepair: base.getItem(prefix + "__dated_tasks_backup"), pending: [...pending] }, null, 2),
   };
 }
 export type StudentCloud = ReturnType<typeof createStudentCloud>;
