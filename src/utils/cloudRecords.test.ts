@@ -143,3 +143,17 @@ test("invalid older dated snapshots cannot block homework saves; original is bac
     assert.equal(JSON.parse(cloud.storage.getItem("sp_daily_routine_tasks")!)[0].block.homeworkText, "New homework");
   } finally { cloud.stop(); }
 });
+
+
+test("unreadable older personal video entries do not block saving valid links and retain a backup", () => {
+ const base = memoryStorage(); const h = harness();
+ const key = "sp_saved_videos_physics_one";
+ const original = raw([{}, "abcdefghijk", "bad", null]);
+ base.setItem("studypilot:user:lyric:__cloud_ready", "true"); base.setItem("studypilot:user:lyric:" + key, original);
+ const cloud = createStudentCloud(base, "lyric", h.transport); cloud.start();
+ try { cloud.storage.setItem(key, raw(["abcdefghijk", "ABCDEFGHIJK"]));
+ assert.equal(cloud.getState().pending, 1);
+ assert.deepEqual(JSON.parse(cloud.storage.getItem(key)!), ["abcdefghijk", "ABCDEFGHIJK"]);
+ assert.equal(JSON.parse(cloud.exportBackup()).savedVideosBeforeRepair["__video_backup:" + key], original);
+ } finally { cloud.stop(); }
+});

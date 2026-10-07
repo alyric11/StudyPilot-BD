@@ -6,7 +6,7 @@ import { AlertTriangle, BookmarkCheck, BookmarkPlus, Search, Settings2, X, Youtu
 import { useAccount } from "../auth/AccountContext";
 import useDialogFocus from "../hooks/useDialogFocus";
 import StudyPageHeader from "./StudyPageHeader";
-import { visibleVideoCandidates, youtubeVideoId, type ChapterVideo } from "../utils/chapterVideos";
+import { readPersonalVideoIds, visibleVideoCandidates, youtubeVideoId, type ChapterVideo } from "../utils/chapterVideos";
 
 interface VideoLessonsPageProps {
   chapter: { subjectId: string; subjectName: string; chapterId: string; chapterName: string; chapterBanglaName: string };
@@ -38,6 +38,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
   const [published, setPublished] = useState<ChapterVideo[]>([]);
   const [personal, setPersonal] = useState<string[]>([]);
   const [loadedPersonal, setLoadedPersonal] = useState(false);
+  const [loadedDetails, setLoadedDetails] = useState(false);
   const [loadingPublished, setLoadingPublished] = useState(true);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [publishedError, setPublishedError] = useState("");
@@ -80,12 +81,15 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
   useEffect(() => {
     const load = () => {
     try {
-      const value = JSON.parse(storage.getItem(personalKey) || "[]");
-      if (!Array.isArray(value) || value.some(id => typeof id !== "string" || !/^[\w-]{11}$/.test(id))) throw new Error();
-      setPersonal([...new Set<string>(value)]); setLoadedPersonal(true);
+      const parsed = readPersonalVideoIds(storage.getItem(personalKey));
+      setPersonal(parsed.ids); setLoadedPersonal(true);
+      setPersonalError(parsed.unreadable ? "Some older video entries cannot be displayed. Valid links are available; the original list will be backed up if you save changes." : "");
+    } catch { setLoadedPersonal(false); setPersonalError("Your saved videos could not be read. Download your backup before changing them."); return; }
+    try {
       const details = JSON.parse(storage.getItem(detailsKey) || "{}");
-      if (details && typeof details === "object" && !Array.isArray(details)) setPersonalDetails(details);
-    } catch { setPersonalError("Your saved videos could not be read. They have not been changed."); }
+      if (!details || typeof details !== "object" || Array.isArray(details)) throw new Error("Unreadable video details");
+      setPersonalDetails(details); setLoadedDetails(true);
+    } catch { setLoadedDetails(false); setPersonalError("Video titles could not be loaded. Your saved links remain available."); }
     };
     load();
     return storage.subscribe?.(load);
@@ -103,9 +107,9 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
     return () => controller.abort();
   }, [personal]);
   useEffect(() => {
-    if (!loadedPersonal) return;
+    if (!loadedPersonal || !loadedDetails) return;
     try { storage.setItem(detailsKey, JSON.stringify(personalDetails)); } catch { /* IDs remain saved separately. */ }
-  }, [personalDetails, loadedPersonal, storage, detailsKey]);
+  }, [personalDetails, loadedPersonal, loadedDetails, storage, detailsKey]);
   const savePersonal = (ids: string[]) => {
     if (!loadedPersonal) return false;
     try { storage.setItem(personalKey, JSON.stringify(ids)); setPersonal(ids); setPersonalError(""); return true; }

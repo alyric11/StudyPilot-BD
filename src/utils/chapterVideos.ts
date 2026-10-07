@@ -6,6 +6,17 @@ export interface ChapterVideo {
   viewCount: string;
   duration: string | null;
 }
+export function readPersonalVideoIds(raw: string | null) {
+  const value: unknown = JSON.parse(raw || "[]");
+  if (!Array.isArray(value)) throw new Error("Saved video list is not an array.");
+  const ids: string[] = [];
+  let unreadable = 0;
+  for (const item of value) {
+    if (typeof item !== "string" || !/^[\w-]{11}$/.test(item)) { unreadable++; continue; }
+    if (!ids.includes(item)) ids.push(item);
+  }
+  return { ids, unreadable };
+}
 export function validatePublishedVideos(value: unknown): ChapterVideo[] {
   if (!Array.isArray(value) || value.length > 5) throw new Error("Save up to five videos.");
   const ids = new Set<string>();

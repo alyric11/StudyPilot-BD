@@ -1,6 +1,7 @@
 import { collection, deleteField, doc, onSnapshot, writeBatch } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
 import { createAccountStorage, type StudentStorage } from "../utils/accountStorage";
+import { readPersonalVideoIds } from "../utils/chapterVideos";
 import { applyPatch, combinePatches, diffRecords, readableDatedRecords, restoreRecords, type CloudRecord, type RecordPatch } from "../utils/cloudRecords";
 
 export type CloudState = { phase: "connecting" | "choose" | "ready" | "error"; status: string; pending: number; error: string };
@@ -141,7 +142,16 @@ export function createStudentCloud(base: Storage, uid: string, transport: CloudT
       const backupKey = prefix + "__dated_tasks_backup";
       if (!base.getItem(backupKey)) base.setItem(backupKey, previous!);
     }
-    const changes = diffRecords(key, previous, value);
+    let readablePrevious = previous;
+    if (key.startsWith("sp_saved_videos_") && !key.endsWith("_details") && previous !== null) {
+      const parsed = readPersonalVideoIds(previous);
+      if (parsed.unreadable) {
+        const backupKey = prefix + "__video_backup:" + key;
+        if (!base.getItem(backupKey)) base.setItem(backupKey, previous);
+        readablePrevious = JSON.stringify(parsed.ids);
+      }
+    }
+    const changes = diffRecords(key, readablePrevious, value);
     // Leave room below Firestore's 1 MiB per-document limit.
     for (const patch of changes.values()) {
       if (JSON.stringify(patch).length > 200000) throw new Error("This record is too large to save. Please shorten it.");
@@ -232,7 +242,7 @@ export function createStudentCloud(base: Storage, uid: string, transport: CloudT
       }
       applyRemote(); base.setItem(readyKey, "true"); publish({ phase: "ready", error: "", status: savedStatus() }); schedule();
     },
-    exportBackup: () => JSON.stringify({ accountId: uid, current: ownEntries(), beforeCloud: JSON.parse(base.getItem(prefix + "__browser_backup") || "null"), datedTasksBeforeRepair: base.getItem(prefix + "__dated_tasks_backup"), pending: [...pending] }, null, 2),
+    exportBackup: () => JSON.stringify({ accountId: uid, current: ownEntries(), beforeCloud: JSON.parse(base.getItem(prefix + "__browser_backup") || "null"), datedTasksBeforeRepair: base.getItem(prefix + "__dated_tasks_backup"), savedVideosBeforeRepair: Object.fromEntries(Array.from({ length: base.length }, (_, index) => base.key(index)).filter((key): key is string => !!key?.startsWith(prefix + "__video_backup:")).map(key => [key.slice(prefix.length), base.getItem(key)])), pending: [...pending] }, null, 2),
   };
 }
 export type StudentCloud = ReturnType<typeof createStudentCloud>;
