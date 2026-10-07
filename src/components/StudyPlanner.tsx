@@ -765,7 +765,9 @@ export default function StudyPlanner({
   };
 
   useEffect(() => {
-    if (!routineToDelete || !isWideRoutineBoard) return;
+    // The confirmation is rendered outside the card menu. Keep its selected
+    // routine until the confirmation action has run.
+    if (!routineToDelete || !isWideRoutineBoard || deleteConfirmation) return;
 
     const handleOutsideClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -782,7 +784,7 @@ export default function StudyPlanner({
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, [isWideRoutineBoard, routineToDelete]);
+  }, [isWideRoutineBoard, routineToDelete, deleteConfirmation]);
 
   const focusVisibleHomeworkInput = (blockId: string) => {
     window.requestAnimationFrame(() => {
@@ -1034,7 +1036,7 @@ export default function StudyPlanner({
   };
 
   useDialogFocus(
-    !!routineToDelete && !isWideRoutineBoard,
+    !!routineToDelete && !isWideRoutineBoard && !deleteConfirmation,
     mobileRoutineSheetRef,
     () => closeRoutineMenu()
   );
