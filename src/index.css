@@ -294,6 +294,16 @@ body {
   color: #9f1239;
 }
 
+/* Translucent fills retain each routine card's subject color. */
+.routine-homework-button {
+  border: 1px solid rgb(71 85 105 / 20%);
+  background: rgb(71 85 105 / 6%);
+}
+
+.routine-homework-button:hover {
+  background: rgb(71 85 105 / 12%);
+}
+
 .routine-sheet-chapter {
   min-height: 44px;
   padding: 5px 3px;

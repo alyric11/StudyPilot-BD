@@ -576,26 +576,26 @@ export default function StudyPlanner({
                 onClick={() => closeHomeworkEditor(true)}
                 aria-label="Cancel homework editing"
                 title="Back"
-                className="planner-focus flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                className="planner-focus routine-homework-button flex h-7 w-7 items-center justify-center rounded-md text-slate-500"
               >
                 <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
 
               <button
                 type="button"
-                onClick={saveRoutineHomework}
-                disabled={!homeworkDraft.trim() && !homeworkChapterId}
-                className="planner-focus routine-card-action min-h-7 whitespace-nowrap px-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-45"
+                onClick={() => setDeleteConfirmation("homework")}
+                className="planner-focus routine-card-action routine-card-delete routine-homework-button min-h-7 whitespace-nowrap px-1 text-[11px]"
               >
-                Save
+                Delete
               </button>
 
               <button
                 type="button"
-                onClick={() => setDeleteConfirmation("homework")}
-                className="planner-focus routine-card-action routine-card-delete min-h-7 whitespace-nowrap px-1 text-[11px]"
+                onClick={saveRoutineHomework}
+                disabled={!homeworkDraft.trim() && !homeworkChapterId}
+                className="planner-focus routine-card-action routine-homework-button min-h-7 whitespace-nowrap px-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Delete
+                Save
               </button>
             </div>
           </div>
