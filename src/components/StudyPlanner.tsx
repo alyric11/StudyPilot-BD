@@ -1415,10 +1415,10 @@ export default function StudyPlanner({
                   aria-modal="true"
                   tabIndex={-1}
                   aria-label={`Choose homework chapter for ${getMotherRoutineTitle(block)}`}
-                  initial={shouldReduceMotion ? false : { opacity: 0, y: 6, scale: 0.985 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 4, scale: 0.985 }}
-                  transition={{ duration: shouldReduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.42, ease: [0.25, 0.1, 0.25, 1] }}
                   className="planner-popup fixed z-[125] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
                   style={{
                     top: homeworkEditorPosition.top,
