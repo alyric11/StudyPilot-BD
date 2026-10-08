@@ -1,12 +1,13 @@
-import { useId, useRef } from "react";
+import { useId, useRef, type CSSProperties } from "react";
 import { BookPlus, Check, ChevronDown } from "lucide-react";
 import useDisclosureScroll from "../hooks/useDisclosureScroll";
+import { getSubjectAccentColor, getSubjectCardStyles } from "../colorPalettes";
 
 interface SelectableGroup {
   id: string;
   name: string;
   banglaName: string;
-  papers: { id: string }[];
+  papers: { id: string; color: string }[];
 }
 
 export default function OptionalSubjectSelector({ groups, selectedIds, open, onToggle, onSelect }: {
@@ -43,8 +44,10 @@ export default function OptionalSubjectSelector({ groups, selectedIds, open, onT
           <div ref={contentRef} className="optional-subject-options">
             {groups.map(group => {
               const selected = group.papers.some(paper => selectedIds.includes(paper.id));
+              const color = group.papers[0]?.color ?? "slate";
               return (
-                <button key={group.id} type="button" className="optional-subject-option"
+                <button key={group.id} type="button" className={`optional-subject-option ${getSubjectCardStyles(color).card}`}
+                  style={{ "--optional-subject-accent": getSubjectAccentColor(color) } as CSSProperties}
                   aria-pressed={selected} onClick={() => onSelect(group.papers.map(paper => paper.id))}>
                   <span className="optional-subject-option-copy">
                     <span className="optional-subject-bangla" lang="bn">{group.banglaName}</span>
