@@ -12,11 +12,21 @@ export const personalSubjectIcons = {
 export type PersonalSubjectIcon = string;
 export function personalSubjectIcon(name: string, saved?: string): PersonalSubjectIcon {
   if (saved && (Object.hasOwn(personalSubjectIcons, saved) || iconNames.includes(saved))) return saved;
-  if (/math|sat\s*m|গণিত/i.test(name)) return "math";
+  if (/\bsat\s*m\b/i.test(name)) return "Ruler";
+  if (/math|গণিত/i.test(name)) return "math";
   if (/cs50|code|coding|program|computer/i.test(name)) return "code";
-  if (/history|geography|world|ইতিহাস/i.test(name)) return "globe";
+  if (/history|ইতিহাস/i.test(name)) return "Landmark";
+  if (/geography|world|ভূগোল/i.test(name)) return "globe";
   if (/english|sat\s*e|language|bangla/i.test(name)) return "language";
-  if (/art|music|design|draw/i.test(name)) return "art";
+  if (/music|গান|সংগীত/i.test(name)) return "Music";
+  if (/\bart\b|design|draw/i.test(name)) return "art";
+  if (/chemistry|রসায়ন/i.test(name)) return "FlaskConical";
+  if (/biology|জীববিজ্ঞান/i.test(name)) return "Microscope";
+  if (/physics|science|পদার্থ|বিজ্ঞান/i.test(name)) return "Atom";
+  if (/crash\s*course|course/i.test(name)) return "GraduationCap";
+  if (/exam|test prep|\bsat\b|পরীক্ষা/i.test(name)) return "Target";
+  if (/sport|fitness|exercise/i.test(name)) return "Dumbbell";
+  if (/psychology|mind/i.test(name)) return "Brain";
   return "book";
 }
 export function personalSubjectAppearance(name: string, saved?: string) {

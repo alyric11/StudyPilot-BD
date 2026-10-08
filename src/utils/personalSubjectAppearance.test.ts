@@ -10,6 +10,6 @@ test("existing icon choices survive and library choices stay stable after renami
 });
 test("invalid saved icons fall back safely to subject defaults", () => {
   assert.equal(personalSubjectIcon("KA Math", "__proto__"), "math");
-  assert.equal(personalSubjectIcon("History", "MissingIcon"), "globe");
+  assert.equal(personalSubjectIcon("History", "MissingIcon"), "Landmark");
   assert.ok(personalSubjectAppearance("CS50").tint);
 });

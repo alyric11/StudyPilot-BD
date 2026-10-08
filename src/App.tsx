@@ -1119,7 +1119,7 @@ export default function App() {
                   className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 />
 
-                <PersonalIconPicker value={editedAdditionalSubjectIcon} onChange={setEditedAdditionalSubjectIcon} />
+                <PersonalIconPicker value={editedAdditionalSubjectIcon} subjectName={editedAdditionalSubjectName} onChange={setEditedAdditionalSubjectIcon} />
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <button
                     type="button"
