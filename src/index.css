@@ -261,7 +261,7 @@ body {
 
 .routine-card-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(72px, 100%), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin-top: 4px;
 }
@@ -269,6 +269,13 @@ body {
 .routine-card-actions > button {
   min-width: 0;
   width: 100%;
+}
+
+/* Choose the action layout from the open state, rather than changing rows
+   midway through the animated column width. */
+.planner-day-column[data-expanded="true"] .routine-card-actions,
+.routine-detail-sheet .routine-card-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .routine-card-action,
@@ -1828,6 +1835,7 @@ body {
 
 .planner-week-grid {
   display: none;
+  align-items: start;
   transition: grid-template-columns 420ms cubic-bezier(.25, .1, .25, 1);
 }
 
