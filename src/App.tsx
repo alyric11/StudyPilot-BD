@@ -22,7 +22,8 @@ import { NCTB_CURRICULUM } from "./data/curriculum";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import DashboardSubjectCard from "./components/DashboardSubjectCard";
 import DashboardSupport, { PersonalSubjectsPanel, RecommendedResourcesPanel } from "./components/DashboardSupport";
-import { personalSubjectIcon, personalSubjectIcons, type PersonalSubjectIcon } from "./utils/personalSubjectAppearance";
+import { personalSubjectIcon, type PersonalSubjectIcon } from "./utils/personalSubjectAppearance";
+import PersonalIconPicker from "./components/PersonalIconPicker";
 import OptionalSubjectSelector from "./components/OptionalSubjectSelector";
 import { getStudyProgress } from "./utils/studyProgress";
 import {
@@ -1095,7 +1096,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 10, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+                className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
               >
                 <h2 id="edit-subject-heading" className="text-base font-bold text-slate-800">Edit personal subject</h2>
                 <p className="mb-4 mt-1 text-[11px] text-slate-500">
@@ -1118,18 +1119,7 @@ export default function App() {
                   className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 />
 
-                <fieldset className="mt-4">
-                  <legend className="mb-2 text-[11px] font-semibold text-slate-600">Card icon</legend>
-                  <div className="grid grid-cols-3 gap-2">
-                    {Object.entries(personalSubjectIcons).map(([key, { label, Icon }]) => (
-                      <button key={key} type="button" aria-pressed={editedAdditionalSubjectIcon === key}
-                        onClick={() => setEditedAdditionalSubjectIcon(key as PersonalSubjectIcon)}
-                        className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs ${editedAdditionalSubjectIcon === key ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-                        <Icon size={15} aria-hidden="true" />{label}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
+                <PersonalIconPicker value={editedAdditionalSubjectIcon} onChange={setEditedAdditionalSubjectIcon} />
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <button
                     type="button"

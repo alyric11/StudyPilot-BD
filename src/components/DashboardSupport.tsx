@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { BookOpen, ExternalLink, LibraryBig, Pencil, Plus } from "lucide-react";
 import type { AdditionalSubject, RoutineBlock, DailyRoutineTask } from "../types";
 import { getScheduledRoutineTasks, localDateKey } from "../utils/routineTasks";
-import { personalSubjectIcon, personalSubjectIcons } from "../utils/personalSubjectAppearance";
+import { personalSubjectIcon, personalSubjectAppearance } from "../utils/personalSubjectAppearance";
+import PersonalSubjectIcon from "./PersonalSubjectIcon";
 import { STUDY_RESOURCES } from "../data/resources";
 
 export function PersonalSubjectsPanel({ subjects, routineBlocks = [], dailyRoutineTasks = [], onEdit, onAdd }: {
@@ -41,14 +42,14 @@ export function PersonalSubjectsPanel({ subjects, routineBlocks = [], dailyRouti
       </header>
       <div className="dashboard-personal-list">
         {subjects.map(subject => {
-          const { Icon, tint, accent, border, iconBackground } = personalSubjectIcons[personalSubjectIcon(subject.name, subject.icon)];
+          const { tint, accent, border, iconBackground } = personalSubjectAppearance(subject.name, subject.icon);
           const next = nextSessions.get(subject.id);
           return (
           <button key={subject.id} type="button" onClick={() => onEdit(subject)}
             style={{ "--personal-card-tint": tint, "--personal-card-accent": accent, "--personal-card-border": border, "--personal-card-icon": iconBackground } as CSSProperties}
             className="dashboard-personal-card" aria-label={`Edit ${subject.name}`}>
             <span className="dashboard-personal-identity">
-              <span className="dashboard-personal-symbol"><Icon size={18} aria-hidden="true" /></span>
+              <span className="dashboard-personal-symbol"><PersonalSubjectIcon name={personalSubjectIcon(subject.name, subject.icon)} size={18} aria-hidden="true" /></span>
               <span className="dashboard-personal-name">{subject.name}</span>
             </span>
             <span className="dashboard-personal-edit" title="Edit subject"><Pencil size={13} aria-hidden="true" /></span>

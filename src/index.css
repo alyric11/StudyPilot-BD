@@ -165,6 +165,13 @@ body {
   animation: time-picker-collapse-up 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.routine-personal-card {
+  background-color: var(--personal-routine-tint);
+  border-color: var(--personal-routine-border);
+}
+.routine-card.routine-personal-card:hover {
+  border-color: var(--personal-routine-accent);
+}
 .routine-card-editing {
   transition: box-shadow 200ms ease, border-color 200ms ease;
 }

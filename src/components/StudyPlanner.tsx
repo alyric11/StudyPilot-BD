@@ -22,6 +22,7 @@ import {
 import TimePicker from "./TimePicker";
 import PlannerReveal from "./PlannerReveal";
 import { plannerColumnWidths } from "../utils/plannerMotion";
+import { personalSubjectAppearance } from "../utils/personalSubjectAppearance";
 import DayPicker from "./DayPicker";
 import SubjectPicker, { SubjectPickerOption } from "./SubjectPicker";
 import usePlannerPopup from "../hooks/usePlannerPopup";
@@ -473,7 +474,7 @@ export default function StudyPlanner({
     const matchingAdditionalSubject = getAdditionalRoutineSubject(block);
 
     if (matchingAdditionalSubject) {
-      return additionalSubjectStyles.card;
+      return "routine-personal-card";
     }
 
     return (
@@ -521,6 +522,7 @@ export default function StudyPlanner({
           else { closeRoutineMenu(); focusVisibleRoutineCard(block.id); }
         }}
         className={`planner-focus routine-card relative overflow-hidden rounded-lg border text-center shadow-sm ${getRoutineBlockCardStyle(block)} ${isEditing ? "routine-card-editing relative z-10 ring-2 ring-indigo-300 ring-offset-2" : ""}`}
+        style={getPersonalRoutineStyle(block)}
       >
         <button
           type="button"
@@ -1137,10 +1139,12 @@ export default function StudyPlanner({
 
   const safeAdditionalSubjects = additionalSubjects ?? [];
 
-  const additionalSubjectStyles = {
-    card: "bg-[#faf4fb] border-[#ead3e9] hover:border-[#d8afd5] hover:bg-[#f7eef9]",
-    chapter: "bg-[#faf4fb] hover:bg-[#f7eef9] text-slate-600 hover:text-[#7f3f76] border-[#ead3e9]",
-    icon: "bg-[#f1dff0] text-[#93518b]",
+  const getPersonalRoutineStyle = (block: RoutineBlock) => {
+    if (getRoutineBlockSubject(block)) return undefined;
+    const subject = getAdditionalRoutineSubject(block);
+    if (!subject) return undefined;
+    const appearance = personalSubjectAppearance(subject.name, subject.icon);
+    return { "--personal-routine-tint": appearance.tint, "--personal-routine-border": appearance.border, "--personal-routine-accent": appearance.accent } as React.CSSProperties;
   };
 
   const routineSubjectOptions: SubjectPickerOption[] = [
@@ -1392,7 +1396,7 @@ export default function StudyPlanner({
                     onClick={(event) => event.stopPropagation()}
                   >
                     <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-slate-200" aria-hidden="true" />
-                    <div className={`rounded-2xl border px-4 py-3 text-center ${getRoutineBlockCardStyle(routineToDelete)}`}>
+                    <div style={getPersonalRoutineStyle(routineToDelete)} className={`rounded-2xl border px-4 py-3 text-center ${getRoutineBlockCardStyle(routineToDelete)}`}>
                       <div className={`text-xs font-semibold tabular-nums ${getRoutineBlockTimeStyle(routineToDelete)}`}>{formatCompactTimeRange(routineToDelete.startTime, routineToDelete.endTime)}</div>
                       <div className="mt-1 text-base font-semibold text-slate-800">{getMotherRoutineTitle(routineToDelete)}</div>
                     </div>
