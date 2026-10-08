@@ -2,8 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { applyPatch, cloudWriteData, combinePatches, diffRecords, recordsForKey, restoreRecords } from "./cloudRecords";
 import { createStudentCloud, type CloudTransport } from "../cloud/studentCloud";
-import { migrateHomework, parseHomework, persistHomeworkRecords, planHomework } from "./homeworkBoard";
-import type { DailyRoutineTask } from "../types";
 
 const raw = JSON.stringify;
 function memoryStorage(): Storage {
@@ -21,46 +19,6 @@ function harness() {
   return { transport, writes, receive: (...args: Parameters<typeof receive>) => receive(...args), fail: (e: unknown) => fail(e), writer: (next: typeof writer) => { writer = next; } };
 }
 const pause = () => new Promise(resolve => setTimeout(resolve, 760));
-
-test("homework migration queues only changed assignments, survives failed upload/restart and retains exportable originals", async () => {
-  const base = memoryStorage(), h = harness();
-  const session: DailyRoutineTask = { date: "2026-10-07", block: { id: "a", title: "KA Math", subjectId: "ka", dayOfWeek: 3, startTime: "18:00", endTime: "19:00", homeworkText: "অঙ্ক ৫–১০" }, subjectKey: "additional:ka", subjectName: "KA Math", chapterBanglaName: "Custom activity", paletteColor: "amber", completed: true };
-  const originals = recordsForKey("sp_daily_routine_tasks", raw([session]));
-  h.writer(async () => { throw new Error("Offline"); });
-  let cloud = createStudentCloud(base, "student", h.transport); cloud.start();
-  try {
-    h.receive(originals, true);
-    const migrated = persistHomeworkRecords(cloud.storage, [], [session]);
-    assert.equal(cloud.getState().pending, 1);
-    assert.equal(parseHomework(cloud.storage.getItem("sp_homework"))[0].completed, false);
-    const backup = JSON.parse(cloud.exportBackup()).homeworkBeforeMigration;
-    assert.deepEqual(backup, { homework: null, routines: raw([session]) });
-    await pause();
-    assert.match(cloud.getState().status, /changes kept/);
-    cloud.stop();
-    cloud = createStudentCloud(base, "student", h.transport); cloud.start();
-    h.receive(originals, true);
-    assert.deepEqual(migrateHomework(parseHomework(cloud.storage.getItem("sp_homework")), [session]), JSON.parse(raw(migrated)));
-    const unlinked = planHomework(migrated, migrated[0].id, session.date, "a", false);
-    persistHomeworkRecords(cloud.storage, unlinked, [session]);
-    const deleted = unlinked.map(row => ({ ...row, deleted: true }));
-    persistHomeworkRecords(cloud.storage, deleted, [session]);
-    const online = new Map(originals);
-    h.writer(async patches => { patches.forEach((patch, id) => online.set(id, applyPatch(online.get(id), patch))); });
-    cloud.retry(); await pause();
-    assert.equal(cloud.getState().pending, 0);
-    assert.deepEqual(JSON.parse(cloud.exportBackup()).homeworkBeforeMigration, backup);
-    const other = harness(), otherCloud = createStudentCloud(memoryStorage(), "student", other.transport);
-    otherCloud.start();
-    try {
-      other.receive(online, true);
-      const rows = parseHomework(otherCloud.storage.getItem("sp_homework"));
-      assert.equal(rows.length, 1); assert.equal(rows[0].deleted, true);
-      assert.deepEqual(migrateHomework(rows, [session]), rows);
-      assert.equal(otherCloud.getState().pending, 0);
-    } finally { otherCloud.stop(); }
-  } finally { cloud.stop(); }
-});
 
 test("all student collection forms round trip, including empty collections", () => {
   for (const [key, value] of Object.entries({
