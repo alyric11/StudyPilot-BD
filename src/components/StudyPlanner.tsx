@@ -765,6 +765,9 @@ export default function StudyPlanner({
     }
     claimRoutinePopup();
     menuAnchorRef.current = cardElement;
+    setExpandedRoutineDay(occurrenceDate.getDay());
+    setMobileRoutineDay(occurrenceDate.getDay());
+    setWeekAnchorDate(occurrenceDate);
     setRoutineMenuDateKey(localDateKey(occurrenceDate));
     setRoutineToDelete(block);
   };
