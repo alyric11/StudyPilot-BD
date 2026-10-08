@@ -1,5 +1,5 @@
 import { useAccount } from "../auth/AccountContext";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     UserProfile,
     StudentProgress,
@@ -10,11 +10,13 @@ import {
     RoutineBlock,
     DailyRoutineTask
 } from "../types";
+import { migrateHomework, parseHomework, persistHomeworkRecords, homeworkForRoutineSave, homeworkSubjectKey, homeworkSlot, planHomework, homeworkRoutineRecords } from "../utils/homeworkBoard";
 import { NCTB_CURRICULUM } from "../data/curriculum";
 import {
     parseDailyRoutineTasks,
     setDailyRoutineCompletion,
     snapshotDailyRoutineTasks,
+    getScheduledRoutineTasks,
 } from "../utils/routineTasks.ts";
 
 export default function useStudentData(
@@ -28,6 +30,8 @@ export default function useStudentData(
     const [studentProgress, setStudentProgress] =
         useState<StudentProgress>({});
     const [homeworks, setHomeworks] = useState<Homework[]>([]);
+    const homeworksRef = useRef<Homework[]>([]);
+    const homeworkReadableRef = useRef(true);
     const [routineBlocks, setRoutineBlocks] = useState<RoutineBlock[]>([]);
     const [dailyRoutineTasks, setDailyRoutineTasks] = useState<DailyRoutineTask[]>([]);
     const dailyRoutineTasksRef = useRef<DailyRoutineTask[]>([]);
@@ -38,7 +42,8 @@ export default function useStudentData(
 
     useEffect(() => {
       const load = () => {
-        setProfile(null); setStudentProgress({}); setHomeworks([]); setRoutineBlocks([]);
+        homeworkReadableRef.current = true;
+        setProfile(null); setStudentProgress({}); setHomeworks([]); homeworksRef.current = []; setRoutineBlocks([]);
         setDailyRoutineTasks([]); dailyRoutineTasksRef.current = [];
         setDiaryEntries([]); setSelectedSubjectIds([]); setAdditionalSubjects([]);
         // Load student profile
@@ -100,53 +105,23 @@ export default function useStudentData(
             const savedHomework = storage.getItem("sp_homework");
 
             if (savedHomework) {
-                const parsed = JSON.parse(savedHomework);
+                const parsed = parseHomework(savedHomework);
 
                 if (Array.isArray(parsed)) {
-                    setHomeworks(parsed);
+                    setHomeworks(parsed); homeworksRef.current = parsed;
                 } else {
                     throw new Error("Homework records are not an array.");
                 }
             } else {
-                const demoHw: Homework[] = [
-                    {
-                        id: "hw1",
-                        subject: "Physics 1st Paper",
-                        chapter: "Vector",
-                        task: "Solve previous 5 years' board exam Creative Questions (CQs) of Dhaka and Rajshahi Board.",
-                        deadline: new Date(Date.now() + 86400000 * 2)
-                            .toISOString()
-                            .split("T")[0],
-                        priority: "high",
-                        completed: false,
-                        notes:
-                            "Focus heavily on the river-boat navigation and vector multiplication sums."
-                    },
-                    {
-                        id: "hw2",
-                        subject: "Chemistry 1st Paper",
-                        chapter: "Qualitative Chemistry",
-                        task: "Revise electronic configuration principles and exceptions (Cr, Cu).",
-                        deadline: new Date(Date.now() + 86400000 * 4)
-                            .toISOString()
-                            .split("T")[0],
-                        priority: "medium",
-                        completed: true
-                    }
-                ];
-
-                setHomeworks(demoHw);
-                storage.setItem(
-                    "sp_homework",
-                    JSON.stringify(demoHw)
-                );
+                setHomeworks([]); homeworksRef.current = [];
             }
         } catch (err) {
+            homeworkReadableRef.current = false;
             console.error(
                 "Failed to parse homework data from local storage:",
                 err
             );
-            storage.removeItem("sp_homework");
+            showToast("Homework could not be read. The original records have been kept.", "error");
         }
 
         // Load weekly routine
@@ -294,6 +269,25 @@ export default function useStudentData(
       load();
       return storage.subscribe?.(load);
     }, [storage]);
+
+    const homeworkSubjects = profile ? NCTB_CURRICULUM[profile.classLevel]?.subjects[profile.group || "None"] || [] : [];
+    const persistHomework = (updated: Homework[]) => {
+      try {
+        if (!homeworkReadableRef.current) throw new Error("Original homework could not be read.");
+        const saved = persistHomeworkRecords(storage, updated, dailyRoutineTasksRef.current);
+        homeworksRef.current = saved; setHomeworks(saved); return true;
+      } catch {
+        showToast("Could not save homework. Your draft has been kept. Please retry.", "error"); return false;
+      }
+    };
+    useEffect(() => {
+      if (!loaded || !profile || !homeworkReadableRef.current) return;
+      const migrated = migrateHomework(homeworksRef.current, dailyRoutineTasksRef.current);
+      if (JSON.stringify(migrated) === JSON.stringify(homeworksRef.current)) return;
+      try {
+        if (persistHomework(migrated)) showToast("Routine homework is now on the Board. Please review its done status; study-session completion is separate.", "info");
+      } catch { showToast("Homework migration could not be backed up. Please download a backup and retry.", "error"); }
+    }, [loaded, profile, homeworks, dailyRoutineTasks, storage]);
 
     const handleSaveProfile = (newProfile: UserProfile) => {
         setProfile(newProfile);
@@ -497,116 +491,62 @@ export default function useStudentData(
     // Save or replace one date-specific routine task.
     // This keeps homework attached to a single calendar date instead of
     // changing the recurring weekly Mother Routine.
-    const handleSaveDatedRoutineTask = (
-        task: DailyRoutineTask
-    ) => {
-        const updated = [
-            ...dailyRoutineTasksRef.current.filter(
-                (record) =>
-                    !(
-                        record.date === task.date &&
-                        record.block.id === task.block.id
-                    )
-            ),
-            {
-                ...task,
-                block: { ...task.block }
-            }
-        ];
-
-        try {
-            storage.setItem(
-                "sp_daily_routine_tasks",
-                JSON.stringify(updated)
-            );
-
-            dailyRoutineTasksRef.current = updated;
-            setDailyRoutineTasks(updated);
-
-            return true;
-        } catch (err) {
-            console.error(
-                "Failed to save dated routine task:",
-                err
-            );
-
-            showToast(
-                "Could not save this homework. Please try again.",
-                "error"
-            );
-
-            return false;
-        }
+    const handleSaveDatedRoutineTask = (task: DailyRoutineTask, remaining?: string, restoreId?: string) => {
+      if (!homeworkReadableRef.current) {
+        showToast("Homework could not be read safely. Download a backup and reload before editing; your draft is kept.", "error");
+        return false;
+      }
+      // Reconcile first even if the initial migration failed. Clearing a session
+      // must never erase its only instruction before it is backed up and imported.
+      const rows = migrateHomework(homeworksRef.current, dailyRoutineTasksRef.current);
+      const slot = homeworkSlot(task.date, task.block.id);
+      const text = task.block.homeworkText?.trim();
+      let existing: Homework | undefined;
+      try { existing = homeworkForRoutineSave(rows, task.date, task.block.id, restoreId); }
+      catch (error) { showToast((error as Error).message, "error"); return false; }
+      let updated = rows;
+      if (text) {
+        const assignment: Homework = existing ? { ...existing, ...(!restoreId ? { task: text, chapterId: task.block.chapterId,
+          chapter: task.block.chapterId ? task.chapterBanglaName : "", ...(remaining !== undefined ? { remaining } : {}) } : {}), sessions: { ...existing.sessions, [slot]: true } } : { id: "hw_" + crypto.randomUUID(), subject: task.subjectName,
+          subjectKey: task.subjectKey ?? undefined, chapterId: task.block.chapterId, chapter: task.block.chapterId ? task.chapterBanglaName : "",
+          task: text, remaining, deadline: "", priority: "medium", completed: false, sessions: { [slot]: true } };
+        updated = existing ? updated.map(row => row.id === existing.id ? assignment : row) : [...updated, assignment];
+      } else if (existing) updated = planHomework(updated, existing.id, task.date, task.block.id, false);
+      if (updated !== homeworksRef.current && !persistHomework(updated)) return false;
+      const records = [...dailyRoutineTasksRef.current.filter(row => !(row.date === task.date && row.block.id === task.block.id)), { ...task, block: { ...task.block } }];
+      try {
+        storage.setItem("sp_daily_routine_tasks", JSON.stringify(records));
+        dailyRoutineTasksRef.current = records; setDailyRoutineTasks(records); return true;
+      } catch { showToast("Could not save this session. Please retry; your homework draft is kept.", "error"); return false; }
     };
 
-    const handleAddHomework = (
-        newHw: Omit<Homework, "id" | "completed">
-    ) => {
-        const hw: Homework = {
-            ...newHw,
-            id: `hw_${Date.now()}`,
-            completed: false
-        };
-
-        const updated = [hw, ...homeworks];
-
-        setHomeworks(updated);
-        storage.setItem(
-            "sp_homework",
-            JSON.stringify(updated)
-        );
-
-        showToast(
-            "New assignment successfully added!",
-            "success"
-        );
+    const handleAddHomework = (newHw: Omit<Homework, "id" | "completed">) =>
+      persistHomework([...homeworksRef.current, { ...newHw, id: "hw_" + crypto.randomUUID(), completed: false }]);
+    const handleUpdateHomework = (id: string, patch: Partial<Homework>) => {
+      if (!homeworksRef.current.some(row => row.id === id && !row.deleted)) return false;
+      return persistHomework(homeworksRef.current.map(row => {
+        if (row.id !== id) return row;
+        const changedSubject = patch.subjectKey !== undefined && patch.subjectKey !== homeworkSubjectKey(row, homeworkSubjects, additionalSubjects);
+        return { ...row, ...patch, id, ...(changedSubject ? { sessions: Object.fromEntries(Object.keys(row.sessions || {}).map(slot => [slot, false])) } : {}) };
+      }));
     };
-
     const handleToggleHomework = (id: string) => {
-        const homework = homeworks.find((h) => h.id === id);
-
-        const updated = homeworks.map((h) =>
-            h.id === id
-                ? { ...h, completed: !h.completed }
-                : h
-        );
-
-        setHomeworks(updated);
-        storage.setItem(
-            "sp_homework",
-            JSON.stringify(updated)
-        );
-
-        if (homework) {
-            if (!homework.completed) {
-                showToast(
-                    "Assignment marked as completed! Keep it up!",
-                    "success"
-                );
-            } else {
-                showToast(
-                    "Assignment marked as active.",
-                    "info"
-                );
-            }
-        }
+      const row = homeworksRef.current.find(row => row.id === id && !row.deleted);
+      return row ? handleUpdateHomework(id, { completed: !row.completed }) : false;
     };
-
-    const handleDeleteHomework = (id: string) => {
-        const updated = homeworks.filter(
-            (h) => h.id !== id
-        );
-
-        setHomeworks(updated);
-        storage.setItem(
-            "sp_homework",
-            JSON.stringify(updated)
-        );
-
-        showToast(
-            "Assignment deleted from your board.",
-            "info"
-        );
+    const handleDeleteHomework = (id: string) => handleUpdateHomework(id, { deleted: true });
+    const handlePlanHomework = (id: string, date: string, routineId: string, linked: boolean) => {
+      try {
+        if (linked) {
+          const row = homeworksRef.current.find(row => row.id === id);
+          const slot = getScheduledRoutineTasks(date, routineBlocks, dailyRoutineTasks, homeworkSubjects, additionalSubjects).find(task => task.block.id === routineId);
+          const subjectKey = row ? homeworkSubjectKey(row, homeworkSubjects, additionalSubjects) : "";
+          const start = new Date(`${date}T${slot?.block.startTime || "00:00"}`);
+          if (!slot || !subjectKey || slot.subjectKey !== subjectKey || slot.completed || start <= new Date()) throw new Error("Choose an upcoming study slot for this exact subject.");
+        }
+        return persistHomework(planHomework(homeworksRef.current, id, date, routineId, linked));
+      }
+      catch (error) { showToast((error as Error).message, "error"); return false; }
     };
 
     const handleAddDiaryEntry = (
@@ -770,6 +710,7 @@ export default function useStudentData(
         setProfile(null);
         setStudentProgress({});
         setHomeworks([]);
+        homeworksRef.current = [];
         setRoutineBlocks([]);
         dailyRoutineTasksRef.current = [];
         setDailyRoutineTasks([]);
@@ -778,12 +719,13 @@ export default function useStudentData(
         setAdditionalSubjects([]);
     };
 
+    const resolvedDailyRoutineTasks = useMemo(() => homeworkRoutineRecords(homeworks, dailyRoutineTasks, routineBlocks, homeworkSubjects, additionalSubjects), [homeworks, dailyRoutineTasks, routineBlocks, homeworkSubjects, additionalSubjects]);
     return {
         profile,
         studentProgress,
         homeworks,
         routineBlocks,
-        dailyRoutineTasks,
+        dailyRoutineTasks: resolvedDailyRoutineTasks,
         diaryEntries,
         selectedSubjectIds,
         loaded,
@@ -799,6 +741,8 @@ export default function useStudentData(
         handleSnapshotDailyRoutineTasks,
         handleSaveDatedRoutineTask,
 
+        handleUpdateHomework,
+        handlePlanHomework,
         handleAddHomework,
         handleToggleHomework,
         handleDeleteHomework,

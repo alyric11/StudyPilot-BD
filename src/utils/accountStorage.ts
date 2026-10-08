@@ -1,5 +1,6 @@
 export type StudentStorage = Pick<Storage, "getItem" | "setItem" | "removeItem" | "clear"> & {
   subscribe?: (listener: () => void) => () => void;
+  backupHomework?: () => void;
 };
 
 export function createAccountStorage(storage: Storage, uid: string): StudentStorage {
@@ -9,6 +10,10 @@ export function createAccountStorage(storage: Storage, uid: string): StudentStor
     getItem: key => storage.getItem(prefix + key),
     setItem: (key, value) => storage.setItem(prefix + key, value),
     removeItem: key => storage.removeItem(prefix + key),
+    backupHomework: () => {
+      const key = prefix + "__homework_backup";
+      if (!storage.getItem(key)) storage.setItem(key, JSON.stringify({ homework: storage.getItem(prefix + "sp_homework"), routines: storage.getItem(prefix + "sp_daily_routine_tasks") }));
+    },
     clear: () => {
       const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i));
       keys.forEach(key => { if (key?.startsWith(prefix)) storage.removeItem(key); });

@@ -168,6 +168,10 @@ export function createStudentCloud(base: Storage, uid: string, transport: CloudT
   };
   const storage: StudentStorage = {
     getItem: local.getItem,
+    backupHomework: () => {
+      const key = prefix + "__homework_backup";
+      if (!base.getItem(key)) base.setItem(key, JSON.stringify({ homework: local.getItem("sp_homework"), routines: local.getItem("sp_daily_routine_tasks") }));
+    },
     setItem: (key, value) => enqueue(key, value),
     removeItem: key => enqueue(key, null),
     clear: () => Object.keys(ownEntries()).forEach(key => enqueue(key, null)),
@@ -242,7 +246,7 @@ export function createStudentCloud(base: Storage, uid: string, transport: CloudT
       }
       applyRemote(); base.setItem(readyKey, "true"); publish({ phase: "ready", error: "", status: savedStatus() }); schedule();
     },
-    exportBackup: () => JSON.stringify({ accountId: uid, current: ownEntries(), beforeCloud: JSON.parse(base.getItem(prefix + "__browser_backup") || "null"), datedTasksBeforeRepair: base.getItem(prefix + "__dated_tasks_backup"), savedVideosBeforeRepair: Object.fromEntries(Array.from({ length: base.length }, (_, index) => base.key(index)).filter((key): key is string => !!key?.startsWith(prefix + "__video_backup:")).map(key => [key.slice(prefix.length), base.getItem(key)])), pending: [...pending] }, null, 2),
+    exportBackup: () => JSON.stringify({ accountId: uid, current: ownEntries(), beforeCloud: JSON.parse(base.getItem(prefix + "__browser_backup") || "null"), homeworkBeforeMigration: JSON.parse(base.getItem(prefix + "__homework_backup") || "null"), datedTasksBeforeRepair: base.getItem(prefix + "__dated_tasks_backup"), savedVideosBeforeRepair: Object.fromEntries(Array.from({ length: base.length }, (_, index) => base.key(index)).filter((key): key is string => !!key?.startsWith(prefix + "__video_backup:")).map(key => [key.slice(prefix.length), base.getItem(key)])), pending: [...pending] }, null, 2),
   };
 }
 export type StudentCloud = ReturnType<typeof createStudentCloud>;

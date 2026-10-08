@@ -58,6 +58,14 @@ export interface Homework {
   priority: 'high' | 'medium' | 'low';
   completed: boolean;
   notes?: string;
+  subjectKey?: string;
+  chapterId?: string;
+  source?: string;
+  remaining?: string;
+  // False entries retain unlink history, so old routine text cannot reappear.
+  sessions?: Record<string, boolean>;
+  deleted?: boolean;
+  imported?: boolean;
 }
 
 // Weekly recurring routine block
