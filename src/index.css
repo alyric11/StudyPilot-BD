@@ -595,25 +595,26 @@ body {
 }
 
 .dashboard-personal-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 6px;
   min-width: 0;
   min-height: 88px;
   padding: 14px;
   text-align: left;
-  border: 1px solid var(--personal-border);
+  border: 1px solid var(--personal-card-border, var(--personal-border));
   border-radius: 12px;
-  background: var(--personal-surface);
+  background: var(--personal-card-tint, var(--personal-surface));
   cursor: pointer;
   transition: transform 170ms ease, background-color 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
 }
 
 .dashboard-personal-card:hover {
-  background: #f9f4fc;
-  border-color: #dfcce8;
+  background: var(--personal-card-tint, #f9f4fc);
+  border-color: var(--personal-card-accent, #dfcce8);
   transform: translateY(-1px);
   box-shadow: 0 5px 12px -8px rgb(110 75 130 / 25%);
 }
@@ -632,6 +633,11 @@ body {
 }
 
 .dashboard-personal-edit {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -639,7 +645,33 @@ body {
   font-size: 12px;
   line-height: 1.5;
   font-weight: 500;
-  color: #796784;
+  color: var(--personal-card-accent, #796784);
+}
+
+.dashboard-personal-symbol {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--personal-card-icon);
+  color: var(--personal-card-accent);
+}
+
+.dashboard-personal-identity {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding-right: 24px;
+}
+
+.dashboard-personal-session {
+  color: #66768b;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-personal-empty {

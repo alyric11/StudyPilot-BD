@@ -22,6 +22,7 @@ import { NCTB_CURRICULUM } from "./data/curriculum";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import DashboardSubjectCard from "./components/DashboardSubjectCard";
 import DashboardSupport, { PersonalSubjectsPanel, RecommendedResourcesPanel } from "./components/DashboardSupport";
+import { personalSubjectIcon, personalSubjectIcons, type PersonalSubjectIcon } from "./utils/personalSubjectAppearance";
 import OptionalSubjectSelector from "./components/OptionalSubjectSelector";
 import { getStudyProgress } from "./utils/studyProgress";
 import {
@@ -147,7 +148,8 @@ export default function App() {
 
     const updated = handleUpdateAdditionalSubject(
       additionalSubjectToEdit.id,
-      editedAdditionalSubjectName
+      editedAdditionalSubjectName,
+      editedAdditionalSubjectIcon
     );
 
     if (updated) {
@@ -160,6 +162,7 @@ export default function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [additionalSubjectToEdit, setAdditionalSubjectToEdit] = useState<AdditionalSubject | null>(null);
+  const [editedAdditionalSubjectIcon, setEditedAdditionalSubjectIcon] = useState<PersonalSubjectIcon>("book");
   const [additionalSubjectToRemove, setAdditionalSubjectToRemove] = useState<AdditionalSubject | null>(null);
   const [showSelectableSubjects, setShowSelectableSubjects] = useState(false);
   const [newAdditionalSubjectName, setNewAdditionalSubjectName] = useState("");
@@ -844,8 +847,11 @@ export default function App() {
                         <DashboardSupport>
                           <PersonalSubjectsPanel
                             subjects={additionalSubjects}
+                            routineBlocks={routineBlocks}
+                            dailyRoutineTasks={dailyRoutineTasks}
                             onEdit={(subject) => {
                               setEditedAdditionalSubjectName(subject.name);
+                              setEditedAdditionalSubjectIcon(personalSubjectIcon(subject.name, subject.icon));
                               setAdditionalSubjectToEdit(subject);
                             }}
                             onAdd={() => setShowAddSubjectModal(true)}
@@ -1093,7 +1099,7 @@ export default function App() {
               >
                 <h2 id="edit-subject-heading" className="text-base font-bold text-slate-800">Edit personal subject</h2>
                 <p className="mb-4 mt-1 text-[11px] text-slate-500">
-                  Rename this subject whenever you need to.
+                  Choose a name and icon for your learning space.
                 </p>
 
                 <label className="mb-1.5 block text-[11px] font-semibold text-slate-600" htmlFor="edit-additional-subject-name">
@@ -1112,6 +1118,18 @@ export default function App() {
                   className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
                 />
 
+                <fieldset className="mt-4">
+                  <legend className="mb-2 text-[11px] font-semibold text-slate-600">Card icon</legend>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.entries(personalSubjectIcons).map(([key, { label, Icon }]) => (
+                      <button key={key} type="button" aria-pressed={editedAdditionalSubjectIcon === key}
+                        onClick={() => setEditedAdditionalSubjectIcon(key as PersonalSubjectIcon)}
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs ${editedAdditionalSubjectIcon === key ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                        <Icon size={15} aria-hidden="true" />{label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <button
                     type="button"
@@ -1137,7 +1155,7 @@ export default function App() {
                       disabled={!editedAdditionalSubjectName.trim()}
                       className="rounded-lg bg-indigo-600 px-3 py-2 text-[11px] font-bold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Save name
+                      Save changes
                     </button>
                   </div>
                 </div>

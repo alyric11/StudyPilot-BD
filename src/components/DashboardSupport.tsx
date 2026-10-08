@@ -1,13 +1,34 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { BookOpen, ExternalLink, LibraryBig, Pencil, Plus } from "lucide-react";
-import type { AdditionalSubject } from "../types";
+import type { AdditionalSubject, RoutineBlock, DailyRoutineTask } from "../types";
+import { getScheduledRoutineTasks, localDateKey } from "../utils/routineTasks";
+import { personalSubjectIcon, personalSubjectIcons } from "../utils/personalSubjectAppearance";
 import { STUDY_RESOURCES } from "../data/resources";
 
-export function PersonalSubjectsPanel({ subjects, onEdit, onAdd }: {
+export function PersonalSubjectsPanel({ subjects, routineBlocks = [], dailyRoutineTasks = [], onEdit, onAdd }: {
   subjects: AdditionalSubject[];
+  routineBlocks?: RoutineBlock[];
+  dailyRoutineTasks?: DailyRoutineTask[];
   onEdit: (subject: AdditionalSubject) => void;
   onAdd: () => void;
 }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  const nextSessions = new Map<string, Date>();
+  for (let offset = 0; offset <= 7; offset++) {
+    const date = new Date(now); date.setDate(date.getDate() + offset);
+    for (const task of getScheduledRoutineTasks(localDateKey(date), routineBlocks, dailyRoutineTasks, [], subjects)) {
+      if (!task.subjectKey?.startsWith("additional:") || task.completed) continue;
+      const start = new Date(date), [hour, minute] = task.block.startTime.split(":").map(Number);
+      start.setHours(hour, minute, 0, 0);
+      if (start <= now) continue;
+      const id = task.subjectKey.slice("additional:".length), previous = nextSessions.get(id);
+      if (!previous || start < previous) nextSessions.set(id, start);
+    }
+  }
   return (
     <section className="dashboard-panel dashboard-personal-panel" aria-labelledby="personal-subjects-heading">
       <header className="dashboard-support-heading">
@@ -19,13 +40,21 @@ export function PersonalSubjectsPanel({ subjects, onEdit, onAdd }: {
         <span className="dashboard-personal-count" aria-label={`${subjects.length} of 6 personal subjects`}>{subjects.length}<span> / 6</span></span>
       </header>
       <div className="dashboard-personal-list">
-        {subjects.map(subject => (
+        {subjects.map(subject => {
+          const { Icon, tint, accent, border, iconBackground } = personalSubjectIcons[personalSubjectIcon(subject.name, subject.icon)];
+          const next = nextSessions.get(subject.id);
+          return (
           <button key={subject.id} type="button" onClick={() => onEdit(subject)}
+            style={{ "--personal-card-tint": tint, "--personal-card-accent": accent, "--personal-card-border": border, "--personal-card-icon": iconBackground } as CSSProperties}
             className="dashboard-personal-card" aria-label={`Edit ${subject.name}`}>
-            <span className="dashboard-personal-name">{subject.name}</span>
-            <span className="dashboard-personal-edit"><Pencil size={12} aria-hidden="true" /> Edit</span>
+            <span className="dashboard-personal-identity">
+              <span className="dashboard-personal-symbol"><Icon size={18} aria-hidden="true" /></span>
+              <span className="dashboard-personal-name">{subject.name}</span>
+            </span>
+            <span className="dashboard-personal-edit" title="Edit subject"><Pencil size={13} aria-hidden="true" /></span>
+            <span className="dashboard-personal-session">{next ? `Next: ${next.toLocaleDateString("en-US", { weekday: "short" })}, ${next.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : "Not scheduled yet"}</span>
           </button>
-        ))}
+        ); })}
         {subjects.length === 0 && <p className="dashboard-personal-empty">Learning something outside your textbooks? Add it here.</p>}
       </div>
       <button type="button" onClick={onAdd} disabled={subjects.length >= 6} className="dashboard-personal-add">

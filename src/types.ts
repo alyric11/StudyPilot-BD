@@ -45,6 +45,7 @@ export type StudentProgress = Record<string, SubjectProgressMap>;
 export interface AdditionalSubject {
   id: string;
   name: string;
+  icon?: string;
   createdAt: string;
 }
 

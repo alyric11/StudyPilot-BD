@@ -739,7 +739,7 @@ export default function useStudentData(
         showToast("Additional subject removed.", "info");
     };
 
-    const handleUpdateAdditionalSubject = (id: string, name: string) => {
+    const handleUpdateAdditionalSubject = (id: string, name: string, icon?: string) => {
         const trimmedName = name.trim();
 
         if (!trimmedName) {
@@ -755,7 +755,7 @@ export default function useStudentData(
         }
 
         const updated = additionalSubjects.map((subject) =>
-            subject.id === id ? { ...subject, name: trimmedName } : subject
+            subject.id === id ? { ...subject, name: trimmedName, ...(icon ? { icon } : {}) } : subject
         );
 
         setAdditionalSubjects(updated);
