@@ -37,7 +37,7 @@ export default function StudyPageHeader({
         </button>
         <div className="min-w-0 flex-1">
           <p className="flex items-start gap-2 text-xs font-medium leading-5 text-slate-500">
-            <SubjectIcon className="study-header-symbol mt-0.5 h-4 w-4 shrink-0"
+            <SubjectIcon className="mt-0.5 h-4 w-4 shrink-0"
               style={{ color: "color-mix(in srgb, var(--subject-accent) 55%, #17243b)" }} aria-hidden="true" />
             <span className="min-w-0 break-words">{context}</span>
           </p>

@@ -110,7 +110,7 @@ function SubjectPaperContent({
   };
 
   return (
-    <div className="subject-page subject-overview space-y-4" data-pastel-preview={subject.id === "physics2" || undefined}>
+    <div className="subject-page subject-overview space-y-4">
       <StudyPageHeader subjectName={subject.name} title={subject.name} banglaTitle={subject.banglaName}
         context={subjectClass || classLevel} onBack={onBack} backLabel="Go back to subjects">
         <div className="subject-overview-progress">
