@@ -6,6 +6,7 @@ import {
   UserProfile,
   AdditionalSubject,
   DailyRoutineTask,
+  Homework,
   RoutineBlock,
   RoutineEditRequest
 } from "../types";
@@ -23,6 +24,7 @@ import TimePicker from "./TimePicker";
 import PlannerReveal from "./PlannerReveal";
 import { plannerColumnWidths } from "../utils/plannerMotion";
 import { personalSubjectAppearance } from "../utils/personalSubjectAppearance";
+import { linkedHomework } from "../utils/homeworkBoard";
 import DayPicker from "./DayPicker";
 import SubjectPicker, { SubjectPickerOption } from "./SubjectPicker";
 import usePlannerPopup from "../hooks/usePlannerPopup";
@@ -44,7 +46,9 @@ interface StudyPlannerProps {
   additionalSubjects?: AdditionalSubject[];
   routineBlocks: RoutineBlock[];
   dailyRoutineTasks: DailyRoutineTask[];
-  onSaveDatedRoutineTask: (task: DailyRoutineTask) => boolean;
+  homeworks: Homework[];
+  onToggleHomework: (id: string) => boolean;
+  onSaveDatedRoutineTask: (task: DailyRoutineTask, remaining?: string, restoreId?: string) => boolean;
   onAddRoutineBlock: (
     newBlock: Omit<RoutineBlock, "id">
   ) => void;
@@ -166,6 +170,8 @@ export default function StudyPlanner({
   additionalSubjects = [],
   routineBlocks,
   dailyRoutineTasks,
+  homeworks,
+  onToggleHomework,
   onSaveDatedRoutineTask,
   onAddRoutineBlock,
   onDeleteRoutineBlock,
@@ -229,7 +235,7 @@ export default function StudyPlanner({
   formOpenRef.current = showRoutineForm;
   const [routineTitle, setRoutineTitle] = useState("");
   const [weeklyEditingId, setWeeklyEditingId] = useState<string | null>(null);
-  const [homeworkUndo, setHomeworkUndo] = useState<DailyRoutineTask | null>(null);
+  const [homeworkUndo, setHomeworkUndo] = useState<{ task: DailyRoutineTask; assignmentId?: string } | null>(null);
   const [routineSubjectId, setRoutineSubjectId] = useState<string | null>(null);
   const [routineChapterId, setRoutineChapterId] = useState<string | null>(null);
   const [routineStart, setRoutineStart] = useState("17:00");
@@ -256,6 +262,7 @@ export default function StudyPlanner({
   const [routineMenuDateKey, setRoutineMenuDateKey] = useState<string | null>(null);
   const [homeworkChapterId, setHomeworkChapterId] = useState<string | null>(null);
   const [homeworkDraft, setHomeworkDraft] = useState("");
+  const [homeworkRemainingDraft, setHomeworkRemainingDraft] = useState("");
   const [isHomeworkChapterPickerOpen, setIsHomeworkChapterPickerOpen] = useState(false);
   const homeworkEditorAnchorRef = React.useRef<HTMLElement | null>(null);
   const homeworkEditorRef = React.useRef<HTMLDivElement>(null);
@@ -502,6 +509,7 @@ export default function StudyPlanner({
 
   const renderDatedRoutineCard = (block: RoutineBlock, date: Date, expanded = true, mobile = false) => {
     const dateKey = localDateKey(date);
+    const assignment = linkedHomework(homeworks, dateKey, block.id);
     const info = getDetailedRoutineInfo(block);
     const isOpen = routineToDelete?.id === block.id && routineMenuDateKey === dateKey;
     const isEditing = editingRoutineId === block.id && homeworkDateKey === dateKey;
@@ -552,9 +560,15 @@ export default function StudyPlanner({
                 className="planner-focus routine-card-chapter-link mt-0.5 w-full rounded-md py-0.5 text-center text-[13px] font-medium leading-snug text-indigo-700 underline decoration-indigo-200 underline-offset-2"
               >{info.details.chapter.banglaName}</button>
             )}
-            <div className="mt-0.5 whitespace-pre-wrap text-xs leading-snug text-slate-600">
+            <div className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-snug text-slate-600">
               {info.homeworkText || "No homework assigned"}
             </div>
+            {assignment && <div className="mt-2 text-xs text-slate-600">
+              {assignment.remaining && <p className="mb-1 whitespace-pre-wrap break-words">Remaining: {assignment.remaining}</p>}
+              <button type="button" onClick={() => onToggleHomework(assignment.id)} className="planner-focus routine-homework-button rounded-md px-2 py-1 text-[11px]">
+                {assignment.completed ? "HW done · Undo" : "HW pending · Mark done"}
+              </button>
+            </div>}
           </div>
         </PlannerReveal>
         {!mobile && (
@@ -579,7 +593,7 @@ export default function StudyPlanner({
                 setIsHomeworkChapterPickerOpen(true);
               }} className="planner-focus planner-text-action block w-full">{draftChapter ? "Change chapter" : "Choose chapter"}</button>
             )}
-            <textarea data-homework-input-for={block.id} value={isEditing ? homeworkDraft : ""}
+            <textarea maxLength={5000} data-homework-input-for={block.id} value={isEditing ? homeworkDraft : ""}
               onChange={event => setHomeworkDraft(event.target.value)} rows={2}
               onKeyDown={event => {
                 if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
@@ -590,6 +604,10 @@ export default function StudyPlanner({
               aria-label="Homework for this date"
               className="planner-focus mt-2 w-full resize-y rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm leading-relaxed text-slate-800 outline-none placeholder:text-slate-400"
             />
+            <label className="mt-2 block text-[11px] text-slate-600">Remaining work (optional)
+              <textarea rows={1} maxLength={5000} value={homeworkRemainingDraft} onChange={event => setHomeworkRemainingDraft(event.target.value)}
+                placeholder="CQ 4 বাকি" className="planner-focus mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs" />
+            </label>
             <div
               className={`mt-2 flex items-center ${expanded ? "justify-center gap-6" : "justify-between gap-1"
                 }`}
@@ -609,7 +627,7 @@ export default function StudyPlanner({
                 onClick={() => setDeleteConfirmation("homework")}
                 className="planner-focus routine-card-action routine-card-delete routine-homework-button min-h-7 whitespace-nowrap px-1 text-[11px]"
               >
-                Delete
+                Unlink
               </button>
 
               <button
@@ -870,6 +888,7 @@ export default function StudyPlanner({
     const chapterId = existingBlock ? getRoutineBlockChapter(existingBlock)?.chapter.id : undefined;
     setHomeworkChapterId(chapterId ?? null);
     setHomeworkDraft(existingBlock?.homeworkText?.trim() || "");
+    setHomeworkRemainingDraft(linkedHomework(homeworks, occurrenceDateKey, block.id)?.remaining || "");
     setIsHomeworkChapterPickerOpen(!!getRoutineBlockSubject(block)?.chapters.length && !chapterId && !existingBlock?.homeworkText);
 
     homeworkEditorAnchorRef.current = anchor;
@@ -912,7 +931,7 @@ export default function StudyPlanner({
       .find(task => task.block.id === template.id);
     if (!existing) return;
     const updated = updateDatedHomework(existing, homeworkChapterId, homeworkDraft, subjects, additionalSubjects);
-    if (onSaveDatedRoutineTask(updated)) {
+    if (onSaveDatedRoutineTask(updated, homeworkRemainingDraft)) {
       setHomeworkUndo(null);
       closeHomeworkEditor(true);
     }
@@ -943,7 +962,7 @@ export default function StudyPlanner({
     );
 
     if (onSaveDatedRoutineTask(clearedTask)) {
-      setHomeworkUndo(null);
+      setHomeworkUndo({ task: existing, assignmentId: linkedHomework(homeworks, existing.date, existing.block.id)?.id });
       closeHomeworkEditor(true);
     }
   };
@@ -952,7 +971,7 @@ export default function StudyPlanner({
     const existing = dailyRoutineTasks.find(task => task.date === routineMenuDateKey && task.block.id === routineToDelete?.id);
     if (!existing) return;
     if (!onSaveDatedRoutineTask(updateDatedHomework(existing, null, "", subjects, additionalSubjects))) return;
-    setHomeworkUndo(existing);
+    setHomeworkUndo({ task: existing, assignmentId: linkedHomework(homeworks, existing.date, existing.block.id)?.id });
     setDeletedRoutine(null);
     closeRoutineMenu();
     focusVisibleRoutineCard(existing.block.id);
@@ -1546,7 +1565,7 @@ export default function StudyPlanner({
                       className="text-sm font-semibold text-slate-800"
                     >
                       {deleteConfirmation === "homework"
-                        ? "Delete this homework?"
+                        ? "Unlink homework from this date?"
                         : "Delete this weekly study time?"}
                     </h3>
                   </div>
@@ -1556,7 +1575,7 @@ export default function StudyPlanner({
                     className="mx-auto mt-2 max-w-[240px] text-center text-xs leading-relaxed text-slate-500"
                   >
                     {deleteConfirmation === "homework"
-                      ? "Its chapter and homework for this date will be removed."
+                      ? "This date's homework and chapter will be cleared. The assignment stays on Homework Board."
                       : "This study time will no longer repeat. Saved homework records stay in your study log."}
                   </p>
 
@@ -1579,7 +1598,7 @@ export default function StudyPlanner({
                       }}
                       className="planner-focus min-w-24 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
                     >
-                      {deleteConfirmation === "homework" ? "Delete HW" : "Delete"}
+                      {deleteConfirmation === "homework" ? "Unlink HW" : "Delete"}
                     </button>
                   </div>
                 </motion.div>
@@ -1834,10 +1853,10 @@ export default function StudyPlanner({
               transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
               className="routine-undo fixed bottom-5 left-1/2 z-[130] flex w-[min(360px,calc(100vw-32px))] -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl"
             >
-              <span className="min-w-0 text-sm font-medium text-slate-700">{homeworkUndo ? "Homework cleared for this date." : "Weekly time deleted. Saved homework kept."}</span>
+              <span className="min-w-0 text-sm font-medium text-slate-700">{homeworkUndo ? "Homework unlinked. It stays on the Board." : "Weekly time deleted. Saved homework kept."}</span>
               <button type="button" onClick={() => {
                 if (homeworkUndo) {
-                  if (onSaveDatedRoutineTask(homeworkUndo)) setHomeworkUndo(null);
+                  if (onSaveDatedRoutineTask(homeworkUndo.task, undefined, homeworkUndo.assignmentId)) setHomeworkUndo(null);
                 } else undoRoutineDelete();
               }} className="planner-focus shrink-0 rounded-lg px-2 py-1 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">Undo</button>
               <button type="button" aria-label="Dismiss undo message" onClick={() => { setHomeworkUndo(null); setDeletedRoutine(null); }} className="planner-focus rounded-lg p-2 text-slate-500"><X size={16} /></button>
