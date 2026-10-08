@@ -60,7 +60,8 @@ export const getSideAwareFloatingPosition = (
   desiredWidth: number,
   estimatedHeight: number,
   gap = 12,
-  viewportPadding = 10
+  viewportPadding = 10,
+  preferredPlacement?: FloatingPlacement
 ): FloatingPosition => {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -75,7 +76,13 @@ export const getSideAwareFloatingPosition = (
 
   let placement: FloatingPlacement;
 
-  if (rightSpace >= width) {
+  const preferredFits = preferredPlacement === "right" ? rightSpace >= width :
+    preferredPlacement === "left" ? leftSpace >= width :
+    preferredPlacement === "above" ? aboveSpace >= Math.min(estimatedHeight, 180) :
+    preferredPlacement === "below" ? belowSpace >= Math.min(estimatedHeight, 180) : false;
+  if (preferredPlacement && preferredFits) {
+    placement = preferredPlacement;
+  } else if (rightSpace >= width) {
     placement = "right";
   } else if (leftSpace >= width) {
     placement = "left";

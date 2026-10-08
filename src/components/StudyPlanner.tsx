@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import TimePicker from "./TimePicker";
 import PlannerReveal from "./PlannerReveal";
+import { plannerColumnWidths } from "../utils/plannerMotion";
 import DayPicker from "./DayPicker";
 import SubjectPicker, { SubjectPickerOption } from "./SubjectPicker";
 import usePlannerPopup from "../hooks/usePlannerPopup";
@@ -191,6 +192,17 @@ export default function StudyPlanner({
   const [weekAnchorDate, setWeekAnchorDate] = useState(() => toDayStart(new Date()));
   const routineBoardRef = React.useRef<HTMLDivElement>(null);
   const dayTabsRef = React.useRef<HTMLDivElement>(null);
+  const weekGridRef = React.useRef<HTMLDivElement>(null);
+  const [weekGridWidth, setWeekGridWidth] = useState(0);
+  React.useLayoutEffect(() => {
+    const grid = weekGridRef.current;
+    if (!grid) return;
+    const measure = () => setWeekGridWidth(grid.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [weekAnchorDate]);
   const formHeadingRef = React.useRef<HTMLHeadingElement>(null);
   const addButtonRef = React.useRef<HTMLButtonElement>(null);
   const addedBlockRef = React.useRef<Omit<RoutineBlock, "id"> | null>(null);
@@ -202,14 +214,15 @@ export default function StudyPlanner({
     const revealSelected = () => {
       const selected = tabs.querySelector<HTMLElement>('[aria-pressed="true"]');
       if (!selected || !tabs.clientWidth) return;
-      const offset = selected.getBoundingClientRect().left - tabs.getBoundingClientRect().left;
-      tabs.scrollTo({ left: tabs.scrollLeft + offset - (tabs.clientWidth - selected.offsetWidth) / 2, behavior: "instant" });
+      const item = selected.getBoundingClientRect(), viewport = tabs.getBoundingClientRect();
+      const delta = item.left < viewport.left ? item.left - viewport.left : item.right > viewport.right ? item.right - viewport.right : 0;
+      if (Math.abs(delta) > 1) tabs.scrollTo({ left: tabs.scrollLeft + delta, behavior: shouldReduceMotion ? "instant" : "smooth" });
     };
     revealSelected();
     const observer = new ResizeObserver(revealSelected);
     observer.observe(tabs);
     return () => observer.disconnect();
-  }, [mobileRoutineDay, weekAnchorDate]);
+  }, [mobileRoutineDay, weekAnchorDate, shouldReduceMotion]);
   const [showRoutineForm, setShowRoutineForm] = useState(false);
   const formOpenRef = React.useRef(showRoutineForm);
   formOpenRef.current = showRoutineForm;
@@ -495,6 +508,7 @@ export default function StudyPlanner({
     const draftChapter = isEditing ? subject?.chapters.find(chapter => chapter.id === homeworkChapterId) : undefined;
     const showDraft = isEditing;
     const detailsId = `routine-details-${mobile ? "mobile" : "week"}-${dateKey}-${block.id}`;
+    const contentWidth = !mobile && weekGridWidth > 0 ? Math.max(0, plannerColumnWidths(weekGridWidth, expandedRoutineDayIndex)[visibleWeek.findIndex(day => day.value === date.getDay())] - 24) : undefined;
     return (
       <div
         data-routine-card-id={block.id}
@@ -518,14 +532,16 @@ export default function StudyPlanner({
           onClick={event => openRoutineMenu(event.currentTarget.parentElement as HTMLDivElement, block, date)}
           className="planner-focus routine-card-trigger relative flex w-full flex-col items-center justify-center px-2.5 py-2.5 text-center disabled:cursor-default"
         >
-          <span className="whitespace-nowrap text-xs font-medium tabular-nums text-slate-600">
-            {formatCompactTimeRange(block.startTime, block.endTime)}
+          <span className="flex w-full flex-wrap justify-center text-xs font-medium tabular-nums text-slate-600">
+            {formatCompactTimeRange(block.startTime, block.endTime).split("–").map((part, index) => <span key={index} className="whitespace-nowrap">{index > 0 ? "–" : ""}{part}</span>)}
             {block.endTime <= block.startTime && <sup title="Ends the next day"> +1</sup>}
           </span>
-          <span className="routine-card-title mt-1 min-w-0 text-[13px] font-semibold text-slate-800">{getMotherRoutineTitle(block)}</span>
-          <MoreHorizontal aria-hidden="true" className="routine-card-more absolute right-2 top-2 h-3.5 w-3.5 text-slate-400" />
+          <span className="mt-1 grid w-full grid-cols-[minmax(0,1fr)_14px] items-center gap-1">
+            <span className="routine-card-title min-w-0 text-[13px] font-semibold text-slate-800">{getMotherRoutineTitle(block)}</span>
+            <MoreHorizontal aria-hidden="true" className="routine-card-more h-3.5 w-3.5 text-slate-400" />
+          </span>
         </button>
-        <PlannerReveal open={expanded && !showDraft}>
+        <PlannerReveal open={expanded && !showDraft} contentWidth={contentWidth}>
           <div className="planner-card-details-copy border-t border-slate-200/70 px-3 pb-2.5 pt-2 text-center">
             {info.chapterLabel && <div className="text-[13px] font-medium text-slate-800">{info.chapterLabel}</div>}
             {info.details && (
@@ -541,14 +557,14 @@ export default function StudyPlanner({
         </PlannerReveal>
         {!mobile && (
           <div id={detailsId} data-routine-details>
-            <PlannerReveal open={isOpen}>
+            <PlannerReveal open={isOpen} contentWidth={contentWidth}>
               <div className="routine-card-details-inner border-t border-slate-200/70">
                 {renderRoutineActions(block, dateKey)}
               </div>
             </PlannerReveal>
           </div>
         )}
-        <PlannerReveal open={showDraft}>
+        <PlannerReveal open={showDraft} contentWidth={contentWidth}>
           <div className="border-t border-slate-200/70 px-3 pb-3 pt-2.5 text-left">
             {draftChapter && (
               <div className="text-center text-xs font-medium leading-snug text-slate-700">
@@ -859,7 +875,7 @@ export default function StudyPlanner({
     if (anchor) {
       setHomeworkEditorPosition(
         getSideAwareFloatingPosition(
-          anchor.getBoundingClientRect(),
+          (anchor.querySelector(".routine-card-trigger") ?? anchor).getBoundingClientRect(),
           340,
           500
         )
@@ -977,16 +993,14 @@ export default function StudyPlanner({
       return;
     }
 
+    let placement: FloatingPlacement | undefined;
     const updatePosition = () => {
       const anchor = homeworkEditorAnchorRef.current;
       if (!anchor) return;
-      setHomeworkEditorPosition(
-        getSideAwareFloatingPosition(
-          anchor.getBoundingClientRect(),
-          340,
-          500
-        )
-      );
+      const header = anchor.querySelector(".routine-card-trigger") ?? anchor;
+      const next = getSideAwareFloatingPosition(header.getBoundingClientRect(), 340, 500, 12, 10, placement);
+      placement = next.placement;
+      setHomeworkEditorPosition(next);
     };
 
     const handleOutsideClick = (event: MouseEvent) => {
@@ -1001,14 +1015,11 @@ export default function StudyPlanner({
     };
 
     updatePosition();
-    const observer = new ResizeObserver(updatePosition);
-    observer.observe(homeworkEditorAnchorRef.current);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     document.addEventListener("mousedown", handleOutsideClick);
 
     return () => {
-      observer.disconnect();
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
       document.removeEventListener("mousedown", handleOutsideClick);
@@ -1419,7 +1430,7 @@ export default function StudyPlanner({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
                   transition={{ duration: shouldReduceMotion ? 0 : 0.42, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="planner-popup fixed z-[125] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+                  className="planner-popup fixed z-[125] flex flex-col overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"
                   style={{
                     top: homeworkEditorPosition.top,
                     left: homeworkEditorPosition.left,
@@ -1680,6 +1691,7 @@ export default function StudyPlanner({
               animate={{ opacity: 1, x: 0 }}
               exit={shouldReduceMotion ? undefined : { opacity: 0, x: weekMotionDirection === "next" ? -8 : 8 }}
               transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              ref={weekGridRef}
               className="planner-week-grid"
               style={{ gridTemplateColumns: weeklyGridTemplate }}
             >

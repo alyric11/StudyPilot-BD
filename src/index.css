@@ -1896,6 +1896,7 @@ body {
    Padding and borders live inside the clipped child, so no pixel jumps first. */
 .planner-reveal {
   display: grid;
+  overflow: hidden;
   grid-template-rows: 0fr;
   opacity: 0;
   transition: grid-template-rows 420ms cubic-bezier(.25, .1, .25, 1), opacity 200ms ease;
