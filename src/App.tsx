@@ -28,6 +28,7 @@ import OptionalSubjectSelector from "./components/OptionalSubjectSelector";
 import { getStudyProgress } from "./utils/studyProgress";
 import {
   getDailyRoutineTasks,
+  getScheduledRoutineTasks,
   localDateKey,
 } from "./utils/routineTasks.ts";
 import useDialogFocus from "./hooks/useDialogFocus";
@@ -209,8 +210,6 @@ export default function App() {
     handleUpdateRoutineBlock,
     handleUpdateChapterProgress,
     handleAddHomework,
-    handleUpdateHomework,
-    handlePlanHomework,
     handleToggleHomework,
     handleDeleteHomework,
     handleAddDiaryEntry,
@@ -353,7 +352,15 @@ export default function App() {
     ? getSubjectAccentColor(workspaceSubject.color)
     : null;
   const isSubjectPage = Boolean(subjectPageAccent);
-  const pendingHomework = homeworks.filter(row => !row.deleted && !row.completed).length;
+  const todayPendingHomework = getScheduledRoutineTasks(
+    localDateKey(new Date()),
+    routineBlocks,
+    dailyRoutineTasks,
+    activeSubjects,
+    additionalSubjects
+  ).filter((task) =>
+    !task.completed && Boolean(task.block.chapterId || task.block.homeworkText?.trim())
+  ).length;
 
   useEffect(() => {
     if (!loaded || !profile) {
@@ -716,7 +723,7 @@ export default function App() {
                             <div className="flex items-center justify-center gap-1.5 text-indigo-500 mb-0.5">
                               <ClipboardList className="w-3.5 h-3.5" />
                               <span className="text-lg font-bold text-slate-800">
-                                {pendingHomework}
+                                {todayPendingHomework}
                               </span>
                             </div>
                             <span className="text-xs font-medium text-slate-600">Pending homework</span>
@@ -864,8 +871,6 @@ export default function App() {
                       additionalSubjects={additionalSubjects}
                       routineBlocks={routineBlocks}
                       dailyRoutineTasks={dailyRoutineTasks}
-                      homeworks={homeworks}
-                      onToggleHomework={handleToggleHomework}
                       onSaveDatedRoutineTask={handleSaveDatedRoutineTask}
                       onAddRoutineBlock={handleAddRoutineBlock}
                       onDeleteRoutineBlock={handleDeleteRoutineBlock}
@@ -894,24 +899,12 @@ export default function App() {
                   {/* Homework Manager panel */}
                   {activeSection === 'homework' && (
                     <HomeworkManager
+                      profile={profile}
                       subjects={activeSubjects}
-                      additionalSubjects={additionalSubjects}
-                      routineBlocks={routineBlocks}
-                      dailyRoutineTasks={dailyRoutineTasks}
                       homeworks={homeworks}
                       onAddHomework={handleAddHomework}
-                      onUpdateHomework={handleUpdateHomework}
-                      onPlanHomework={handlePlanHomework}
                       onToggleHomework={handleToggleHomework}
                       onDeleteHomework={handleDeleteHomework}
-                      onOpenPlanner={() => navigateToSection('planner')}
-                      onOpenChapter={(subjectId, chapterId) => {
-                        const subject = activeSubjects.find(item => item.id === subjectId);
-                        const chapter = subject?.chapters.find(item => item.id === chapterId);
-                        if (!subject || !chapter) return;
-                        setShowVideoLessons(false);
-                        setSelectedChapter({ subjectId, subjectName: subject.name, chapterId, chapterName: chapter.name, chapterBanglaName: chapter.banglaName });
-                      }}
                     />
                   )}
 
