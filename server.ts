@@ -336,14 +336,11 @@ app.post("/api/generate-chapter-guide", async (req, res) => {
     });
   }
 
-  // No Gemini API key: return a simple fallback response.
-  // This keeps the application usable during local development.
+  // Missing configuration must not be presented as a generated overview.
   if (!hasRealAPIKey()) {
-    console.log("Using fallback guide for", subject, chapter);
-
-    return res.json({
-      introduction: `এই অধ্যায়টি ${subject} বিষয়ের "${chapter}" অধ্যায়। এখানে অধ্যায়টির মূল ধারণা ও গুরুত্বপূর্ণ বিষয়গুলো সংক্ষেপে তুলে ধরা হবে।`,
-      importantTopics: []
+    return res.status(503).json({
+      error: "AI generation is not configured. Add GEMINI_API_KEY in Render's Environment settings, then redeploy.",
+      code: "AI_NOT_CONFIGURED"
     });
   }
 

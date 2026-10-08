@@ -185,7 +185,10 @@ export default function ChapterPage({
       });
 
       if (!res.ok) {
-        throw new Error(`Guide request failed: ${res.status}`);
+        const failure = await res.json().catch(() => null);
+        throw new Error(failure?.code === "AI_NOT_CONFIGURED"
+          ? failure.error
+          : "Chapter guide could not be generated right now. Please retry.");
       }
 
       const data: ChapterOverviewData = await res.json();
@@ -195,7 +198,7 @@ export default function ChapterPage({
       } else setGuideData(data);
     } catch (error) {
       if (controller.signal.aborted && !timedOut) return;
-      const message = timedOut ? "Generation took too long. Please retry." : "Chapter guide could not be generated right now. Please retry.";
+      const message = timedOut ? "Generation took too long. Please retry." : error instanceof Error ? error.message : "Chapter guide could not be generated right now. Please retry.";
       if (forManagement) setManagementMessage(message);
       else setApiWarning(message);
     } finally {
