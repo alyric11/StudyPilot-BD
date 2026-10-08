@@ -360,7 +360,8 @@ export default function ChapterPage({
   );
 
   return (
-    <div className="subject-page mx-auto w-full max-w-[1440px] space-y-4" id="chapter-page-root">
+    <div className="subject-page mx-auto w-full max-w-[1440px] space-y-4" id="chapter-page-root"
+      data-pastel-preview={(subjectId === "physics2" && /^p2_(11|12)_ch2$/.test(chapterId)) || undefined}>
       {/* Chapter identity */}
       <StudyPageHeader id="chapter-page-header" subjectName={subjectName}
         title={chapterName} banglaTitle={chapterBanglaName}
