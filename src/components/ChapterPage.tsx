@@ -266,9 +266,6 @@ export default function ChapterPage({
       ...chapterProgress,
       [key]: !chapterProgress[key]
     };
-    if (key === "readOverview") {
-      updated.watchedIntroVideo = updated.readOverview;
-    }
     onUpdateProgress(updated);
   };
 
@@ -289,34 +286,62 @@ export default function ChapterPage({
 
 
 
-  const renderStudyPlan = (showHeading = true) => (
+  const renderVideoLessons = () => (
+          <button
+            type="button"
+            onClick={onWatchVideoLessons}
+            className="subject-panel group w-full rounded-2xl border p-4 text-left transition-colors duration-200 sm:p-5 hover:border-[var(--subject-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--subject-accent)]"
+            style={{ backgroundColor: "color-mix(in srgb, var(--subject-accent) 4%, white)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="shrink-0">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
+                  <path fill="#FF0000" d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.6 4.6 12 4.6 12 4.6s-5.6 0-7.5.5a3 3 0 0 0-2.1 2.1A31 31 0 0 0 2 12a31 31 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.9.5 7.5.5 7.5.5s5.6 0 7.5-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 22 12a31 31 0 0 0-.4-4.8Z" />
+                  <path fill="white" d="m10 15.5 5-3.5-5-3.5v7Z" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-semibold text-slate-800">Video lessons</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Browse lessons and your saved videos.
+                </p>
+              </div>
+              <span className="text-lg text-slate-400 group-hover:text-slate-600" aria-hidden="true">
+                →
+              </span>
+            </div>
+          </button>
+  );
+
+  const renderStudyChecklist = (showHeading = true) => (
           <section>
             {showHeading && (
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-base font-semibold text-slate-800">Study Plan</h3>
+                <h3 className="text-base font-semibold text-slate-800">Study Checklist</h3>
               </div>
               <span
                 className="shrink-0 pt-0.5 text-xs text-slate-500"
               >
-                {completedSteps}/{totalSteps} completed
+                {completedSteps}/{totalSteps} checked
               </span>
             </div>
             )}
 
-            <div className={`${showHeading ? "mt-3 " : ""}h-1.5 overflow-hidden rounded-full bg-slate-100`}>
+            <p className={`${showHeading ? "mt-2 " : ""}text-xs leading-relaxed text-slate-500`}>Work in any order, at your own pace.</p>
+            <div className="mt-3 h-0.5 overflow-hidden rounded-full bg-slate-100">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${percentProgress()}%`,
-                  backgroundColor: "var(--subject-accent)"
+                  backgroundColor: "color-mix(in srgb, var(--subject-accent) 45%, white)"
                 }}
               />
             </div>
 
             <div className="mt-4 space-y-1.5">
               {[
-                { key: "readOverview", label: "Read the overview & watch an introductory video" },
+                { key: "readOverview", label: "Explore the chapter overview" },
                 { key: "readTextbook", label: "Read the chapter & mark difficulties" },
                 { key: "watchedLectures", label: "Clarify difficult points" },
                 { key: "solvedExercises", label: "Practise chapter exercises" },
@@ -370,14 +395,15 @@ export default function ChapterPage({
           : subjectName}
         onBack={onBack} backLabel={`Go back to ${subjectName}`} />
 
+      <div className="xl:hidden">{renderVideoLessons()}</div>
       <section className="subject-panel rounded-2xl border bg-white xl:hidden">
         <button type="button" onClick={() => setMobilePlanOpen(open => !open)}
-          aria-expanded={mobilePlanOpen} aria-controls="mobile-chapter-study-plan"
+          aria-expanded={mobilePlanOpen} aria-controls="mobile-chapter-study-checklist"
           className="flex w-full items-center justify-between gap-3 rounded-2xl p-4 text-left text-sm font-semibold text-slate-800 focus-visible:outline-2 focus-visible:outline-indigo-500">
-          <span>Study Plan · {completedSteps}/{totalSteps} completed</span>
+          <span>Study Checklist · {completedSteps}/{totalSteps} checked</span>
           <ChevronDown className={`h-4 w-4 transition-transform motion-reduce:transition-none ${mobilePlanOpen ? "rotate-180" : ""}`} />
         </button>
-        <div id="mobile-chapter-study-plan" className="border-t border-slate-100 p-4" hidden={!mobilePlanOpen}>{renderStudyPlan(false)}</div>
+        <div id="mobile-chapter-study-checklist" className="border-t border-slate-100 p-4" hidden={!mobilePlanOpen}>{renderStudyChecklist(false)}</div>
       </section>
 
       {/* Main content: learning guide + supporting resources */}
@@ -454,7 +480,7 @@ export default function ChapterPage({
                     <button type="button" onClick={() => void generateChapterGuide()} className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700">Retry</button>
                   </div>
                 ) : isPlaceholderOverview ? (
-                  <p className="text-sm leading-relaxed text-slate-500"><Guidance>This chapter overview is not ready yet. You can use the Study Plan and video lessons while it is being prepared.</Guidance></p>
+                  <p className="text-sm leading-relaxed text-slate-500"><Guidance>This chapter overview is not ready yet. You can use the Study Checklist and video lessons while it is being prepared.</Guidance></p>
                 ) : guideData ? (
                   <div className="mx-auto max-w-3xl text-left">
                     {renderOverviewText([
@@ -473,35 +499,9 @@ export default function ChapterPage({
         </div>
 
         {/* Supporting column */}
-        <aside className="subject-panel rounded-2xl border bg-white p-4 sm:p-5">
-          <div className="hidden xl:block">{renderStudyPlan()}</div>
-          <div className="xl:mt-4 xl:border-t xl:border-slate-100 xl:pt-4">
-          <button
-            type="button"
-            onClick={onWatchVideoLessons}
-            className="group w-full rounded-lg p-2 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-indigo-500"
-          >
-            <div className="flex items-center gap-3">
-              <div className="shrink-0">
-                <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
-                  <path fill="#FF0000" d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.6 4.6 12 4.6 12 4.6s-5.6 0-7.5.5a3 3 0 0 0-2.1 2.1A31 31 0 0 0 2 12a31 31 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.9.5 7.5.5 7.5.5s5.6 0 7.5-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 22 12a31 31 0 0 0-.4-4.8Z" />
-                  <path fill="white" d="m10 15.5 5-3.5-5-3.5v7Z" />
-                </svg>
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold text-slate-900">Video lessons</h3>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                  Browse lessons and your saved videos.
-                </p>
-              </div>
-              <span className="text-lg text-slate-400 group-hover:text-slate-600" aria-hidden="true">
-                →
-              </span>
-            </div>
-          </button>
-
-          </div>
-
+        <aside className="hidden min-w-0 space-y-4 xl:block" aria-label="Chapter resources">
+          {renderVideoLessons()}
+          <div className="subject-panel rounded-2xl border bg-white p-4 sm:p-5">{renderStudyChecklist()}</div>
         </aside>
       </div>
 
