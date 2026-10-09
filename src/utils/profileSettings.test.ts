@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { saveProfileSettings, validateProfileSettings, type ProfileSettings } from './profileSettings';
 import { recordsForKey, restoreRecords } from './cloudRecords';
 import type { UserProfile } from '../types';
+import { profileAvatarChoices } from './profileAvatars';
 
 const profile: UserProfile = { name: 'Student', email: 'student@example.test', school: 'School', classLevel: 'Class 11', group: 'Science', board: 'Dhaka', examYear: '2027', avatarUrl: 'existing-avatar' };
 const draft: ProfileSettings = { name: ' New name ', username: 'student', birthdate: '2008-02-29', classLevel: 'Class 12', instructionLanguage: 'bn' };
@@ -37,5 +38,17 @@ test('storage failure propagates without changing the original profile', () => {
   const storage={getItem:()=>raw,setItem:()=>{throw new Error('full');},removeItem:()=>{},clear:()=>{}};
   assert.throws(()=>saveProfileSettings(storage,draft,'2026-10-08'),/full/);
   assert.equal(storage.getItem(),raw);
+});
+
+test('avatar selection saves and survives cloud round-trip without changing study records', () => {
+  const entries = new Map([['sp_profile', JSON.stringify(profile)], ['sp_homework', '[{"id":"keep"}]']]);
+  const storage = { getItem: (key: string) => entries.get(key) ?? null, setItem: (key: string, value: string) => { entries.set(key, value); }, removeItem: () => assert.fail('must not delete'), clear: () => assert.fail('must not clear') };
+  const saved = saveProfileSettings(storage, { ...draft, avatarUrl: profileAvatarChoices[9] }, '2026-10-09');
+  assert.equal(saved.avatarUrl, profileAvatarChoices[9]);
+  assert.equal(entries.get('sp_homework'), '[{"id":"keep"}]');
+  const restored = restoreRecords(recordsForKey('sp_profile', entries.get('sp_profile')!).values());
+  assert.deepEqual(JSON.parse(restored['sp_profile']), saved);
+  assert.throws(() => validateProfileSettings(profile, { ...draft, avatarUrl: 'https://example.test/arbitrary.svg' }, '2026-10-09'), /available choices/);
+  assert.doesNotThrow(() => validateProfileSettings(profile, { ...draft, avatarUrl: profile.avatarUrl }, '2026-10-09'));
 });
 

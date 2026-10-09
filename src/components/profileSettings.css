@@ -21,10 +21,18 @@
 .profile-secondary:hover, .profile-icon-button:hover { background:#eeeafa; }
 .profile-icon-button { padding:7px; flex-shrink:0; }
 .profile-settings-dialog button:disabled { opacity:.5; cursor:default; }
-.profile-password-reveal { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows 240ms ease, opacity 180ms ease; }
-.profile-password-reveal.is-open { grid-template-rows:1fr; opacity:1; }
-.profile-password-reveal > div { overflow:hidden; }
+.profile-avatar-picker { min-width:0; padding:14px; border:1px solid #e8e3f4; border-radius:16px; background:#faf9ff; }
+.profile-avatar-heading { display:flex; align-items:center; gap:12px; margin:4px 0 14px; }
+.profile-avatar-preview { width:56px; height:56px; flex-shrink:0; border-radius:50%; border:2px solid #ddd5f8; background:#eeeafa; }
+.profile-avatar-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }
+.profile-avatar-choice { padding:3px; border:2px solid transparent; border-radius:15px; transition:background-color 180ms ease, border-color 180ms ease; }
+.profile-avatar-choice img { display:block; width:100%; aspect-ratio:1; border-radius:11px; background:#eeeafa; }
+.profile-avatar-choice:hover { background:#eeeafa; }
+.profile-avatar-choice[aria-pressed="true"] { border-color:#8272e5; background:#eeeafa; }
+.profile-avatar-footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
+.profile-avatar-footer a { max-width:240px; font-size:10px; color:#64748b; }
+.profile-avatar-footer a:hover { text-decoration:underline; }
 @keyframes profile-appear { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
 @keyframes profile-fade { from { opacity:0; } to { opacity:1; } }
-@media (max-width:480px) { .profile-fields { grid-template-columns:minmax(0,1fr); } }
-@media (prefers-reduced-motion:reduce) { .profile-dropdown, .profile-backdrop, .profile-settings-dialog { animation:none; } .profile-chevron, .profile-password-reveal { transition:none; } }
+@media (max-width:480px) { .profile-fields { grid-template-columns:minmax(0,1fr); } .profile-avatar-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (prefers-reduced-motion:reduce) { .profile-dropdown, .profile-backdrop, .profile-settings-dialog { animation:none; } .profile-chevron, .profile-avatar-choice { transition:none; } }

@@ -7,6 +7,7 @@ import { useAccount } from '../auth/AccountContext';
 import { accountError } from '../auth/messages';
 import type { UserProfile } from '../types';
 import { profileClasses, type ProfileSettings } from '../utils/profileSettings';
+import { profileAvatarChoices } from '../utils/profileAvatars';
 import { localDateKey } from '../utils/routineTasks';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { useInstruction } from './InstructionLanguage';
@@ -27,15 +28,15 @@ export default function ProfileMenu({ profile, onSave, onLogOut }: {
     document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
   }, [menu]);
-  return <div ref={root} className="relative flex min-w-0 items-center gap-2.5 border-l border-slate-200/70 pl-3"
+  return <div ref={root} className="relative flex min-w-0 items-center gap-1 border-l border-slate-200/70 pl-3"
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && !settings) setMenu(false); }}>
-    <div><button ref={trigger} type="button" aria-expanded={menu} aria-controls="profile-menu" onClick={() => setMenu(!menu)}
+    <img src={profile.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(profile.name)}`}
+      alt="" className="hidden h-9 w-9 shrink-0 rounded-full border border-slate-200/70 bg-white sm:block" />
+    <div className="min-w-0"><button ref={trigger} type="button" aria-expanded={menu} aria-controls="profile-menu" onClick={() => setMenu(!menu)}
       className="profile-name-button" aria-label={`Account menu for ${profile.name}`}>
       <span className="block max-w-[105px] truncate text-xs font-bold sm:max-w-[160px]">{profile.name}</span>
       <ChevronDown size={14} className={`profile-chevron ${menu ? 'profile-chevron-open' : ''}`} />
-    </button><span className="block pl-2 text-[10px] text-slate-500">{profile.classLevel}</span></div>
-    <img src={profile.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(profile.name)}`}
-      alt="" className="hidden h-9 w-9 rounded-full border border-slate-200/70 bg-white sm:block" />
+    </button></div>
     {menu && <div id="profile-menu" className="profile-dropdown" aria-label="Account options">
       <button type="button" onClick={() => { setMenu(false); trigger.current?.focus(); setSettings(true); }}><Settings size={16} />Profile settings</button>
       <div className="my-1 border-t border-slate-100" />
@@ -50,15 +51,18 @@ export default function ProfileMenu({ profile, onSave, onLogOut }: {
 export function ProfileSettingsDialog({ profile, onSave, onClose }: {
   profile: UserProfile; onSave: (draft: ProfileSettings) => void; onClose: () => void;
 }) {
-  const { user } = useAccount();
+  const { user, cloud } = useAccount();
+  const [cloudState, setCloudState] = useState(() => cloud?.getState());
+  useEffect(() => cloud?.watch(setCloudState), [cloud]);
   const t = useInstruction();
-  const initial = () => ({ name: profile.name, username: profile.username || '', birthdate: profile.birthdate || '', classLevel: profile.classLevel, instructionLanguage: profile.instructionLanguage || 'en' } as ProfileSettings);
+  const initial = () => ({ name: profile.name, username: profile.username || '', birthdate: profile.birthdate || '', classLevel: profile.classLevel, instructionLanguage: 'en', avatarUrl: profile.avatarUrl } as ProfileSettings);
   const [draft, setDraft] = useState(initial);
   const [baseline, setBaseline] = useState(initial);
   const [discard, setDiscard] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [avatarPage, setAvatarPage] = useState(0);
+  const [currentPasswordEditable, setCurrentPasswordEditable] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -66,7 +70,7 @@ export function ProfileSettingsDialog({ profile, onSave, onClose }: {
   const [passwordError, setPasswordError] = useState('');
   const [busy, setBusy] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline) || !!(currentPassword || newPassword || confirmPassword);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
   const close = () => { if (busy) return; if (dirty) setDiscard(true); else onClose(); };
   useDialogFocus(true, dialog, close);
   useEffect(() => {
@@ -90,8 +94,9 @@ export function ProfileSettingsDialog({ profile, onSave, onClose }: {
   const save = (event: React.FormEvent) => {
     event.preventDefault(); setError(''); setMessage('');
     try {
-      onSave(draft); setBaseline({ ...draft });
-      setMessage('Changes saved on this device. Check “Saved online” before using another device.');
+      const saved = { ...draft, name: draft.name.trim(), username: draft.username?.trim() || '', birthdate: draft.birthdate || '' };
+      onSave(saved); setDraft(saved); setBaseline({ ...saved });
+      setMessage('Changes saved');
     } catch (failure) { setError(t(failure instanceof Error ? failure.message : 'Could not complete this action. Please try again.')); }
   };
   const passwordAction = async (recovery = false) => {
@@ -127,6 +132,24 @@ export function ProfileSettingsDialog({ profile, onSave, onClose }: {
         <div className="flex flex-wrap justify-end gap-2"><button data-keep-editing className="profile-secondary" onClick={() => { setDiscard(false); requestAnimationFrame(() => dialog.current?.querySelector<HTMLButtonElement>('[aria-label="Close profile settings"]')?.focus()); }}>Keep editing</button><button className="profile-primary" onClick={onClose}>Discard changes</button></div></div> :
       <div className="space-y-6 p-5 sm:p-6">
         <form onSubmit={save} className="space-y-4">
+          <fieldset className="profile-avatar-picker">
+            <legend className="text-sm font-semibold">Your avatar</legend>
+            <div className="profile-avatar-heading">
+              <img className="profile-avatar-preview" src={draft.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(profile.name)}`} alt="Selected avatar" />
+              <p className="profile-help">Choose a character that feels like you.</p>
+            </div>
+            <div className="profile-avatar-grid">
+              {profileAvatarChoices.slice(avatarPage * 12, avatarPage * 12 + 12).map((url, index) => <button
+                key={url} type="button" className="profile-avatar-choice" aria-label={`Choose avatar ${avatarPage * 12 + index + 1}`}
+                aria-pressed={draft.avatarUrl === url} onClick={() => change('avatarUrl', url)}>
+                <img src={url} alt="" loading="lazy" />
+              </button>)}
+            </div>
+            <div className="profile-avatar-footer">
+              <a href="https://www.dicebear.com/styles/adventurer/" target="_blank" rel="noreferrer">Avatars by Lisa Wischofsky · DiceBear · CC BY 4.0</a>
+              <button type="button" className="profile-secondary" onClick={() => setAvatarPage(page => (page + 1) % 5)}>More choices</button>
+            </div>
+          </fieldset>
           <div className="profile-fields">
             <label>Name<input value={draft.name} onChange={e => change('name', e.target.value)} required maxLength={80} autoComplete="name" /></label>
             <label>Username <span className="profile-optional">(optional)</span><input value={draft.username} onChange={e => change('username', e.target.value)} maxLength={40} autoComplete="off" /></label>
@@ -135,26 +158,25 @@ export function ProfileSettingsDialog({ profile, onSave, onClose }: {
           </div>
           <p className="profile-help">{t('Username is a profile detail, not a login name. Birthdate is private; clear either field to remove it.', 'Username শুধু প্রোফাইলের তথ্য; লগইনের জন্য নয়। জন্মতারিখ ব্যক্তিগত। মুছতে চাইলে ঘর খালি করো।')}</p>
           {draft.classLevel !== profile.classLevel && <p className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-sm text-indigo-800">{t('Your class syllabus will be displayed after saving. Existing homework, routines and progress stay saved; chapters outside that syllabus may not be shown.', 'Save করার পরে নির্বাচিত ক্লাসের সিলেবাস দেখাবে। Homework, রুটিন ও অগ্রগতি সংরক্ষিত থাকবে; এই সিলেবাসের বাইরের অধ্যায় নাও দেখাতে পারে।')}</p>}
-          <label className="profile-field">Instruction language<select value={draft.instructionLanguage} onChange={e => change('instructionLanguage', e.target.value)}><option value="en">English</option><option value="bn">বাংলা</option></select></label>
-          <p className="profile-help">{t('Help and instructions can be in Bangla. Page names and buttons stay in English; your writing and lessons keep their original language.', 'সহায়তা ও নির্দেশনা বাংলায় পড়তে পারো। পেজ ও বোতামের নাম ইংরেজিতেই থাকবে। তোমার লেখা ও পাঠের ভাষা বদলাবে না।')}</p>
+          <label className="profile-field">Instruction language<select value={draft.instructionLanguage} onChange={e => change('instructionLanguage', e.target.value)}><option value="en">English</option><option value="bn" disabled>Bangla — Coming soon</option></select></label>
+          <p className="profile-help">Bangla guidance is being prepared. Instructions are currently available in English.</p>
           {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
-          {message && <p role="status" className="text-sm text-emerald-700">{t(message)}</p>}
+          {message && <p role="status" className={`text-sm ${cloudState?.error ? 'text-amber-700' : 'text-emerald-700'}`}>
+            {cloudState ? cloudState.error ? 'Saved on this device · Online save pending' : cloudState.status : 'Saved on this device'}
+          </p>}
           <div className="flex justify-end"><button className="profile-primary" type="submit" disabled={busy || JSON.stringify(draft) === JSON.stringify(baseline)}>Save changes</button></div>
         </form>
         <section className="border-t border-slate-100 pt-4">
-          <button type="button" className="profile-secondary flex w-full items-center gap-2 text-left" aria-expanded={passwordOpen} aria-controls="profile-password" onClick={() => setPasswordOpen(!passwordOpen)}><LockKeyhole size={16} />Change password<ChevronDown size={16} className={`profile-chevron ml-auto ${passwordOpen ? 'profile-chevron-open' : ''}`} /></button>
-          <div className={`profile-password-reveal ${passwordOpen ? 'is-open' : ''}`} inert={!passwordOpen} aria-hidden={!passwordOpen}>
-            <div><form id="profile-password" className="space-y-3 pt-4" onSubmit={event => { event.preventDefault(); void passwordAction(); }}>
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><LockKeyhole size={16} />Change password</h3>
+            <form id="profile-password" autoComplete="off" className="space-y-3 pt-4" onSubmit={event => { event.preventDefault(); void passwordAction(); }}>
               <p className="profile-help">{t('Verify your current password before choosing a new one.', 'নতুন পাসওয়ার্ড দেওয়ার আগে বর্তমান পাসওয়ার্ড যাচাই করো।')}</p>
-              <input type="text" name="username" value={user.email || ''} autoComplete="username" readOnly hidden />
-              <label className="profile-field">Current password<input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} autoComplete="current-password" required disabled={busy} /></label>
+              <label className="profile-field">Current password<input type="password" name="profile-current-password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} autoComplete="off" readOnly={!currentPasswordEditable} onFocus={() => { if (!currentPasswordEditable) { setCurrentPassword(''); setCurrentPasswordEditable(true); } }} placeholder="Enter your current password" required disabled={busy} data-lpignore="true" data-1p-ignore="true" /></label>
               <label className="profile-field">New password<input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} autoComplete="new-password" minLength={8} required disabled={busy} /></label>
               <label className="profile-field">Confirm new password<input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" minLength={8} required disabled={busy} /></label>
               {passwordError && <p role="alert" className="text-sm text-rose-700">{passwordError}</p>}
               {passwordMessage && <p role="status" className="text-sm text-emerald-700">{passwordMessage}</p>}
               <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className="text-sm font-semibold text-indigo-600 disabled:opacity-50" disabled={busy} onClick={() => void passwordAction(true)}>Forgot password?</button><button className="profile-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : 'Update password'}</button></div>
-            </form></div>
-          </div>
+            </form>
         </section>
       </div>}
     </div>

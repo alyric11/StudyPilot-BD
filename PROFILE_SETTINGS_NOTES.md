@@ -8,7 +8,17 @@ Username and birthdate are optional and removable. Username is not a unique iden
 
 Class changes are restricted to 9/10 or 11/12, with a syllabus visibility notice. Progress and records are retained under their existing IDs. Password changes use Firebase reauthentication followed by updatePassword; recovery uses the account email. Passwords never enter student storage.
 
-## Validation
+## Settings revision — October 9, 2026
+
+- Avatar chooser offers 60 stable DiceBear Adventurer characters, 12 at a time, with pastel backgrounds, preview and artist/license attribution. Public seeds contain no student details. Images use the external DiceBear service and need connectivity to load. Existing avatars remain until a new choice is saved. Only `sp_profile` is written, including `avatarUrl`.
+- Avatar is left of the header name with tight spacing. Only the name and chevron open the menu. The header profile section does not show class; class remains in the dashboard and settings.
+- Settings offer English with a disabled “Bangla — Coming soon” option. Existing translation code and stored preferences are retained; saving settings selects English.
+- Change password is always open. Current password starts empty and read-only until focused, with autofill suppression hints. Password managers may override hints. Closing unmounts and clears password drafts.
+- Save feedback uses the existing cloud status, with a concise local-save fallback and online-pending message on cloud errors. Cloud success is shown only after confirmation.
+- Only unsaved profile edits trigger discard/before-unload protection. Password drafts do not. Successful saves normalize draft and baseline together to avoid warnings after saving.
+- Revision validation: all 75 tests, type check and production build passed; existing bundle-size warning remains. Fake-data browser preview verified avatar images, selection/save/reopen, closing after save, unsaved profile warning, empty current password/editability on focus, disabled Bangla, and desktop/390px mobile layout. Live Firebase password/recovery and two-device synchronization were not exercised. Autofill suppression was not tested with saved credentials.
+
+## Original implementation validation
 
 - 74 tests passed, including profile-only writes, preservation, class-pair restrictions, optional defaults, invalid/future dates, failed storage, and cloud record round-trip.
 - Type check and production build passed. Existing large-bundle warning remains.
