@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 import { studentFetch } from "../utils/studentFetch";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
@@ -253,10 +254,10 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
         <section className="study-panel min-w-0 space-y-4 p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div><h2 className="text-base font-semibold text-slate-800">My Saved Videos</h2>
-              <p className="mt-1 text-sm text-slate-500">Keep up to 3 useful videos for this chapter.</p></div>
+              <p className="mt-1 text-sm text-slate-500"><Guidance>Keep up to 3 useful videos for this chapter.</Guidance></p></div>
             <span className="shrink-0 text-xs font-semibold text-slate-400">{personal.length} / 3</span>
           </div>
-          {personalError && <p role="alert" className="text-sm text-red-700">{personalError}</p>}
+          {personalError && <p role="alert" className="text-sm text-red-700"><Guidance>{personalError}</Guidance></p>}
           <button disabled={!loadedPersonal || personal.length >= 3} className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-indigo-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setShowAdd(value => !value)}><Plus className="h-3.5 w-3.5 text-indigo-500" />Add YouTube Video</button>
           {showAdd && <form className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={async event => {
@@ -276,7 +277,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
           </form>}
           <LayoutGroup id={`personal-${chapter.subjectId}-${chapter.chapterId}`}>
             <div className="space-y-3">
-              {personal.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">No personal videos saved yet.</div>}
+              {personal.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500"><Guidance>No personal videos saved yet.</Guidance></div>}
               {personal.map(id => {
                 const video = personalDetails[id] || { videoId: id, title: "Saved YouTube video", channelTitle: "Details unavailable", thumbnail: "", duration: null, viewCount: "0" };
                 return card(video, <button disabled={addingLink} className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[color-mix(in_srgb,var(--video-accent)_20%,white)] bg-[color-mix(in_srgb,var(--video-accent)_6%,white)] px-3 py-2 text-xs font-semibold text-[color-mix(in_srgb,var(--video-accent)_55%,#17243b)] transition-colors hover:bg-[color-mix(in_srgb,var(--video-accent)_12%,white)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--video-accent)] disabled:opacity-50" aria-label={`Remove personal video: ${video.title}`} onClick={() => askRemoval(video, false)}>
@@ -291,8 +292,8 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
                 catch (error) { if ((error as Error).name !== "AbortError") setPersonalError((error as Error).message); }
                 finally { setStudentSearching(false); }
               }}><Search className="h-4 w-4" />{studentSearching ? "Searching…" : "Search New Videos"}</button>
-              <p className="text-xs leading-relaxed text-slate-500">Find more lessons. Videos already saved in either panel are excluded.</p>
-              {studentSearched && !studentSearching && availableStudent.length === 0 && <p className="text-sm text-slate-500">No additional matching videos found.</p>}
+              <p className="text-xs leading-relaxed text-slate-500"><Guidance>Find more lessons. Videos already saved in either panel are excluded.</Guidance></p>
+              {studentSearched && !studentSearching && availableStudent.length === 0 && <p className="text-sm text-slate-500"><Guidance>No additional matching videos found.</Guidance></p>}
               {availableStudent.map(video => card(video, <button disabled={addingLink || personal.length >= 3} className={button} onClick={() => addPersonal(video)}>
                 <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />Save
               </button>, true))}
@@ -332,10 +333,10 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
               <span className="rounded-lg bg-rose-50 p-1.5 text-rose-600"><AlertTriangle className="h-4 w-4" /></span>
               <h2 id="video-removal-title" className="text-sm font-semibold text-slate-800">Remove saved video?</h2>
             </div>
-            <p className="mt-3 text-center text-xs leading-relaxed text-slate-500">{removal.shared
+            <p className="mt-3 text-center text-xs leading-relaxed text-slate-500"><Guidance>{removal.shared
               ? "This lesson will be removed from the shared list for students."
-              : "This video will be removed from your personal saved list."}</p>
-            {removalError && <p role="alert" className="mt-2 text-center text-xs text-red-700">{removalError}</p>}
+              : "This video will be removed from your personal saved list."}</Guidance></p>
+            {removalError && <p role="alert" className="mt-2 text-center text-xs text-red-700"><Guidance>{removalError}</Guidance></p>}
             <div className="mt-4 flex justify-center gap-2">
               <button disabled={adminBusy} onClick={() => setRemoval(null)} className="min-w-24 rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Keep saved</button>
               <button disabled={adminBusy} className="min-w-24 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"

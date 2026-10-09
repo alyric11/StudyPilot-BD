@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 /**
  * STUDYPILOT BD - Personal Study Diary & Formula Notebook
  * 
@@ -126,7 +127,7 @@ export default function StudyDiary({
           </div>
           <div>
             <h2 className="text-xl font-display font-bold text-slate-800 tracking-tight">Personal Study Diary</h2>
-            <p className="text-slate-400 text-xs">Keep searchable notebooks of formulas, vocabulary, and active reflections.</p>
+            <p className="text-slate-400 text-xs"><Guidance>Keep searchable notebooks of formulas, vocabulary, and active reflections.</Guidance></p>
           </div>
         </div>
 
@@ -365,9 +366,7 @@ export default function StudyDiary({
                 </div>
                 <h3 className="text-md font-display font-bold tracking-tight">Delete Diary Entry?</h3>
               </div>
-              <p className="text-slate-600 text-xs leading-relaxed">
-                Are you sure you want to delete this entry from your Study Diary & Formula Notebook? This action cannot be undone.
-              </p>
+              <p className="text-slate-600 text-xs leading-relaxed"><Guidance>Are you sure you want to delete this entry from your Study Diary & Formula Notebook? This action cannot be undone.</Guidance></p>
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"

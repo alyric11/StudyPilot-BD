@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 import { useId, useRef, type CSSProperties } from "react";
 import { BookPlus, Check, ChevronDown } from "lucide-react";
 import useDisclosureScroll from "../hooks/useDisclosureScroll";
@@ -31,7 +32,7 @@ export default function OptionalSubjectSelector({ groups, selectedIds, open, onT
         <span className="optional-subject-symbol"><BookPlus size={18} aria-hidden="true" /></span>
         <span className="optional-subject-heading">
           <span className="optional-subject-title font-display">{open ? "Optional Subjects" : "Add Optional Subject"}</span>
-          <span className="optional-subject-description">Choose the subjects you want to study.</span>
+          <span className="optional-subject-description"><Guidance>Choose the subjects you want to study.</Guidance></span>
         </span>
         {selectedCount > 0 && <span className="optional-subject-count">{selectedCount} selected</span>}
         <ChevronDown size={18} className="optional-subject-chevron" aria-hidden="true" />

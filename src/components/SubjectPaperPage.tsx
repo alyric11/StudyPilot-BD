@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import StudyPageHeader from "./StudyPageHeader";
@@ -129,7 +130,7 @@ function SubjectPaperContent({
         <section aria-labelledby="subject-chapters-heading" className="subject-panel subject-chapters-panel min-w-0 rounded-2xl border bg-white p-4 sm:p-5">
           <div>
           <h2 id="subject-chapters-heading" className="text-base font-semibold text-slate-800">{hasLessons ? "Units & lessons" : "Chapters"}</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">{hasSections ? "Expand a section and select an item to continue studying." : "Select a chapter to continue studying."}</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500"><Guidance>{hasSections ? "Expand a section and select an item to continue studying." : "Select a chapter to continue studying."}</Guidance></p>
           <div role="group" aria-label={`Filter ${itemLabel}`} className="mt-4 flex flex-wrap gap-1 border-b border-slate-100 pb-3">
             {filters.map(({ key, label }) => (
               <button key={key} type="button" onClick={() => selectFilter(key)} aria-pressed={chapterFilter === key}

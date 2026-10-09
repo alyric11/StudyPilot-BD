@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 /**
  * STUDYPILOT BD - Personal Homework Task Tracker
  * 
@@ -135,7 +136,7 @@ export default function HomeworkManager({
           </div>
           <div>
             <h2 className="text-xl font-display font-bold text-slate-800 tracking-tight">Homework & Task Manager</h2>
-            <p className="text-slate-400 text-xs">Organize your syllabus homework deadlines and class assignments.</p>
+            <p className="text-slate-400 text-xs"><Guidance>Organize your syllabus homework deadlines and class assignments.</Guidance></p>
           </div>
         </div>
 
@@ -398,9 +399,7 @@ export default function HomeworkManager({
                 </div>
                 <h3 className="text-md font-display font-bold tracking-tight">Delete Assignment?</h3>
               </div>
-              <p className="text-slate-600 text-xs leading-relaxed">
-                Are you sure you want to delete this assignment from your study board? This task progress will be permanently lost.
-              </p>
+              <p className="text-slate-600 text-xs leading-relaxed"><Guidance>Are you sure you want to delete this assignment from your study board? This task progress will be permanently lost.</Guidance></p>
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"

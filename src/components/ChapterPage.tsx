@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 import { studentFetch } from "../utils/studentFetch";
 /**
  * STUDYPILOT BD - Interactive Chapter Learning Hub
@@ -445,7 +446,7 @@ export default function ChapterPage({
               <div className="p-4 sm:p-5">
                 {loadingGuide ? (
                   <div className="rounded-xl bg-slate-50 p-4 text-center">
-                    <p className="text-sm text-slate-500">Generating your chapter overview...</p>
+                    <p className="text-sm text-slate-500"><Guidance>Generating your chapter overview...</Guidance></p>
                   </div>
                 ) : apiWarning ? (
                   <div className="rounded-xl border border-red-100 bg-red-50 p-5 text-center">
@@ -453,7 +454,7 @@ export default function ChapterPage({
                     <button type="button" onClick={() => void generateChapterGuide()} className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700">Retry</button>
                   </div>
                 ) : isPlaceholderOverview ? (
-                  <p className="text-sm leading-relaxed text-slate-500">This chapter overview is not ready yet. You can use the Study Plan and video lessons while it is being prepared.</p>
+                  <p className="text-sm leading-relaxed text-slate-500"><Guidance>This chapter overview is not ready yet. You can use the Study Plan and video lessons while it is being prepared.</Guidance></p>
                 ) : guideData ? (
                   <div className="mx-auto max-w-3xl text-left">
                     {renderOverviewText([

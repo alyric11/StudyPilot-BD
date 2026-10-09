@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { createPortal } from "react-dom";
@@ -1355,7 +1356,7 @@ export default function StudyPlanner({
                             title={routineError}
                           >
                             <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
-                            <span>{routineError}</span>
+                            <span><Guidance>{routineError}</Guidance></span>
                           </motion.div>
                         </div>
                       </motion.div>
@@ -1491,7 +1492,7 @@ export default function StudyPlanner({
                           })
                         ) : (
                           <div className="rounded-xl border border-dashed border-slate-200 px-3 py-5 text-center text-xs text-slate-500">
-                            No chapter data is available for this subject yet.
+                            <Guidance>No chapter data is available for this subject yet.</Guidance>
                           </div>
                         )}
                       </div>
@@ -1555,9 +1556,9 @@ export default function StudyPlanner({
                     id="delete-confirmation-description"
                     className="mx-auto mt-2 max-w-[240px] text-center text-xs leading-relaxed text-slate-500"
                   >
-                    {deleteConfirmation === "homework"
+                    <Guidance>{deleteConfirmation === "homework"
                       ? "Its chapter and homework for this date will be removed."
-                      : "This study time will no longer repeat. Saved homework records stay in your study log."}
+                      : "This study time will no longer repeat. Saved homework records stay in your study log."}</Guidance>
                   </p>
 
                   <div className="mt-4 flex items-center justify-center gap-2">
@@ -1592,7 +1593,7 @@ export default function StudyPlanner({
         {/* Weekly Routine Board */}
         <div id="planner-week-board" ref={routineBoardRef} tabIndex={-1} className="planner-board">
           <div className="planner-board-heading">
-            <p className="text-xs leading-relaxed text-slate-500">Weekly times repeat. Homework belongs to one date.</p>
+            <p className="text-xs leading-relaxed text-slate-500"><Guidance>Weekly times repeat. Homework belongs to one date.</Guidance></p>
             <div className="planner-week-controls flex items-center gap-1.5">
               <button
                 type="button"

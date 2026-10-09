@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CalendarDays, Check } from "lucide-react";
@@ -165,7 +166,7 @@ export default function TodaysTasks({
         </div>
       ) : (
         <div className="py-4 text-center">
-          <p className="text-sm text-slate-600">No routine planned for today.</p>
+          <p className="text-sm text-slate-600"><Guidance>No routine planned for today.</Guidance></p>
           <button type="button" onClick={onOpenPlanner} className="dashboard-text-action mt-2">Create routine</button>
         </div>
       )}

@@ -1,3 +1,4 @@
+import { Guidance } from "./InstructionLanguage";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { BookOpen, ExternalLink, LibraryBig, Pencil, Plus } from "lucide-react";
 import type { AdditionalSubject, RoutineBlock, DailyRoutineTask } from "../types";
@@ -36,7 +37,7 @@ export function PersonalSubjectsPanel({ subjects, routineBlocks = [], dailyRouti
         <span className="dashboard-support-icon dashboard-personal-tint"><BookOpen size={18} aria-hidden="true" /></span>
         <div className="min-w-0 flex-1">
           <h3 id="personal-subjects-heading" className="dashboard-support-title font-display">Personal Subjects</h3>
-          <p className="dashboard-support-description">A little space for your own learning.</p>
+          <p className="dashboard-support-description"><Guidance>A little space for your own learning.</Guidance></p>
         </div>
         <span className="dashboard-personal-count" aria-label={`${subjects.length} of 6 personal subjects`}>{subjects.length}<span> / 6</span></span>
       </header>
@@ -56,7 +57,7 @@ export function PersonalSubjectsPanel({ subjects, routineBlocks = [], dailyRouti
             <span className="dashboard-personal-session">{next ? `Next: ${next.toLocaleDateString("en-US", { weekday: "short" })}, ${next.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}` : "Not scheduled yet"}</span>
           </button>
         ); })}
-        {subjects.length === 0 && <p className="dashboard-personal-empty">Learning something outside your textbooks? Add it here.</p>}
+        {subjects.length === 0 && <p className="dashboard-personal-empty"><Guidance>Learning something outside your textbooks? Add it here.</Guidance></p>}
       </div>
       <button type="button" onClick={onAdd} disabled={subjects.length >= 6} className="dashboard-personal-add">
         <Plus size={15} aria-hidden="true" /> Add Personal Subject
@@ -80,7 +81,7 @@ export function RecommendedResourcesPanel() {
         <span className="dashboard-support-icon dashboard-resource-tint"><LibraryBig size={18} aria-hidden="true" /></span>
         <div className="min-w-0">
           <h3 id="recommended-resources-heading" className="dashboard-support-title font-display">Recommended Resources</h3>
-          <p className="dashboard-support-description">Helpful places to continue learning.</p>
+          <p className="dashboard-support-description"><Guidance>Helpful places to continue learning.</Guidance></p>
         </div>
       </header>
       <nav aria-label="Useful study websites" className="dashboard-resource-list">
