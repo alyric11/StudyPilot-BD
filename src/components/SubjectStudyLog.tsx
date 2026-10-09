@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
     CalendarDays,
     Check,
@@ -14,9 +14,11 @@ import type {
 import {
     getStudyLogTasks,
     localDateKey,
+    resolveRoutineChapter,
 } from "../utils/routineTasks.ts";
 import { formatTime12Hour } from "../utils/time";
-import { nextSubjectSession } from "../utils/subjectSessions";
+import { getSubjectAccentColor, getSubjectCardStyles } from '../colorPalettes';
+import UpcomingSubjectSessions from './UpcomingSubjectSessions';
 
 interface SubjectStudyLogProps {
     subject: Subject;
@@ -25,6 +27,7 @@ interface SubjectStudyLogProps {
     routineBlocks: RoutineBlock[];
     records: DailyRoutineTask[];
     onOpenPlanner: (task?: DailyRoutineTask) => void;
+    onSaveDatedRoutineTask: (task: DailyRoutineTask) => boolean;
     onSetCompletion: (
         task: DailyRoutineTask,
         completed: boolean
@@ -57,8 +60,8 @@ export default function SubjectStudyLog({
     additionalSubjects,
     routineBlocks,
     records,
-    onOpenPlanner,
     onSetCompletion,
+    onSaveDatedRoutineTask,
 }: SubjectStudyLogProps) {
     const [selectedDate, setSelectedDate] = useState(
         () => localDateKey(new Date())
@@ -85,14 +88,6 @@ export default function SubjectStudyLog({
         additionalSubjects,
         today
     ).filter((task) => task.subjectKey === subjectKey);
-    const next = nextSubjectSession(subject.id, routineBlocks, records, subjects, additionalSubjects, now);
-    const isNext = (task: DailyRoutineTask) => !!next && next.date === task.date && next.block.id === task.block.id;
-    const nextInList = tasks.some(isNext);
-    const pendingToday = getStudyLogTasks(today, routineBlocks, records, subjects, additionalSubjects, today)
-        .filter(task => task.subjectKey === subjectKey && !task.completed && Boolean(task.block.chapterId || task.block.homeworkText?.trim())).length;
-    const tomorrow = shiftDate(today, 1);
-    const nextLabel = next ? `${next.date === today ? "Today" : next.date === tomorrow ? "Tomorrow" : formatSelectedDate(next.date)}` : "";
-    const nextChapter = next?.block.chapterId ? subject.chapters.find(chapter => chapter.id === next.block.chapterId) : undefined;
 
     return (
         <aside className="subject-study-log min-w-0" aria-labelledby="subject-study-log-heading">
@@ -105,9 +100,6 @@ export default function SubjectStudyLog({
                     Study Log
                 </h2>
             </div>
-            {pendingToday > 0 && <button type="button" className="subject-log-homework" onClick={() => chooseDate(today)}>
-                Today · {pendingToday} pending homework {pendingToday === 1 ? "task" : "tasks"}
-            </button>}
 
             {/* Date navigation */}
             <div className="subject-log-date mt-3 flex items-center justify-between gap-2 rounded-xl bg-slate-50 p-1">
@@ -124,7 +116,7 @@ export default function SubjectStudyLog({
 
                 <label className="relative flex min-h-10 min-w-0 flex-1 cursor-pointer items-center justify-center rounded-lg focus-within:ring-2 focus-within:ring-slate-400">
                     <span className="text-sm font-semibold text-slate-700">
-                        {formatSelectedDate(viewedDate)}
+                        {viewedDate === today ? "Today's Session" : formatSelectedDate(viewedDate)}
                     </span>
 
                     <input
@@ -156,36 +148,38 @@ export default function SubjectStudyLog({
             {/* Subject tasks */}
             <div className="mt-4 space-y-2.5">
                 {tasks.length > 0 ? (
-                    tasks.map((task) => (
+                    tasks.map((task) => {
+                        const chapter = resolveRoutineChapter(task.block, subjects)?.chapter;
+                        return (
                         <div
                             key={`${task.date}:${task.block.id}`}
-                            className="subject-log-task"
+                            className={`subject-log-task subject-card-live ${viewedDate === today ? 'subject-log-task-today' : ''} ${getSubjectCardStyles(task.paletteColor).card}`}
+                            style={{ '--subject-hover-color': getSubjectAccentColor(task.paletteColor) } as CSSProperties}
                         >
-                            {isNext(task) && <span className="subject-next-label">Next session</span>}
-                            <div className="mb-2 text-xs font-medium text-slate-500">
-                                    {formatTime12Hour(task.block.startTime)}
-                                    {" – "}{formatTime12Hour(task.block.endTime)}
-                                    {task.block.endTime <= task.block.startTime && " (+1 day)"}
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <div className="min-w-0 flex-1">
+                            <div className="subject-log-card-layout">
+                                <div className="subject-log-time" aria-label={`${formatTime12Hour(task.block.startTime)} to ${formatTime12Hour(task.block.endTime)}${task.block.endTime <= task.block.startTime ? ', ends next day' : ''}`}>
+                                    <span>{formatTime12Hour(task.block.startTime)}</span>
+                                    <span>{formatTime12Hour(task.block.endTime)}{task.block.endTime <= task.block.startTime && <sup title="Ends the next day">+1</sup>}</span>
+                                </div>
+                                <div className="contents">
                                     <p
-                                        className={`text-sm font-semibold ${task.completed
+                                        className={`subject-log-chapter min-w-0 break-words text-sm font-semibold ${task.completed
                                                 ? "text-slate-400 line-through"
                                                 : "text-slate-700"
                                             }`}
                                     >
-                                        {(task.block.chapterId && subject.chapters.find(chapter => chapter.id === task.block.chapterId)?.banglaName) || task.block.title}
+                                        {chapter && <span className="subject-log-chapter-number">{chapter.chapterNumber}</span>}
+                                        <span>{chapter ? chapter.banglaName || chapter.name : task.block.title}</span>
                                     </p>
 
                                     <p
-                                        className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-500"
+                                        className="subject-log-homework-copy min-w-0 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-600"
                                     >
                                         {task.block.homeworkText?.trim() || "No homework assigned"}
                                     </p>
                                 </div>
 
-                                <label className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center">
+                                <label className={`subject-log-check ${chapter ? 'has-chapter' : ''} flex h-7 w-8 cursor-pointer items-center justify-center`}>
                                     <input
                                         type="checkbox"
                                         checked={task.completed}
@@ -207,9 +201,8 @@ export default function SubjectStudyLog({
                                     </span>
                                 </label>
                             </div>
-                            {isNext(task) && <button type="button" className="subject-log-action mt-2" onClick={() => onOpenPlanner(task)}>Open in planner →</button>}
                         </div>
-                    ))
+                    ); })
                 ) : (
                     <div className="px-1 py-1">
                         <p className="text-xs leading-relaxed text-slate-500">
@@ -218,17 +211,8 @@ export default function SubjectStudyLog({
                     </div>
                 )}
             </div>
-            {!nextInList && <div className="subject-next-session">
-                {next ? <>
-                    <span className="subject-next-label">Next session</span>
-                    <p className="text-xs leading-relaxed text-slate-500">{nextLabel} · {formatTime12Hour(next.block.startTime)}–{formatTime12Hour(next.block.endTime)}{next.block.endTime <= next.block.startTime && " (+1 day)"}</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-700">{nextChapter?.banglaName || nextChapter?.name || subject.name}</p>
-                    <button type="button" className="subject-log-action mt-2" onClick={() => onOpenPlanner(next)}>Open in planner →</button>
-                </> : <>
-                    <p className="text-xs text-slate-500">No upcoming session scheduled.</p>
-                    <button type="button" className="subject-log-action mt-2" onClick={() => onOpenPlanner()}>Plan a study session →</button>
-                </>}
-            </div>}
+            <UpcomingSubjectSessions subject={subject} subjects={subjects} additionalSubjects={additionalSubjects}
+                routineBlocks={routineBlocks} records={records} now={now} onSave={onSaveDatedRoutineTask} />
         </aside>
     );
 }

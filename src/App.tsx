@@ -654,6 +654,7 @@ export default function App() {
                   mastery={subjectMasteries[selectedSubjectPaper] || 0}
                   chapterProgress={studentProgress[selectedSubjectPaper] || {}}
                   onSetRoutineCompletion={handleSetDailyRoutineCompletion}
+                  onSaveDatedRoutineTask={handleSaveDatedRoutineTask}
                   onOpenPlanner={(task) => {
                     if (task) {
                       setSelectedChapter(null);

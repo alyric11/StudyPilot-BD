@@ -4,8 +4,7 @@ import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import StudyPageHeader from "./StudyPageHeader";
 import type { Chapter, Subject } from "../data/curriculum";
 import type { AdditionalSubject, DailyRoutineTask, RoutineBlock, SubjectProgressMap } from "../types";
-import { CHAPTER_PREPARATION_KEYS, getChapterProgressPercentage, getStudyProgress } from "../utils/studyProgress";
-import { getStudyPace } from "../utils/paceCalculator";
+import { getChapterProgressPercentage } from "../utils/studyProgress";
 import SubjectStudyLog from "./SubjectStudyLog";
 import DifficultPoints from "./DifficultPoints";
 import { chapterRowNumber } from "../utils/subjectOutline";
@@ -24,6 +23,7 @@ interface SubjectPaperPageProps {
   onBack: () => void;
   onSelectChapter: (chapter: Chapter) => void;
   onSetRoutineCompletion: (task: DailyRoutineTask, completed: boolean) => boolean;
+  onSaveDatedRoutineTask: (task: DailyRoutineTask) => boolean;
   onOpenPlanner: (task?: DailyRoutineTask) => void;
 }
 
@@ -57,18 +57,12 @@ export default function SubjectPaperPage(props: SubjectPaperPageProps) {
 
 function SubjectPaperContent({
   subject, subjects, additionalSubjects, routineBlocks, dailyRoutineTasks,
-  mastery, chapterProgress, onBack, onSelectChapter, onSetRoutineCompletion, onOpenPlanner,
-  examYear, classLevel,
+  mastery, chapterProgress, onBack, onSelectChapter, onSetRoutineCompletion, onSaveDatedRoutineTask, onOpenPlanner,
+  classLevel,
 }: SubjectPaperPageProps) {
   const [chapterFilter, setChapterFilter] = useState<ChapterFilter>("all");
   const [filterClosedSections, setFilterClosedSections] = useState<string[]>([]);
   const subjectClass = subject.chapters[0]?.class ?? "";
-  const pace = getStudyPace({
-    totalChapters: getStudyProgress(subject, chapterProgress).total,
-    completedChapters: subject.chapters.filter(chapter =>
-      CHAPTER_PREPARATION_KEYS.every(key => chapterProgress[chapter.id]?.[key] === true)).length,
-    examYear, classLevel, today: new Date(),
-  });
 
   const chapters = subject.chapters.map((chapter, index) => ({
     chapter,
@@ -190,23 +184,8 @@ function SubjectPaperContent({
           <div className="subject-panel subject-companion min-w-0 rounded-2xl border bg-white p-4 sm:p-5">
             <div id="subject-study-log" tabIndex={-1} className="min-w-0 scroll-mt-24 rounded-lg">
               <SubjectStudyLog subject={subject} subjects={subjects} additionalSubjects={additionalSubjects}
-                routineBlocks={routineBlocks} records={dailyRoutineTasks} onSetCompletion={onSetRoutineCompletion} onOpenPlanner={onOpenPlanner} />
+                routineBlocks={routineBlocks} records={dailyRoutineTasks} onSetCompletion={onSetRoutineCompletion} onOpenPlanner={onOpenPlanner} onSaveDatedRoutineTask={onSaveDatedRoutineTask} />
             </div>
-          {pace && <section aria-labelledby="subject-pace-heading" className="mt-5 border-t border-slate-100 pt-5">
-            <h3 id="subject-pace-heading" className="text-sm font-semibold text-slate-600">Study pace</h3>
-            <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-700">
-              {pace.status === "ok" ? `About ${pace.chaptersPerWeek} chapters per week`
-                : pace.status === "exam_soon" ? "Exam is close. Focus on revision and your weakest chapters."
-                : pace.status === "exam_passed" ? "Your exam date has passed. Update your exam year in your profile."
-                : "All chapters done! Use the time for revision and board questions."}
-            </p>
-            {pace.status === "ok" && <div className="mt-1 space-y-1 text-xs leading-relaxed text-slate-500">
-              <p>{pace.remainingChapters} chapters left · {pace.weeksLeft} weeks to your estimated exam</p>
-            </div>}
-            <p className="mt-2 text-xs leading-relaxed text-slate-500">
-              {pace.status === "ok" && "Last 25% kept for revision. "}Estimated exam date. Adjust your pace to your school's routine.
-            </p>
-          </section>}
           </div>
         <DifficultPoints key={subject.id} subjectContext={{ subjectId: subject.id, subjectName: subject.name }} />
         </div>

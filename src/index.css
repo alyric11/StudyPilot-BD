@@ -1077,7 +1077,7 @@ body {
   background: #eeefff;
 }
 
-.today-task {
+.today-task:not(.subject-card-live) {
   transition: border-color 160ms ease;
 }
 
@@ -1371,6 +1371,23 @@ body {
   display: contents;
 }
 
+.subject-upcoming-trigger {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) 24px;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  padding:14px 12px;
+  text-align:left;
+  cursor:pointer;
+}
+
+.subject-upcoming-trigger:focus-visible {
+  outline:2px solid var(--task-accent);
+  outline-offset:-3px;
+  border-radius:11px;
+}
+
 .subject-outline-groups {
   display: grid;
   gap: 12px;
@@ -1475,10 +1492,57 @@ body {
 }
 
 .subject-log-task {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #edf1f6;
-  background: #fafcfe;
+  padding: 14px 12px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.subject-log-card-layout {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) 24px;
+  align-items:start;
+  gap:4px 10px;
+}
+
+.subject-log-task-today {
+  border-color:color-mix(in srgb, var(--subject-hover-color) 28%, #ffffff);
+}
+
+.subject-log-time {
+  grid-column:1;
+  grid-row:1 / 3;
+  align-self:center;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding-right:12px;
+  border-right:1px solid var(--subject-accent-line);
+  white-space:nowrap;
+  color:#475569;
+  font-size:11px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  line-height:20px;
+}
+
+.subject-log-chapter { grid-column:2; grid-row:1; display:grid; gap:4px; line-height:20px; }
+.subject-log-chapter-number { display:block; color:#64748b; font-size:12px; font-weight:500; }
+.subject-log-homework-copy { grid-column:2; grid-row:2; line-height:20px; }
+.subject-log-check { grid-column:3; grid-row:1; margin-block:-4px; }
+.subject-log-check.has-chapter { margin-top:20px; }
+.subject-log-check { justify-self:center; }
+
+.subject-session-copy { display:grid; gap:4px; }
+.subject-log-time, .subject-upcoming-trigger .today-task-time { width:76px; }
+.subject-session-copy > span { margin:0; line-height:20px; }
+.subject-upcoming-trigger .today-task-time { gap:4px; padding-right:12px; line-height:20px; }
+.subject-upcoming-trigger > svg { justify-self:center; }
+.subject-upcoming-card { border-radius:14px; }
+
+@media (max-width:480px) {
+  .subject-log-card-layout, .subject-upcoming-trigger { column-gap:8px; }
+  .subject-log-time, .subject-upcoming-trigger .today-task-time { width:72px; padding-right:8px; font-size:11px; }
 }
 
 .subject-next-session {
