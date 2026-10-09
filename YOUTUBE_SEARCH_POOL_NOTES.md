@@ -2,12 +2,18 @@
 
 Local implementation; not pushed or deployed. Existing shared recommendations, personal links, chapter overviews and student records are preserved.
 
+## Temporary development access — restore before public launch
+
+At the owner's request, `server/videoDevelopment.ts` currently defaults BOTH video password bypass and unlimited daily search to true. All verified signed-in accounts can therefore manage the shared video library while this development mode is active. The overview editor password is unchanged. The UI reads the server's password requirement; Management opens directly during development.
+
+Before public launch, set `VIDEO_DEV_PASSWORD_BYPASS=false` and `VIDEO_DEV_UNLIMITED_SEARCH=false` in the hosting environment AND change both `developmentDefaults` in `server/videoDevelopment.ts` to false. The existing admin token and `YOUTUBE_DAILY_SEARCH_LIMIT` are retained, ready to take effect again. The daily usage counter continues recording searches while the cap is bypassed. Verified login, brief per-account rate limits, search caching, transaction leases, failure cooldowns and YouTube's own quota remain active. These switches do not increase YouTube's quota.
+
 ## Management
 
 1. Open Video Lessons, unlock Management with the existing admin password, and choose Search Videos.
-2. Save all candidates in one click, or save individual candidates. This merges into the chapter library without duplicating IDs or replacing featured choices.
+2. Save all candidates in one click, or save individual candidates. This merges into the chapter library without duplicating IDs. Save all also fills empty featured spots from the whole saved library in descending view count, with one video per verified channel ID; it preserves existing featured choices. Individual saves do not trigger selection.
 3. Review uncertain matches and approve only suitable lessons. Explicitly wrong curriculum levels or papers are excluded before saving. Classification uses video metadata; an administrator still needs to check teaching content.
-4. Feature up to five lessons. Clicking Featured unfeatures a lesson but keeps it in the library. Remove deletes its library membership and featured selection, never students' personal copies.
+4. Feature up to five lessons. Auto-select featured deliberately replaces the current selection with the most-viewed approved, available lessons, one per channel. Fewer than five suitable channels produce fewer choices. Pending matches, unavailable videos and unknown channel IDs are excluded. Manual choices remain editable. Clicking Featured unfeatures a lesson but keeps it in the library. Remove deletes its library membership and featured selection, never students' personal copies.
 5. Find more candidates explicitly requests another upstream page when available. There is no automatic upstream pagination or fallback search.
 
 Existing recommendations seed the library as approved featured entries until the first management write. Subsequent edits never resurrect removed legacy entries. Transactions merge each action into the latest library. No existing sharedChapters or users documents are rewritten.
@@ -33,6 +39,7 @@ Existing recommendations seed the library as approved featured entries until the
 
 - chapterVideoLibraries stores selected IDs, approvals and featured choices permanently, separately from temporary search results.
 - youtubeVideoMetadata stores titles, channels, duration, views and availability for 28 days. Expired details refresh through batched videos.list calls, never search. Missing/private videos are skipped in exploration while saved identities remain.
+- Channel IDs are captured from new searches. Automatic selection checks older metadata missing channel IDs through cached/batched videos.list calls; this does not run additional searches. Candidate saving and featured selection commit together, with concurrent-library changes rejected for retry so editorial choices are not overwritten.
 - An outage preserves identities and featured choices, presents fallback details, and reports that refreshing failed. Expired metadata is not returned by the server.
 - Existing Firestore rules deny browser access to the new server-only collections. The existing server service account handles reads and writes.
 
@@ -44,9 +51,10 @@ Before production use, enable Firestore TTL for deleteAfter (timestamp) on youtu
 
 ## Verification
 
-- TypeScript checks and 96 automated tests pass. Tests cover curriculum matching, saved-library merging and approval, feature limits, personal independence, paging, metadata refresh/failure, admin search access, cached upstream pages, concurrency, leases and daily budgets.
+- TypeScript checks and 103 automated tests pass (including pending navigation restoration tests). Video tests also cover automatic view-count ranking, distinct channel IDs despite identical channel names, preservation versus explicit replacement, excluded candidates and older metadata channel refresh without searches.
 - Production build passes with the existing large-chunk warning.
 - Isolated browser fixture tests/video-search-preview.html uses only in-memory records and mocked APIs. Verified zero search calls during student paging/restart, saving explored lessons, bulk-saving candidates, featuring a lesson, pending-review controls and preserved selections after search failure.
+- Automatic-feature browser verification: bulk save preserved two editorial choices and filled three spots; explicit auto-select selected the top five approved videos from five channels, excluded the highest-view pending candidate, retained the personal save and made no extra search requests.
 - One earlier live HSC Vector search returned 22 eligible candidates, 21 confident. No further live search was used for this change.
 - Live Firestore library writes, cross-instance transactions, deployed authentication and TTL cleanup remain untested. No student data was changed during verification.
 

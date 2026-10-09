@@ -15,19 +15,20 @@ export function createVideoMetadataService(store: MetadataStore, retrieve: (ids:
   } };
   const seed = async (videos: ChapterVideo[]) => {
     const records = videos.map(video => ({ checkedAt: now(), video: {
-      videoId: video.videoId, title: video.title, channelTitle: video.channelTitle,
+      videoId: video.videoId, title: video.title, channelTitle: video.channelTitle, channelId: video.channelId || '',
       thumbnail: video.thumbnail, viewCount: video.viewCount, duration: video.duration,
       available: true, checkedAt: now(),
     } }));
     await store.write(records); remember(records);
   };
-  const get = async (input: string[]): Promise<ChapterVideo[]> => {
+  const get = async (input: string[], requireChannels = false): Promise<ChapterVideo[]> => {
     const ids = [...new Set(input)].filter(id => /^[\w-]{11}$/.test(id));
     if (!ids.length) return [];
-    const key = [...ids].sort().join(',');
+    const key = `${requireChannels}:` + [...ids].sort().join(',');
     if (pending.has(key)) return pending.get(key)!;
     const work = (async () => {
-      const fresh = (record: Metadata | undefined) => record && record.checkedAt + METADATA_TTL > now();
+      const fresh = (record: Metadata | undefined) => record && record.checkedAt + METADATA_TTL > now() &&
+        (!requireChannels || record.video.available === false || !!record.video.channelId);
       const missing = ids.filter(id => !fresh(memory.get(id)));
       if (missing.length) remember(await store.read(missing));
       const stale = ids.filter(id => !fresh(memory.get(id)));
@@ -36,7 +37,7 @@ export function createVideoMetadataService(store: MetadataStore, retrieve: (ids:
         const records = group.map(id => {
           const item = items.find(item => item.id === id), checkedAt = now();
           const video: ChapterVideo = item?.snippet ? { videoId: id, title: String(item.snippet.title || 'YouTube video'),
-            channelTitle: String(item.snippet.channelTitle || ''), thumbnail: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
+            channelTitle: String(item.snippet.channelTitle || ''), channelId: String(item.snippet.channelId || ''), thumbnail: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
             viewCount: String(item.statistics?.viewCount || '0'), duration: item.contentDetails?.duration || null, available: true, checkedAt,
           } : unavailableVideo(id, checkedAt);
           return { checkedAt, video };

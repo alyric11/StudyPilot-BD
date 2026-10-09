@@ -3,12 +3,10 @@ import { getServerFirestore } from './firebaseAdmin.ts';
 import { sharedContent, chapterKey } from './sharedContent.ts';
 import { readSavedSearchBatch, resolveVideoContext, VideoSearchError } from './videoSearchPool.ts';
 import { videoMetadata } from './videoMetadata.ts';
-import { editVideoLibrary, seedVideoLibrary, libraryForViewer, type VideoLibrary, type LibraryAction } from '../src/utils/videoLibrary.ts';
+import { videoAdminAllowed as adminAllowed } from './videoDevelopment.ts';
+import { editVideoLibrary, seedVideoLibrary, libraryForViewer, selectFeaturedVideos, type VideoLibrary, type LibraryAction } from '../src/utils/videoLibrary.ts';
 
 export const videoLibraryRouter = Router();
-function adminAllowed(token: string | undefined) {
-  return !!process.env.OVERVIEW_ADMIN_TOKEN && token === process.env.OVERVIEW_ADMIN_TOKEN;
-}
 export const requireVideoAdmin: RequestHandler = (req, res, next) => {
   if (!adminAllowed(req.header('x-overview-admin-token'))) {
     res.status(403).json({ error: 'YouTube search is available only through video management. Explore the saved chapter library instead.' }); return;
@@ -47,7 +45,9 @@ videoLibraryRouter.get('/', async (req, res) => {
 videoLibraryRouter.post('/', async (req, res) => {
   const context = res.locals.videoContext;
   try {
-    let action: LibraryAction;
+    let action: LibraryAction | undefined;
+    let autoFill = false;
+    const replaceFeatured = req.body.action === 'autoFeature';
     if (req.body.action === 'saveCandidates') {
       const pool = await readSavedSearchBatch(context, req.body.batchKey);
       const requested = req.body.videoIds;
@@ -58,7 +58,8 @@ videoLibraryRouter.post('/', async (req, res) => {
       // Only server-held search results can enter the library; browser metadata is ignored.
       await videoMetadata.seed(videos);
       action = { type: 'save', videos };
-    } else {
+      autoFill = requested === undefined;
+    } else if (!replaceFeatured) {
       if (!['feature', 'unfeature', 'approve', 'remove'].includes(req.body.action) || typeof req.body.videoId !== 'string' || !/^[\w-]{11}$/.test(req.body.videoId))
         throw new VideoSearchError('Choose a valid library action.', 400);
       if (req.body.action === 'feature' && (await videoMetadata.get([req.body.videoId]))[0]?.available !== true)
@@ -67,10 +68,27 @@ videoLibraryRouter.post('/', async (req, res) => {
     }
     const key = chapterKey(context.subject.id, context.chapter.id), legacy = await sharedContent.read(key);
     const db = getServerFirestore(), ref = db.collection('chapterVideoLibraries').doc(key);
+    const initial = (autoFill || replaceFeatured) ? (await ref.get()).data()?.library as VideoLibrary | undefined : undefined;
+    const before = initial || seedVideoLibrary(legacy.videos || []);
+    // Refresh older records without channel IDs through videos.list, never Search.
+    // Keep network requests outside Firestore's retryable transaction.
+    const details = (replaceFeatured || (autoFill && before.featuredIds.length < 5)) ? await videoMetadata.get([
+      ...before.entries.map(entry => entry.videoId), ...(action?.type === 'save' ? action.videos.map(video => video.videoId) : []),
+    ], true) : [];
     const library = await db.runTransaction(async transaction => {
       const saved = (await transaction.get(ref)).data()?.library as VideoLibrary | undefined;
+      const current = saved || seedVideoLibrary(legacy.videos || []);
+      if ((autoFill || replaceFeatured) && current.revision !== before.revision)
+        throw new VideoSearchError('The library changed while videos were checked. Please retry; existing choices are kept.', 409);
       let updated;
-      try { updated = editVideoLibrary(saved || seedVideoLibrary(legacy.videos || []), action); }
+      try {
+        updated = action ? editVideoLibrary(current, action) : { ...current, revision: current.revision + 1 };
+        if (autoFill || replaceFeatured) {
+          const featuredIds = selectFeaturedVideos(updated, details, replaceFeatured);
+          if (replaceFeatured && !featuredIds.length) throw new Error('No approved, available videos with verified channels could be selected. Existing choices are kept.');
+          updated = { ...updated, featuredIds };
+        }
+      }
       catch (error) { throw new VideoSearchError((error as Error).message, 409); }
       transaction.set(ref, { library: updated, subjectId: context.subject.id, chapterId: context.chapter.id, classLevel: context.classLevel });
       return updated;

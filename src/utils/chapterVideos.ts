@@ -2,6 +2,7 @@ export interface ChapterVideo {
   videoId: string;
   title: string;
   channelTitle: string;
+  channelId?: string;
   thumbnail: string;
   viewCount: string;
   duration: string | null;

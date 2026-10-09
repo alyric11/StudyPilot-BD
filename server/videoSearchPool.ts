@@ -1,6 +1,7 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getServerFirestore } from './firebaseAdmin.ts';
+import { videoDailyLimitBypassed } from './videoDevelopment.ts';
 import { resolveVideoContext, selectVideoCandidates, type SearchVideo, type VideoContext } from '../src/utils/videoSearch.ts';
 
 export const POOL_TTL = 24 * 60 * 60 * 1000;
@@ -87,7 +88,7 @@ const firestoreStore: PoolStore = {
       const snapshot = await transaction.get(ref), data = snapshot.data();
       if (fresh(data?.pool, now)) return data!.pool as VideoPool;
       const budget = (await transaction.get(budgetRef)).data();
-      const count = checkSearchReservation(data, budget, now, searchDailyLimit(process.env.YOUTUBE_DAILY_SEARCH_LIMIT));
+      const count = checkSearchReservation(data, budget, now, videoDailyLimitBypassed() ? Infinity : searchDailyLimit(process.env.YOUTUBE_DAILY_SEARCH_LIMIT));
       transaction.set(budgetRef, { day: searchBudgetDay(now), count });
       // Clear expired metadata rather than returning stale candidates after a failed refresh.
       transaction.set(ref, { owner, leaseUntil: now + 120000, deleteAfter: Timestamp.fromMillis(now + POOL_TTL) });

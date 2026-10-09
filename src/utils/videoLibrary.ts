@@ -9,6 +9,25 @@ export function seedVideoLibrary(legacy: ChapterVideo[]): VideoLibrary {
   const ids = [...new Set(legacy.map(v => v.videoId).filter(id => /^[\w-]{11}$/.test(id)))].slice(0, 5);
   return { entries: ids.map(videoId => ({ videoId, approved: true, reviewReason: '', addedAt: 0 })), featuredIds: ids, revision: 0 };
 }
+/** Fill preserves editorial choices; replace is an explicit administrator action. */
+export function selectFeaturedVideos(library: VideoLibrary, details: ChapterVideo[], replace = false): string[] {
+  const byId = new Map(details.map(video => [video.videoId, video]));
+  const selected = replace ? [] : [...library.featuredIds];
+  if (selected.length >= 5) return selected;
+  // Unknown channels on preserved choices make uniqueness impossible to establish.
+  if (selected.some(id => !byId.get(id)?.channelId)) return selected;
+  const channels = new Set(selected.map(id => byId.get(id)!.channelId!));
+  const candidates = library.entries.filter(entry => entry.approved).flatMap(entry => {
+    const video = byId.get(entry.videoId), views = Number(video?.viewCount);
+    return video?.available === true && video.channelId && Number.isFinite(views) && views >= 0 ? [video] : [];
+  }).sort((a, b) => Number(b.viewCount) - Number(a.viewCount) || a.videoId.localeCompare(b.videoId));
+  for (const video of candidates) {
+    if (selected.includes(video.videoId) || channels.has(video.channelId!)) continue;
+    selected.push(video.videoId); channels.add(video.channelId!);
+    if (selected.length === 5) break;
+  }
+  return selected;
+}
 /** Each action merges into the latest library; unrelated edits and personal saves are untouched. */
 export function editVideoLibrary(current: VideoLibrary, action: LibraryAction, now = Date.now()): VideoLibrary {
   let entries = current.entries.map(entry => ({ ...entry })), featuredIds = [...current.featuredIds];

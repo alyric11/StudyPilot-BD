@@ -245,7 +245,11 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
                 className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                 onClick={() => {
                   if (authorized) { setAuthorized(false); setPassword(""); setAdminResults([]); setAdminSearched(false); setAdminError(""); }
-                  else { setAdminError(""); setManagerOpen(true); }
+                  else { void manage(async () => {
+                    const access = await request('/api/chapter-videos/admin');
+                    if (access.passwordRequired === false) { await loadLibrary(true); setAuthorized(true); }
+                    else { setManagerOpen(true); }
+                  }); }
                 }} title={authorized ? "Finish managing videos" : "Manage chapter videos"}>
                 <Settings2 className="h-3.5 w-3.5" />Management
               </button>
@@ -253,7 +257,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
           </div>
           {loadingPublished && <div role="status" className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">Loading saved lessons…</div>}
           {publishedError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{publishedError} <button className={button} onClick={() => setLoadAttempt(value => value + 1)}>Retry</button></div>}
-          {authorized && adminError && <p role="alert" className="text-sm text-red-700">{adminError}</p>}
+          {!managerOpen && adminError && <p role="alert" className="text-sm text-red-700">{adminError}</p>}
           {libraryNotice && <p role="status" className="text-xs text-slate-500">{libraryNotice}</p>}
           <LayoutGroup id={`shared-${chapter.subjectId}-${chapter.chapterId}`}>
             {!loadingPublished && !publishedError && <div className="space-y-3">
@@ -274,6 +278,9 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
                 <h3 className="font-semibold">Chapter library</h3><span>{library.length} saved</span>
               </div>
               <p className="text-xs leading-relaxed text-slate-500">Feature up to five lessons. Review uncertain matches before making them available to students.</p>
+              <button disabled={adminBusy || !library.some(video => video.approved && video.available === true)} className={button}
+                onClick={() => void manage(() => updateLibrary('autoFeature'))}>Auto-select featured</button>
+              <p className="text-xs leading-relaxed text-slate-500">Auto-select replaces the featured choices with the most-viewed approved lessons, one per channel. You can change any choice afterward.</p>
               {!library.length && <p className="text-sm text-slate-500">Search for videos, then save candidates to this library.</p>}
               {libraryCandidates.videos.map(video => card(video, <>
                 {!video.approved && <button disabled={adminBusy || video.available !== true} className={button}
@@ -289,7 +296,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                 <h3 className="font-semibold">Search results</h3><span>Showing {availableAdmin.length} of {adminCandidates.total} candidates</span>
               </div>
-              <p className="text-xs leading-relaxed text-slate-500">Save candidates to your chapter library, then choose the featured five. Uncertain matches remain hidden until approved.</p>
+              <p className="text-xs leading-relaxed text-slate-500">Save all candidates also fills empty featured spots with the most-viewed approved lessons from the library, one per channel. Existing featured choices stay. Uncertain matches remain hidden until approved.</p>
               <button disabled={adminBusy || adminCandidates.total === 0} className={button}
                 onClick={() => void manage(() => updateLibrary('saveCandidates'))}>Save all candidates</button>
               {availableAdmin.length === 0 && <p className="text-sm text-slate-500">No more matching videos in this search.</p>}

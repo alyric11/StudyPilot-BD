@@ -36,6 +36,7 @@ import {
 import useDialogFocus from "./hooks/useDialogFocus";
 import ProfileSetup from "./components/ProfileSetup";
 import TodaysTasks from "./components/TodaysTasks";
+import { navigationSessionKey, restoreNavigationSession, serializeNavigationSession, type AppSection } from './utils/navigationSession';
 
 // These screens are only needed after a student navigates away from the dashboard.
 // Loading them on demand keeps the initial dashboard responsive without changing
@@ -115,7 +116,9 @@ export default function App() {
   // Authentication & Profile state
 
   // Navigation Section (MVP includes only these 4 views)
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'planner' | 'homework' | 'diary'>('dashboard');
+  const [activeSection, setActiveSection] = useState<AppSection>('dashboard');
+  const [navigationReady, setNavigationReady] = useState(false);
+  const navigationRestored = useRef(false);
   const [routineEditRequest, setRoutineEditRequest] = useState<RoutineEditRequest | null>(null);
   const plannerHandoffRef = useRef(false);
 
@@ -350,6 +353,33 @@ export default function App() {
   };
 
   const activeSubjects = getActiveSubjects();
+  // Keep navigation local to this account and tab, separate from cloud study data.
+  useEffect(() => {
+    if (!loaded || !profile || navigationRestored.current) return;
+    navigationRestored.current = true;
+    let raw: string | null = null;
+    try { raw = sessionStorage.getItem(navigationSessionKey(user.uid)); } catch { /* Storage may be disabled. */ }
+    const restored = restoreNavigationSession(raw, profile.classLevel, activeSubjects);
+    const subject = activeSubjects.find(subject => subject.id === restored.subjectId);
+    const chapter = subject?.chapters.find(chapter => chapter.id === restored.chapterId);
+    setActiveSection(restored.section);
+    setSelectedSubjectPaper(restored.subjectId);
+    setSelectedChapter(subject && chapter ? {
+      subjectId: subject.id, subjectName: subject.name, chapterId: chapter.id,
+      chapterName: chapter.name, chapterBanglaName: chapter.banglaName,
+    } : null);
+    setShowVideoLessons(restored.videos);
+    setNavigationReady(true);
+  }, [loaded, profile, user.uid, activeSubjects]);
+  useEffect(() => {
+    if (!navigationReady || !profile) return;
+    try {
+      sessionStorage.setItem(navigationSessionKey(user.uid), serializeNavigationSession(profile.classLevel, {
+        section: activeSection, subjectId: selectedChapter?.subjectId || selectedSubjectPaper,
+        chapterId: selectedChapter?.chapterId || null, videos: showVideoLessons,
+      }));
+    } catch { /* Navigation still works when tab storage is unavailable. */ }
+  }, [navigationReady, user.uid, profile?.classLevel, activeSection, selectedSubjectPaper, selectedChapter, showVideoLessons]);
   const selectedSubject = activeSubjects.find((subject) => subject.id === selectedSubjectPaper);
   const workspaceSubject = selectedChapter
     ? activeSubjects.find((subject) => subject.id === selectedChapter.subjectId)
@@ -468,7 +498,7 @@ export default function App() {
   const overallCompletion = getOverallCompletionRate();
 
   // App loading visual screen
-  if (!loaded) {
+  if (!loaded || (profile && !navigationReady)) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-center p-6 space-y-4">
         <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />

@@ -80,7 +80,7 @@ export function selectVideoCandidates(context: VideoContext, items: any[]): Sear
     if (!Number.isFinite(views) || views < 5000 || durationSeconds(duration) < 300) return [];
     const match = classifyVideo(context, snippet.title || '', snippet.description || '');
     if (match.status === 'excluded') return [];
-    return [{ videoId: id, title: String(snippet.title || ''), channelTitle: String(snippet.channelTitle || ''),
+    return [{ videoId: id, title: String(snippet.title || ''), channelTitle: String(snippet.channelTitle || ''), channelId: String(snippet.channelId || ''),
       thumbnail: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`, viewCount: String(views), duration: String(duration),
       matchStatus: match.status, matchReason: match.reason, exactTitle: match.exactTitle }];
   }).sort((a, b) => Number(b.matchStatus === 'matching') - Number(a.matchStatus === 'matching') ||

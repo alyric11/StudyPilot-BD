@@ -22,6 +22,7 @@ import { verifiedStudentAccess } from "./server/studentAccess";
 import { getServerFirestore } from "./server/firebaseAdmin";
 import { getVideoPool, poolKey, readSavedSearchBatch, resolveVideoContext, VideoSearchError } from './server/videoSearchPool';
 import { requireVideoAdmin, videoLibraryRouter } from './server/videoLibrary';
+import { videoAdminAllowed, videoPasswordBypassed } from './server/videoDevelopment';
 import { videoMetadata } from './server/videoMetadata';
 import path from "path";
 import dotenv from "dotenv";
@@ -64,8 +65,11 @@ app.use(['/api/video-lessons', '/api/video-details', '/api/video-library'], (req
 });
 app.use('/api/video-library', videoLibraryRouter);
 
+app.get('/api/chapter-videos/admin', (_req, res) => {
+  res.json({ passwordRequired: !videoPasswordBypassed() });
+});
 app.post("/api/chapter-videos/admin", (req, res) => {
-  if (!overviewAdminToken || req.header("x-overview-admin-token") !== overviewAdminToken) {
+  if (!videoAdminAllowed(req.header("x-overview-admin-token"))) {
     res.status(403).json({ error: "Incorrect admin password or management is not configured." }); return;
   }
   res.json({ authorized: true });
@@ -81,7 +85,7 @@ app.get("/api/chapter-videos", async (req, res) => {
 });
 
 app.put("/api/chapter-videos", async (req, res) => {
-  if (!overviewAdminToken || req.header("x-overview-admin-token") !== overviewAdminToken) {
+  if (!videoAdminAllowed(req.header("x-overview-admin-token"))) {
     res.status(403).json({ error: "Video management is not authorized." }); return;
   }
   const { subjectId, chapterId, videos } = req.body;
