@@ -20,3 +20,5 @@ Preview: `/tests/upcoming-preview.html` on the local Vite server. Its schedules 
 
 
 Session hover refinement: Study Log and upcoming cards reuse the landing subject cards' gentle 1px lift, subject-colored border and soft shadow, including existing reduced-motion and touch behavior. Today's viewed session keeps that stronger border at rest; background colors stay shared with upcoming cards.
+
+Upcoming list density: show the first three sessions initially. When more are available, Show next N reveals the remaining sessions (up to six total) with PlannerReveal; Show fewer collapses them. Hidden sessions are inert, and expanded editor drafts are retained when the list collapses.

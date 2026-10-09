@@ -5,6 +5,8 @@ export interface ChapterVideo {
   thumbnail: string;
   viewCount: string;
   duration: string | null;
+  checkedAt?: number;
+  available?: boolean;
 }
 export function readPersonalVideoIds(raw: string | null) {
   const value: unknown = JSON.parse(raw || "[]");
@@ -35,13 +37,19 @@ export function validatePublishedVideos(value: unknown): ChapterVideo[] {
     };
   });
 }
-export function unsavedVideos(videos: ChapterVideo[], published: ChapterVideo[], personalIds: string[]) {
+export function unsavedVideos<T extends ChapterVideo>(videos: T[], published: ChapterVideo[], personalIds: string[]): T[] {
   const excluded = new Set([...published.map(video => video.videoId), ...personalIds]);
   return videos.filter(video => {
     if (excluded.has(video.videoId)) return false;
     excluded.add(video.videoId);
     return true;
   });
+}
+export function videoCandidatePage<T extends ChapterVideo>(videos: T[], published: ChapterVideo[], personalIds: string[], requestedPage: number) {
+  const remaining = unsavedVideos(videos, published, personalIds);
+  const pages = Math.ceil(remaining.length / 5);
+  const page = Math.max(0, Math.min(requestedPage, Math.max(0, pages - 1)));
+  return { videos: remaining.slice(page * 5, page * 5 + 5), page, pages, total: remaining.length };
 }
 export function visibleVideoCandidates(pool: ChapterVideo[], saved: ChapterVideo[], personalIds: string[] = []) {
   return unsavedVideos(pool.slice(0, 10), saved, personalIds).slice(0, 5);

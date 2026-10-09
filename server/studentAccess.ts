@@ -9,6 +9,7 @@ export function verifiedStudentAccess(verify = (token: string) => getServerAuth(
     try {
       const token = await verify(match[1]);
       if (token.email_verified !== true) { res.status(403).json({ error: "Verify your email before opening shared lessons." }); return; }
+      res.locals.studentId = token.uid;
       next();
     } catch { res.status(401).json({ error: "Your login could not be verified. Please sign in again." }); }
   };

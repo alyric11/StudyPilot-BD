@@ -7,7 +7,9 @@ import { AlertTriangle, BookmarkCheck, BookmarkPlus, Search, Settings2, X, Youtu
 import { useAccount } from "../auth/AccountContext";
 import useDialogFocus from "../hooks/useDialogFocus";
 import StudyPageHeader from "./StudyPageHeader";
-import { readPersonalVideoIds, visibleVideoCandidates, youtubeVideoId, type ChapterVideo } from "../utils/chapterVideos";
+import { readPersonalVideoIds, videoCandidatePage, youtubeVideoId, type ChapterVideo } from "../utils/chapterVideos";
+import type { SearchVideo } from '../utils/videoSearch';
+import type { LibraryVideo } from '../utils/videoLibrary';
 
 interface VideoLessonsPageProps {
   chapter: { subjectId: string; subjectName: string; chapterId: string; chapterName: string; chapterBanglaName: string };
@@ -37,6 +39,11 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
   const [personalDetails, setPersonalDetails] = useState<Record<string, ChapterVideo>>({});
   const [addingLink, setAddingLink] = useState(false);
   const [published, setPublished] = useState<ChapterVideo[]>([]);
+  const [library, setLibrary] = useState<LibraryVideo[]>([]);
+  const [libraryNotice, setLibraryNotice] = useState('');
+  const [libraryPage, setLibraryPage] = useState(0);
+  const [batchKey, setBatchKey] = useState('');
+  const [hasMoreCandidates, setHasMoreCandidates] = useState(false);
   const [personal, setPersonal] = useState<string[]>([]);
   const [loadedPersonal, setLoadedPersonal] = useState(false);
   const [loadedDetails, setLoadedDetails] = useState(false);
@@ -44,15 +51,15 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [publishedError, setPublishedError] = useState("");
   const [personalError, setPersonalError] = useState("");
-  const [studentResults, setStudentResults] = useState<ChapterVideo[]>([]);
-  const [studentSearching, setStudentSearching] = useState(false);
   const [studentSearched, setStudentSearched] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [url, setUrl] = useState("");
   const [managerOpen, setManagerOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [authorized, setAuthorized] = useState(false);
-  const [adminResults, setAdminResults] = useState<ChapterVideo[]>([]);
+  const [adminResults, setAdminResults] = useState<SearchVideo[]>([]);
+  const [adminPage, setAdminPage] = useState(0);
+  const [studentPage, setStudentPage] = useState(0);
   const [adminSearched, setAdminSearched] = useState(false);
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState("");
@@ -61,20 +68,29 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
   const [removal, setRemoval] = useState<{ video: ChapterVideo; shared: boolean } | null>(null);
   const [removalError, setRemovalError] = useState("");
   const adminRequest = useRef<AbortController | null>(null);
-  const studentRequest = useRef<AbortController | null>(null);
   const closeManager = () => {
     if (adminBusy) return;
     setManagerOpen(false); setPassword(""); setAdminError("");
   };
   useDialogFocus(managerOpen, managerRef, closeManager);
   useDialogFocus(!!removal, removalRef, () => { if (!adminBusy) setRemoval(null); });
-  useEffect(() => () => { adminRequest.current?.abort(); studentRequest.current?.abort(); }, []);
+  useEffect(() => () => { adminRequest.current?.abort(); }, []);
+  const applyLibrary = (data: { featured: ChapterVideo[]; videos: LibraryVideo[]; detailsUnavailable?: boolean }) => {
+    setPublished(data.featured); setLibrary(data.videos);
+    setLibraryNotice(data.detailsUnavailable ? 'Some video details could not be refreshed. Your saved selections are kept; please retry later.' : '');
+  };
+  const libraryParams = () => new URLSearchParams({ classLevel, subjectId: chapter.subjectId, chapterId: chapter.chapterId });
+  const loadLibrary = async (admin: boolean) => {
+    const params = libraryParams(); if (admin) params.set('mode', 'admin');
+    const data = await request(`/api/video-library?${params}`, { headers: admin ? { 'x-overview-admin-token': password } : undefined });
+    applyLibrary(data);
+  };
   useEffect(() => {
     const controller = new AbortController();
     setLoadingPublished(true); setPublishedError("");
-    const params = new URLSearchParams({ subjectId: chapter.subjectId, chapterId: chapter.chapterId });
-    request(`/api/chapter-videos?${params}`, { signal: controller.signal })
-      .then(data => { if (!controller.signal.aborted) setPublished(data); })
+    const params = libraryParams();
+    request(`/api/video-library?${params}`, { signal: controller.signal })
+      .then(data => { if (!controller.signal.aborted) applyLibrary(data); })
       .catch(error => { if (!controller.signal.aborted) setPublishedError(error.message); })
       .finally(() => { if (!controller.signal.aborted) setLoadingPublished(false); });
     return () => controller.abort();
@@ -98,7 +114,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
   // Enrich older ID-only personal saves without performing a video search.
   useEffect(() => {
     const controller = new AbortController();
-    personal.filter(id => !personalDetails[id]).forEach(id => {
+    personal.filter(id => !personalDetails[id]?.checkedAt || personalDetails[id].checkedAt! + 28 * 86400000 <= Date.now()).forEach(id => {
       request(`/api/video-details?videoId=${encodeURIComponent(id)}`, { signal: controller.signal })
         .then((video: ChapterVideo) => {
           if (controller.signal.aborted) return;
@@ -117,6 +133,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
     catch { setPersonalError("Could not save. Your previous videos have been kept."); return false; }
   };
   const addPersonal = (video: ChapterVideo) => {
+    if (video.available === false) { setPersonalError('This video is private or unavailable. Try another link.'); return; }
     const id = video.videoId;
     if (personal.length >= 3) { setPersonalError("You can save up to three personal videos."); return; }
     if (personal.includes(id) || published.some(video => video.videoId === id)) {
@@ -127,19 +144,18 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
       setShowAdd(false); setUrl("");
     }
   };
-  const search = async (admin: boolean) => {
+  const search = async (more = false) => {
     const controller = new AbortController();
-    const target = admin ? adminRequest : studentRequest;
+    const target = adminRequest;
     target.current?.abort(); target.current = controller;
-    const params = new URLSearchParams({ classLevel, subject: chapter.subjectName, chapterName: chapter.chapterName, chapterBanglaName: chapter.chapterBanglaName });
-    params.set("limit", admin ? "10" : "5");
-    params.set("exclude", [...published.map(video => video.videoId), ...(admin ? [] : personal)].join(","));
-    const data = await request(`/api/video-lessons?${params}`, { signal: controller.signal });
-    return data.map((video: any): ChapterVideo => ({
-      videoId: video.id.videoId, title: video.snippet.title, channelTitle: video.snippet.channelTitle,
-      thumbnail: video.snippet.thumbnails?.medium?.url || `https://i.ytimg.com/vi/${video.id.videoId}/mqdefault.jpg`,
-      viewCount: video.viewCount, duration: video.duration,
-    }));
+    const params = new URLSearchParams({ classLevel, subjectId: chapter.subjectId, chapterId: chapter.chapterId });
+    if (more) params.set('after', batchKey);
+    const data = await request(`/api/video-lessons?${params}`, { signal: controller.signal,
+      headers: { 'x-overview-admin-token': password } });
+    if (!controller.signal.aborted) {
+      setAdminResults(data.videos as SearchVideo[]); setAdminPage(0); setAdminSearched(true);
+      setBatchKey(data.batchKey); setHasMoreCandidates(data.hasMore);
+    }
   };
   const manage = async (action: () => Promise<void>) => {
     if (adminBusy) return;
@@ -148,14 +164,14 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
       if ((error as Error).name !== "AbortError") setAdminError((error as Error).message);
     } finally { setAdminBusy(false); }
   };
-  const publish = async (videos: ChapterVideo[]) => {
+  const updateLibrary = async (action: string, videoId?: string, videoIds?: string[]) => {
     const controller = new AbortController(); adminRequest.current = controller;
-    const data = await request("/api/chapter-videos", {
-      method: "PUT", signal: controller.signal,
+    const data = await request("/api/video-library", {
+      method: "POST", signal: controller.signal,
       headers: { "Content-Type": "application/json", "x-overview-admin-token": password },
-      body: JSON.stringify({ subjectId: chapter.subjectId, chapterId: chapter.chapterId, videos }),
+      body: JSON.stringify({ classLevel, subjectId: chapter.subjectId, chapterId: chapter.chapterId, action, videoId, videoIds, batchKey }),
     });
-    if (!controller.signal.aborted) setPublished(data);
+    if (!controller.signal.aborted) applyLibrary(data);
   };
   const formatDuration = (duration: string | null) => {
     const match = duration?.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
@@ -175,6 +191,10 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
         <div className="min-w-0">
           <h3 className="line-clamp-2 break-words text-sm font-semibold leading-snug text-slate-800" title={video.title}>{video.title}</h3>
           <p className="mt-1 break-words text-xs leading-relaxed text-slate-500">{video.channelTitle}</p>
+          {((video as Partial<SearchVideo>).matchStatus === 'uncertain' || (video as Partial<LibraryVideo>).approved === false) && <p className="mt-2 text-xs text-amber-700">
+            Review match: {(video as Partial<LibraryVideo>).reviewReason || (video as SearchVideo).matchReason}
+          </p>}
+          {video.available === false && <p className="mt-2 text-xs text-slate-500">Unavailable. Your saved link is kept.</p>}
         </div>
         <div className={`flex min-w-0 flex-wrap items-center justify-between gap-2 ${compact ? "col-span-2" : "col-span-2 sm:col-span-1 sm:col-start-2"}`}>
           {(video.viewCount !== "0" || video.duration) && <div className="flex flex-wrap items-center gap-x-2 text-xs leading-relaxed text-slate-500">
@@ -190,8 +210,20 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
       </div>
     </motion.article>
   );
-  const availableStudent = visibleVideoCandidates(studentResults, published, personal);
-  const availableAdmin = visibleVideoCandidates(adminResults, published);
+  const studentCandidates = videoCandidatePage(library.filter(video => video.approved && video.available === true), published, personal, studentPage);
+  const adminCandidates = videoCandidatePage(adminResults, library, [], adminPage);
+  const libraryCandidates = videoCandidatePage(library, published, [], libraryPage);
+  const availableStudent = studentCandidates.videos;
+  const availableAdmin = adminCandidates.videos;
+  const pageControls = (data: { page: number; pages: number; total: number }, setPage: (page: number) => void, label: string, cycle = false) => (data.pages > 1 || (cycle && data.total > 0)) && (
+    <nav aria-label={label} className="flex items-center justify-between gap-2 pt-1 text-xs text-slate-500">
+      <button type="button" className={button} disabled={data.page === 0} onClick={() => setPage(data.page - 1)}>Previous</button>
+      <span aria-live="polite">{data.page + 1} / {data.pages}</span>
+      {cycle && data.page + 1 >= data.pages
+        ? <button type="button" className={button} onClick={() => setPage(0)}>Start again</button>
+        : <button type="button" className={button} disabled={data.page + 1 >= data.pages} onClick={() => setPage(data.page + 1)}>Next</button>}
+    </nav>
+  );
   const askRemoval = (video: ChapterVideo, shared: boolean) => { setRemovalError(""); setRemoval({ video, shared }); };
   return <>
     <div className="mx-auto w-full max-w-[1440px] space-y-4" style={{ "--video-accent": subjectAccent } as CSSProperties}>
@@ -206,7 +238,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {authorized && <button disabled={adminBusy || loadingPublished || !!publishedError} className={button}
-                onClick={() => void manage(async () => { setAdminResults(await search(true)); setAdminSearched(true); })}>
+                onClick={() => void manage(() => search())}>
                 <Search className="mr-1.5 h-3.5 w-3.5" />{adminBusy ? "Please wait…" : "Search Videos"}
               </button>}
               <button disabled={adminBusy} aria-pressed={authorized}
@@ -222,32 +254,51 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
           {loadingPublished && <div role="status" className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">Loading saved lessons…</div>}
           {publishedError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{publishedError} <button className={button} onClick={() => setLoadAttempt(value => value + 1)}>Retry</button></div>}
           {authorized && adminError && <p role="alert" className="text-sm text-red-700">{adminError}</p>}
+          {libraryNotice && <p role="status" className="text-xs text-slate-500">{libraryNotice}</p>}
           <LayoutGroup id={`shared-${chapter.subjectId}-${chapter.chapterId}`}>
             {!loadingPublished && !publishedError && <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-slate-500">
-                <h3 className="font-semibold">Saved lessons</h3><span>{published.length} / 5</span>
+                <h3 className="font-semibold">Featured lessons</h3><span>{published.length} / 5</span>
               </div>
               {published.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-500">
-                {authorized ? "Search for lessons and save up to five for your students." : "No lessons have been selected for this chapter yet."}
+                {authorized ? "Save candidates to the chapter library, then feature up to five lessons." : "No lessons have been selected for this chapter yet."}
               </div>}
               {published.map(video => card(video, authorized
-                ? <button disabled={adminBusy} className={button} aria-label={`Remove saved lesson: ${video.title}`} onClick={() => askRemoval(video, true)}>
-                    <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />Saved
+                ? <button disabled={adminBusy} className={button} aria-label={`Unfeature: ${video.title}`} onClick={() => void manage(() => updateLibrary('unfeature', video.videoId))}>
+                    <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />Featured
                   </button>
                 : undefined))}
             </div>}
+            {authorized && <div className="space-y-3 border-t border-slate-100 pt-4">
+              <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                <h3 className="font-semibold">Chapter library</h3><span>{library.length} saved</span>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-500">Feature up to five lessons. Review uncertain matches before making them available to students.</p>
+              {!library.length && <p className="text-sm text-slate-500">Search for videos, then save candidates to this library.</p>}
+              {libraryCandidates.videos.map(video => card(video, <>
+                {!video.approved && <button disabled={adminBusy || video.available !== true} className={button}
+                  aria-label={`Approve: ${video.title}`} onClick={() => void manage(() => updateLibrary('approve', video.videoId))}>Approve</button>}
+                <button disabled={adminBusy || !video.approved || video.available !== true || published.length >= 5} className={button}
+                  aria-label={`Feature: ${video.title}`} onClick={() => void manage(() => updateLibrary('feature', video.videoId))}>Feature</button>
+                <button disabled={adminBusy} className="rounded-lg px-2 py-2 text-xs text-slate-500 hover:bg-slate-100"
+                  aria-label={`Remove from library: ${video.title}`} onClick={() => askRemoval(video, true)}>Remove</button>
+              </>))}
+              {pageControls(libraryCandidates, setLibraryPage, 'Browse chapter library')}
+            </div>}
             {authorized && adminSearched && <div className="space-y-3 border-t border-slate-100 pt-4">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                <h3 className="font-semibold">Search results</h3><span>Showing {availableAdmin.length} · up to 10 candidates</span>
+                <h3 className="font-semibold">Search results</h3><span>Showing {availableAdmin.length} of {adminCandidates.total} candidates</span>
               </div>
-              <p className="text-xs leading-relaxed text-slate-500">{published.length >= 5
-                ? "Five lessons saved. Remove one to choose a replacement."
-                : "Save a lesson to move it above. Another result will fill its place."}</p>
+              <p className="text-xs leading-relaxed text-slate-500">Save candidates to your chapter library, then choose the featured five. Uncertain matches remain hidden until approved.</p>
+              <button disabled={adminBusy || adminCandidates.total === 0} className={button}
+                onClick={() => void manage(() => updateLibrary('saveCandidates'))}>Save all candidates</button>
               {availableAdmin.length === 0 && <p className="text-sm text-slate-500">No more matching videos in this search.</p>}
-              {availableAdmin.map(video => card(video, <button disabled={adminBusy || published.length >= 5}
-                className={button} onClick={() => void manage(() => publish([video, ...published]))}>
-                <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />Save
+              {availableAdmin.map(video => card(video, <button disabled={adminBusy}
+                className={button} onClick={() => void manage(() => updateLibrary('saveCandidates', undefined, [video.videoId]))}>
+                <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />Save to library
               </button>))}
+              {pageControls(adminCandidates, setAdminPage, 'Browse admin video candidates')}
+              {hasMoreCandidates && <button disabled={adminBusy} className={button} onClick={() => void manage(() => search(true))}>Find more candidates</button>}
             </div>}
           </LayoutGroup>
         </section>
@@ -286,17 +337,15 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
               })}
             </div>
             <div className="space-y-3 border-t border-slate-100 pt-4">
-              <button disabled={studentSearching || loadingPublished || !!publishedError || !loadedPersonal} className={`w-full gap-1.5 ${button}`} onClick={async () => {
-                setStudentSearching(true); setPersonalError("");
-                try { setStudentResults(await search(false)); setStudentSearched(true); }
-                catch (error) { if ((error as Error).name !== "AbortError") setPersonalError((error as Error).message); }
-                finally { setStudentSearching(false); }
-              }}><Search className="h-4 w-4" />{studentSearching ? "Searching…" : "Search New Videos"}</button>
-              <p className="text-xs leading-relaxed text-slate-500"><Guidance>Find more lessons. Videos already saved in either panel are excluded.</Guidance></p>
-              {studentSearched && !studentSearching && availableStudent.length === 0 && <p className="text-sm text-slate-500"><Guidance>No additional matching videos found.</Guidance></p>}
-              {availableStudent.map(video => card(video, <button disabled={addingLink || personal.length >= 3} className={button} onClick={() => addPersonal(video)}>
+              {!studentSearched && <button disabled={loadingPublished || !!publishedError || !loadedPersonal} className={`w-full gap-1.5 ${button}`}
+                onClick={() => { setStudentPage(0); setStudentSearched(true); }}><Search className="h-4 w-4" />Explore more videos</button>}
+              <p className="text-xs leading-relaxed text-slate-500"><Guidance>Explore this chapter’s saved library. Featured lessons and your personal saves are excluded.</Guidance></p>
+              {studentSearched && availableStudent.length === 0 && <p className="text-sm text-slate-500"><Guidance>No additional saved videos are available for this chapter.</Guidance></p>}
+              {studentSearched && availableStudent.map(video => card(video, <button disabled={addingLink || personal.length >= 3} className={button} onClick={() => addPersonal(video)}>
                 <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />Save
               </button>, true))}
+              {studentSearched && studentCandidates.total > 0 && studentCandidates.page + 1 >= studentCandidates.pages && <p className="text-xs text-slate-500">You’ve seen all available videos.</p>}
+              {studentSearched && pageControls(studentCandidates, setStudentPage, 'Browse additional video candidates', true)}
             </div>
           </LayoutGroup>
         </section>
@@ -321,6 +370,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
             <form className="space-y-3" onSubmit={event => { event.preventDefault(); void manage(async () => {
               const controller = new AbortController(); adminRequest.current = controller;
               await request("/api/chapter-videos/admin", { method: "POST", signal: controller.signal, headers: { "x-overview-admin-token": password } });
+              await loadLibrary(true);
               if (!controller.signal.aborted) { setAuthorized(true); setManagerOpen(false); }
             }); }}>
               <label className="block text-sm text-slate-600" htmlFor="video-admin-password">Admin password</label>
@@ -331,10 +381,10 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
           </> : removal && <>
             <div className="flex items-center justify-center gap-2">
               <span className="rounded-lg bg-rose-50 p-1.5 text-rose-600"><AlertTriangle className="h-4 w-4" /></span>
-              <h2 id="video-removal-title" className="text-sm font-semibold text-slate-800">Remove saved video?</h2>
+              <h2 id="video-removal-title" className="text-sm font-semibold text-slate-800">{removal.shared ? 'Remove from chapter library?' : 'Remove saved video?'}</h2>
             </div>
             <p className="mt-3 text-center text-xs leading-relaxed text-slate-500"><Guidance>{removal.shared
-              ? "This lesson will be removed from the shared list for students."
+              ? "This video will leave the chapter library and featured list. Students’ personal saves will be kept."
               : "This video will be removed from your personal saved list."}</Guidance></p>
             {removalError && <p role="alert" className="mt-2 text-center text-xs text-red-700"><Guidance>{removalError}</Guidance></p>}
             <div className="mt-4 flex justify-center gap-2">
@@ -347,7 +397,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
                     return;
                   }
                   setAdminBusy(true); setRemovalError("");
-                  try { await publish(published.filter(video => video.videoId !== removal.video.videoId)); setRemoval(null); }
+                  try { await updateLibrary('remove', removal.video.videoId); setRemoval(null); }
                   catch (error) { setRemovalError((error as Error).message); }
                   finally { setAdminBusy(false); }
                 }}>{adminBusy ? "Removing…" : "Remove"}</button>

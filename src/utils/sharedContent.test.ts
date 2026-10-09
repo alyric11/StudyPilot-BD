@@ -25,10 +25,10 @@ test("shared content access rejects missing, invalid and unverified logins", asy
     let status = 200, passed = false;
     const middleware = verifiedStudentAccess(async () => {
       if (verified === "invalid") throw Error("Invalid token");
-      return { email_verified: verified } as DecodedIdToken;
+      return { email_verified: verified, uid: 'verified-student' } as DecodedIdToken;
     });
     await middleware({ header: () => header } as unknown as Request,
-      { setHeader: () => {}, status: (code: number) => { status = code; return { json: () => {} }; } } as unknown as Response,
+      { locals: {}, setHeader: () => {}, status: (code: number) => { status = code; return { json: () => {} }; } } as unknown as Response,
       () => { passed = true; });
     return { status, passed };
   }

@@ -20,6 +20,9 @@ import { validatePublishedVideos, type ChapterVideo } from "./src/utils/chapterV
 import { sharedContent, chapterKey } from "./server/sharedContent";
 import { verifiedStudentAccess } from "./server/studentAccess";
 import { getServerFirestore } from "./server/firebaseAdmin";
+import { getVideoPool, poolKey, readSavedSearchBatch, resolveVideoContext, VideoSearchError } from './server/videoSearchPool';
+import { requireVideoAdmin, videoLibraryRouter } from './server/videoLibrary';
+import { videoMetadata } from './server/videoMetadata';
 import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -47,7 +50,19 @@ app.use([
 const PORT = Number(process.env.PORT || 3000);
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error("PORT must be a number between 1 and 65535.");
 const overviewAdminToken = process.env.OVERVIEW_ADMIN_TOKEN;
-app.use(["/api/chapter-videos", "/api/chapter-overviews"], verifiedStudentAccess());
+app.use(["/api/chapter-videos", "/api/chapter-overviews", "/api/video-lessons", "/api/video-details", '/api/video-library'], verifiedStudentAccess());
+// Bound even cached/detail requests; quota reservations are separately persisted.
+const videoRequestWindows = new Map<string, { until: number; count: number }>();
+app.use(['/api/video-lessons', '/api/video-details', '/api/video-library'], (req, res, next) => {
+  const now = Date.now(), key = String(res.locals.studentId);
+  for (const [id, window] of videoRequestWindows) if (window.until <= now) videoRequestWindows.delete(id);
+  const window = videoRequestWindows.get(key) || { until: now + 60000, count: 0 };
+  if (window.count >= 30 || (!videoRequestWindows.has(key) && videoRequestWindows.size >= 5000)) {
+    res.status(429).json({ error: 'Please wait a minute before requesting more video results.' }); return;
+  }
+  window.count++; videoRequestWindows.set(key, window); next();
+});
+app.use('/api/video-library', videoLibraryRouter);
 
 app.post("/api/chapter-videos/admin", (req, res) => {
   if (!overviewAdminToken || req.header("x-overview-admin-token") !== overviewAdminToken) {
@@ -713,220 +728,33 @@ app.post("/api/generate-study-plan", async (req, res) => {
   }
 });
 
-// API: Get details for one YouTube video
-app.get("/api/video-details", async (req, res) => {
-  const { videoId } = req.query;
-
-  if (!videoId || typeof videoId !== "string") {
-    return res.status(400).json({
-      error: "Video ID is required."
-    });
-  }
-
-  if (!youtubeApiKey) {
-    return res.status(500).json({
-      error: "YouTube API key is not configured."
-    });
-  }
-
+// API: Personal links use cached/batched details, never YouTube Search.
+app.get('/api/video-details', async (req, res) => {
+  const id = req.query.videoId;
+  if (typeof id !== 'string' || !/^[\w-]{11}$/.test(id)) { res.status(400).json({ error: 'Enter a valid YouTube video link.' }); return; }
   try {
-    const params = new URLSearchParams({
-      part: "snippet,contentDetails,statistics",
-      id: videoId,
-      key: youtubeApiKey
-    });
-
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`
-    );
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: "Failed to retrieve video details."
-      });
-    }
-
-    const data = await response.json();
-    const video = data.items?.[0];
-
-    if (!video) {
-      return res.status(404).json({
-        error: "YouTube video not found."
-      });
-    }
-
-    return res.json({
-      videoId: video.id,
-      title: video.snippet?.title || "YouTube Video",
-      channelTitle: video.snippet?.channelTitle || "",
-      thumbnail:
-        video.snippet?.thumbnails?.medium?.url ||
-        video.snippet?.thumbnails?.default?.url ||
-        "",
-      viewCount: video.statistics?.viewCount || "0",
-      duration: video.contentDetails?.duration || null
-    });
-  } catch (error) {
-    console.error("YouTube video details error:", error);
-
-    return res.status(500).json({
-      error: "Unable to retrieve video details."
-    });
-  }
+    const video = (await videoMetadata.get([id]))[0];
+    if (!video) { res.status(503).json({ error: 'Could not retrieve video details.' }); return; }
+    res.json(video);
+  } catch { res.status(503).json({ error: 'Could not retrieve video details. Your saved links are unchanged.' }); }
 });
 
-// API: Search YouTube video lessons
-app.get("/api/video-lessons", async (req, res) => {
-  const { classLevel, subject, chapterBanglaName, chapterName } = req.query;
-  // Video Lessons can request a bounded candidate pool; existing callers keep five.
-  const resultLimit = req.query.limit === "10" ? 10 : 5;
-  const excludedIds = new Set(typeof req.query.exclude === "string"
-    ? req.query.exclude.split(",").filter(id => /^[\w-]{11}$/.test(id)).slice(0, 8) : []);
-
-  if (!subject || !chapterName) {
-    return res.status(400).json({
-      error: "Subject and chapter are required parameters."
-    });
-  }
-
-  if (!youtubeApiKey) {
-    return res.status(500).json({
-      error: "YouTube API key is not configured."
-    });
-  }
-
-  const isSSC =
-    classLevel === "Class 9" ||
-    classLevel === "Class 10";
-  const curriculumLevel = isSSC ? "SSC" : "HSC";
-  const classLabel = String(classLevel);
-
-  // Search terms are deliberately ordered from the most specific
-  // chapter identifier to the broader curriculum context.
-  const query = [
-    chapterBanglaName || "",
-    curriculumLevel,
-    classLabel,
-    subject,
-    `অধ্যায় ${chapterBanglaName || ""}`,
-    `Chapter ${chapterName}`,
-    `Lesson ${chapterName}`,
-    `Question ${chapterName}`,
-    chapterName,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
+// Only authenticated administrators may cause a YouTube search, including cache misses.
+app.get('/api/video-lessons', requireVideoAdmin, async (req, res) => {
   try {
-    const params = new URLSearchParams({
-      part: "snippet",
-      q: query,
-      type: "video",
-      maxResults: String(resultLimit + excludedIds.size),
-      key: youtubeApiKey
-    });
-
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?${params.toString()}`
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("YouTube API error:", errorText);
-
-      return res.status(response.status).json({
-        error: "Failed to search YouTube."
-      });
+    const context = resolveVideoContext(req.query.classLevel, req.query.subjectId, req.query.chapterId);
+    let nextContext = { ...context, pageToken: undefined as string | undefined };
+    if (req.query.after !== undefined) {
+      const previous = await readSavedSearchBatch(context, req.query.after);
+      if (!previous.nextPageToken) throw new VideoSearchError('No more YouTube candidates are available from this search.', 409);
+      nextContext.pageToken = previous.nextPageToken;
     }
-
-    const data = await response.json();
-
-    const filteredItems = (data.items || []).filter((item: any) => {
-      if (excludedIds.has(item.id?.videoId)) return false;
-      const title = item.snippet?.title?.toLowerCase() || "";
-
-      if (
-        classLevel === "Class 11" ||
-        classLevel === "Class 12"
-      ) {
-        return !(
-          title.includes("class 9") ||
-          title.includes("class 10") ||
-          title.includes("ssc")
-        );
-      }
-
-      return true;
-    });
-
-    const videoIds = filteredItems
-      .map((item: any) => item.id?.videoId)
-      .filter(Boolean);
-
-    if (videoIds.length === 0) {
-      return res.json([]);
-    }
-
-    const detailsParams = new URLSearchParams({
-      part: "contentDetails,statistics",
-      id: videoIds.join(","),
-      key: youtubeApiKey
-    });
-
-    const detailsResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`
-    );
-
-    if (!detailsResponse.ok) {
-      const errorText = await detailsResponse.text();
-      console.error("YouTube video details error:", errorText);
-
-      return res.status(detailsResponse.status).json({
-        error: "Failed to retrieve video details."
-      });
-    }
-
-    const detailsData = await detailsResponse.json();
-
-    const videosWithDetails = filteredItems
-      .map((item: any) => {
-        const details = detailsData.items?.find(
-          (detail: any) => detail.id === item.id.videoId
-        );
-
-        return {
-          ...item,
-          viewCount: details?.statistics?.viewCount || "0",
-          duration: details?.contentDetails?.duration || null
-        };
-      })
-      .filter((video: any) => {
-        if (!video.duration) return false;
-        if (Number(video.viewCount) < 5000) return false;
-
-        const match = video.duration.match(
-          /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/
-        );
-
-        if (!match) return false;
-
-        const hours = Number(match[1] || 0);
-        const minutes = Number(match[2] || 0);
-        const seconds = Number(match[3] || 0);
-
-        const totalSeconds =
-          hours * 3600 + minutes * 60 + seconds;
-
-        return totalSeconds >= 300;
-      });
-
-    res.json(videosWithDetails.slice(0, resultLimit));
-
+    if (!youtubeApiKey) throw new VideoSearchError('YouTube search is not configured.');
+    const pool = await getVideoPool(nextContext);
+    res.json({ ...pool, batchKey: poolKey(nextContext), hasMore: !!pool.nextPageToken, nextPageToken: undefined });
   } catch (error) {
-    console.error("YouTube search error:", error);
-
-    res.status(500).json({
-      error: "Failed to search YouTube."
+    res.status(error instanceof VideoSearchError ? error.status : 400).json({
+      error: error instanceof VideoSearchError ? error.message : 'Could not prepare candidates. Check the selected chapter and retry later.',
     });
   }
 });

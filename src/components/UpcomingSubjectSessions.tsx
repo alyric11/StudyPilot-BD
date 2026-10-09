@@ -26,15 +26,32 @@ const sessionDate = (date: string) => {
 export default function UpcomingSubjectSessions(props: Props) {
   const { subject, now, routineBlocks, records, subjects, additionalSubjects } = props;
   const heading = useId();
+  const extraSessionsId = useId();
+  const [expanded, setExpanded] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const tasks = upcomingSubjectSessions(subject.id, routineBlocks, records, subjects, additionalSubjects, now);
+  const renderSession = (task: DailyRoutineTask) => {
+    const key = `${task.date}:${task.block.id}`;
+    return <SessionCard key={key} task={task} props={props} open={openKey === key}
+      onToggle={() => setOpenKey(current => current === key ? null : key)} onClose={() => setOpenKey(null)} />;
+  };
   return <section className="subject-upcoming mt-5 border-t border-slate-100 pt-5" aria-labelledby={heading}>
     <h3 id={heading} className="mb-3 text-sm font-semibold text-slate-800">Upcoming {subject.name} sessions</h3>
-    {tasks.length ? <div className="space-y-2.5">{tasks.map(task => {
-      const key = `${task.date}:${task.block.id}`;
-      return <SessionCard key={key} task={task} props={props} open={openKey === key}
-        onToggle={() => setOpenKey(current => current === key ? null : key)} onClose={() => setOpenKey(null)} />;
-    })}</div> : <p className="text-xs text-slate-500">No upcoming sessions scheduled.</p>}
+    {tasks.length ? <>
+      <div className="space-y-2.5">{tasks.slice(0, 3).map(renderSession)}</div>
+      {tasks.length > 3 && <>
+        <div id={extraSessionsId}>
+          <PlannerReveal open={expanded}>
+            <div className="space-y-2.5 pt-2.5">{tasks.slice(3).map(renderSession)}</div>
+          </PlannerReveal>
+        </div>
+        <button type="button" className="subject-log-action mt-2 gap-1.5" aria-expanded={expanded}
+          aria-controls={extraSessionsId} onClick={() => setExpanded(current => !current)}>
+          {expanded ? 'Show fewer' : `Show next ${tasks.length - 3}`}
+          <ChevronDown className={`profile-chevron h-3.5 w-3.5 ${expanded ? 'profile-chevron-open' : ''}`} aria-hidden="true" />
+        </button>
+      </>}
+    </> : <p className="text-xs text-slate-500">No upcoming sessions scheduled.</p>}
   </section>;
 }
 
