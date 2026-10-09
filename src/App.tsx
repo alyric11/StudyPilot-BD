@@ -1,3 +1,5 @@
+import ProfileMenu from "./components/ProfileMenu";
+import { InstructionLanguage, Guidance } from "./components/InstructionLanguage";
 import { CloudSaveStatus } from "./cloud/CloudSession";
 /**
  * STUDYPILOT BD - Main App Orchestrator and Global State Manager
@@ -204,6 +206,7 @@ export default function App() {
     selectedSubjectIds,
     loaded,
     handleSaveProfile,
+    handleUpdateProfileSettings,
     handleAddRoutineBlock,
     handleDeleteRoutineBlock,
     handleRestoreRoutineBlock,
@@ -239,8 +242,10 @@ export default function App() {
     setRoutineEditRequest(null);
     setActiveSection(section);
     setSidebarOpen(false);
-    document.getElementById("dynamic-flight-window")?.focus({ preventScroll: true });
-    window.scrollTo({ top: 0, behavior: "instant" });
+    if (!document.getElementById("profile-settings-title")) {
+      document.getElementById("dynamic-flight-window")?.focus({ preventScroll: true });
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   };
 
   useEffect(() => {
@@ -252,6 +257,7 @@ export default function App() {
       return;
     }
     const frame = window.requestAnimationFrame(() => {
+      if (document.getElementById("profile-settings-title")) return;
       document.getElementById("dynamic-flight-window")?.focus({ preventScroll: true });
       window.scrollTo({ top: 0, behavior: "instant" });
     });
@@ -477,7 +483,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12 md:p-8 font-sans">
         <div className="w-full max-w-2xl">
           <button type="button" onClick={() => void signOut(auth).catch(e => showToast(accountError(e), "error"))} className="mb-4 rounded-lg px-3 py-2 text-sm font-semibold text-indigo-700">Log out</button>
-          {toast && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{toast.message}</p>}
+          {toast && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"><Guidance>{toast.message}</Guidance></p>}
           <div className="mb-4"><CloudSaveStatus /></div>
           <ProfileSetup initialProfile={null} accountEmail={user.email || ""} onSave={value => handleSaveProfile({ ...value, email: user.email || "" })} />
         </div>
@@ -486,6 +492,7 @@ export default function App() {
   }
 
   return (
+    <InstructionLanguage.Provider value={profile.instructionLanguage || "en"}>
     <MotionConfig reducedMotion="user" transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>
       <div className="min-h-screen bg-slate-50/50 flex flex-col font-sans" id="study-pilot-app-shell">
         {/* Top Header Panel */}
@@ -522,17 +529,10 @@ export default function App() {
           <div className="flex items-center gap-4">
 
 
-            <div className="flex items-center gap-2.5 border-l border-slate-200/70 pl-4">
-              <img
-                src={profile.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(profile.name)}`}
-                alt="Avatar"
-                className="w-8.5 h-8.5 rounded-full border border-slate-200/70 bg-white shadow-sm hidden sm:block"
-              />
-              <div className="hidden sm:block text-left">
-                <span className="text-xs font-bold text-slate-700 block truncate max-w-[120px]">{profile.name}</span>
-                <span className="text-[9px] text-slate-500 font-bold block">{profile.classLevel}</span>
-              </div>
-            </div>
+            <ProfileMenu profile={profile} onSave={draft => {
+              handleUpdateProfileSettings(draft);
+              if (draft.classLevel !== profile.classLevel) navigateToSection("dashboard");
+            }} onLogOut={handleLogOut} />
           </div>
         </header>
 
@@ -585,17 +585,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Logout panel */}
-              <div className="pt-4 border-t border-[#24324a]">
-                <button
-                  onClick={handleLogOut}
-                  className="w-full py-2 px-3 rounded-lg text-left text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 flex items-center gap-3 transition-all cursor-pointer"
-                  id="sidebar-link-logout"
-                >
-                  <LogOut className="w-4 h-4 shrink-0" />
-                  Log Out
-                </button>
-              </div>
+
             </div>
           </aside>
 
@@ -783,7 +773,7 @@ export default function App() {
                                 </div>
                                 <div>
                                   <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">Your subjects</h2>
-                                  <p className="text-slate-500 text-xs mt-0.5">Select a subject to explore its chapters, study guides and tutor chat.</p>
+                                  <p className="text-slate-500 text-xs mt-0.5"><Guidance>Select a subject to explore its chapters, study guides and tutor chat.</Guidance></p>
                                 </div>
                               </div>
                               <span className="text-xs font-bold text-indigo-600 bg-indigo-50/60 px-3 py-1 rounded-lg border border-indigo-100/50">
@@ -797,7 +787,7 @@ export default function App() {
                                 Common Subjects
                               </h3>
                               <p className="text-[10px] text-slate-500 mt-1">
-                                Subjects common to all students.
+                                <Guidance>Subjects common to all students.</Guidance>
                               </p>
                             </div>
 
@@ -817,7 +807,7 @@ export default function App() {
                                     Group Subjects
                                   </h3>
                                   <p className="text-[10px] text-slate-500 mt-1">
-                                    Mandatory and selected subjects for your group.
+                                    <Guidance>Mandatory and selected subjects for your group.</Guidance>
                                   </p>
                                 </div>
 
@@ -988,7 +978,7 @@ export default function App() {
                 {toast.type === "info" && <BookOpen className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />}
 
                 <div className="flex-1">
-                  <p className="text-xs font-semibold leading-relaxed">{toast.message}</p>
+                  <p className="text-xs font-semibold leading-relaxed"><Guidance>{toast.message}</Guidance></p>
                 </div>
                 <button
                   onClick={() => setToast(null)}
@@ -1240,8 +1230,7 @@ export default function App() {
                   <h3 id="reset-heading" className="text-lg font-display font-bold tracking-tight">Log out?</h3>
                 </div>
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Your saved cloud records will be available when you sign in on another device.
-                  Wait for “Saved online” before logging out. Pending changes remain in this browser until you sign in here again.
+                  <Guidance>Your saved cloud records will be available when you sign in on another device. Wait for “Saved online” before logging out. Pending changes remain in this browser until you sign in here again.</Guidance>
                 </p>
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <button
@@ -1265,5 +1254,6 @@ export default function App() {
         </AnimatePresence>
       </div >
     </MotionConfig>
+    </InstructionLanguage.Provider>
   );
 }

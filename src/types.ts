@@ -18,6 +18,9 @@ export interface UserProfile {
   board: string;
   examYear: string;
   avatarUrl?: string;
+  username?: string;
+  birthdate?: string;
+  instructionLanguage?: 'en' | 'bn';
 }
 
 // Checklists tracking study progress for a textbook chapter

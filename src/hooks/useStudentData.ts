@@ -1,3 +1,5 @@
+import { saveProfileSettings, type ProfileSettings } from "../utils/profileSettings";
+import { localDateKey } from "../utils/routineTasks";
 import { useAccount } from "../auth/AccountContext";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -294,6 +296,11 @@ export default function useStudentData(
       load();
       return storage.subscribe?.(load);
     }, [storage]);
+
+    const handleUpdateProfileSettings = (draft: ProfileSettings) => {
+        const saved = saveProfileSettings(storage, draft, localDateKey(new Date()));
+        setProfile(saved);
+    };
 
     const handleSaveProfile = (newProfile: UserProfile) => {
         setProfile(newProfile);
@@ -789,6 +796,7 @@ export default function useStudentData(
         loaded,
 
         handleSaveProfile,
+        handleUpdateProfileSettings,
         handleUpdateChapterProgress,
 
         handleAddRoutineBlock,
