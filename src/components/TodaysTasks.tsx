@@ -1,4 +1,6 @@
 import { Guidance } from "./InstructionLanguage";
+import useBangladeshToday from '../hooks/useBangladeshToday';
+import { sessionTone } from '../utils/sessionAppearance';
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CalendarDays, Check } from "lucide-react";
@@ -24,30 +26,11 @@ export default function TodaysTasks({
   onSetCompletion, onOpenChapter, onEditRoutine, onOpenPlanner,
 }: TodaysTasksProps) {
   const reduceMotion = useReducedMotion();
-  const [today, setToday] = useState(() => localDateKey(new Date()));
+  const today = useBangladeshToday();
   const [prompt, setPrompt] = useState<DailyRoutineTask | null>(null);
   const [promptError, setPromptError] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const promptAnchorRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    let timer: number;
-    const updateDay = () => {
-      const now = new Date();
-      setToday(localDateKey(now));
-      window.clearTimeout(timer);
-      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      timer = window.setTimeout(updateDay, midnight.getTime() - now.getTime() + 50);
-    };
-    updateDay();
-    window.addEventListener("focus", updateDay);
-    document.addEventListener("visibilitychange", updateDay);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("focus", updateDay);
-      document.removeEventListener("visibilitychange", updateDay);
-    };
-  }, []);
 
   useEffect(() => { setPrompt(null); setPromptError(false); }, [today]);
 
@@ -114,6 +97,7 @@ export default function TodaysTasks({
             const promptId = `next-task-${block.id}`;
             return (
               <div key={block.id} data-today-routine-id={block.id} data-completed={task.completed}
+                data-session-tone={sessionTone(task.date, task.completed, block, today)}
                 className={`today-task rounded-xl border ${styles.card}`}
                 style={{ "--task-accent": accent } as CSSProperties}>
                 <div className="today-task-content">

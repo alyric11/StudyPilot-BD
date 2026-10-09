@@ -1,4 +1,6 @@
 import { Guidance } from "./InstructionLanguage";
+import useBangladeshToday from '../hooks/useBangladeshToday';
+import { sessionTone } from '../utils/sessionAppearance';
 import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { createPortal } from "react-dom";
@@ -18,7 +20,8 @@ import {
   Plus,
   X,
   AlertTriangle,
-  MoreHorizontal
+  MoreHorizontal,
+  Check
 } from "lucide-react";
 import TimePicker from "./TimePicker";
 import PlannerReveal from "./PlannerReveal";
@@ -31,7 +34,7 @@ import useDialogFocus from "../hooks/useDialogFocus";
 import { dateInViewedWeek, durationDescription, routineDuration } from "../utils/plannerPresentation";
 
 import { Subject } from "../data/curriculum";
-import { getSubjectRoutineStyles } from "../colorPalettes";
+import { getSubjectRoutineStyles, getSubjectAccentColor } from "../colorPalettes";
 import {
   FloatingPlacement,
   getSideAwareFloatingPosition,
@@ -178,6 +181,7 @@ export default function StudyPlanner({
   onBackToDashboard
 }: StudyPlannerProps) {
   const shouldReduceMotion = useReducedMotion();
+  const todayForStatus = useBangladeshToday();
 
   // ------------------------------------------------------------
   // Weekly Routine
@@ -503,6 +507,8 @@ export default function StudyPlanner({
 
   const renderDatedRoutineCard = (block: RoutineBlock, date: Date, expanded = true, mobile = false) => {
     const dateKey = localDateKey(date);
+    const completed = dailyRoutineTasks.find(task => task.date === dateKey && task.block.id === block.id)?.completed === true;
+    const tone = sessionTone(dateKey, completed, block, todayForStatus);
     const info = getDetailedRoutineInfo(block);
     const isOpen = routineToDelete?.id === block.id && routineMenuDateKey === dateKey;
     const isEditing = editingRoutineId === block.id && homeworkDateKey === dateKey;
@@ -514,6 +520,8 @@ export default function StudyPlanner({
     return (
       <div
         data-routine-card-id={block.id}
+        data-session-tone={tone}
+        data-completed={completed}
         key={block.id}
         tabIndex={-1}
         onKeyDown={event => {
@@ -523,7 +531,7 @@ export default function StudyPlanner({
           else { closeRoutineMenu(); focusVisibleRoutineCard(block.id); }
         }}
         className={`planner-focus routine-card relative overflow-hidden rounded-lg border text-center shadow-sm ${getRoutineBlockCardStyle(block)} ${isEditing ? "routine-card-editing relative z-10 ring-2 ring-indigo-300 ring-offset-2" : ""}`}
-        style={getPersonalRoutineStyle(block)}
+        style={{ ...getPersonalRoutineStyle(block), '--session-subject-accent': getSubjectAccentColor(subject?.color || block.color || 'amber') } as React.CSSProperties}
       >
         <button
           type="button"
@@ -544,6 +552,9 @@ export default function StudyPlanner({
             <MoreHorizontal aria-hidden="true" className="routine-card-more h-3.5 w-3.5 text-slate-400" />
           </span>
         </button>
+        {(completed || tone === 'unfinished') && <div className={`session-status-label ${completed ? 'session-status-complete' : ''}`}>
+          {completed ? <><Check aria-hidden="true" className="h-3 w-3" />Completed</> : 'Not completed'}
+        </div>}
         <PlannerReveal open={expanded && !showDraft} contentWidth={contentWidth}>
           <div className="planner-card-details-copy border-t border-slate-200/70 px-3 pb-2.5 pt-2 text-center">
             {info.chapterLabel && <div className="text-[13px] font-medium text-slate-800">{info.chapterLabel}</div>}

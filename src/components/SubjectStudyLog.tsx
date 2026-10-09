@@ -19,6 +19,8 @@ import {
 import { formatTime12Hour } from "../utils/time";
 import { getSubjectAccentColor, getSubjectCardStyles } from '../colorPalettes';
 import UpcomingSubjectSessions from './UpcomingSubjectSessions';
+import useBangladeshToday from '../hooks/useBangladeshToday';
+import { sessionTone } from '../utils/sessionAppearance';
 
 interface SubjectStudyLogProps {
     subject: Subject;
@@ -74,7 +76,7 @@ export default function SubjectStudyLog({
         window.addEventListener("focus", refresh);
         return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
     }, []);
-    const today = localDateKey(now);
+    const today = useBangladeshToday();
     const viewedDate = followingToday ? today : selectedDate;
     const chooseDate = (date: string) => { setSelectedDate(date); setFollowingToday(date === today); };
 
@@ -153,6 +155,7 @@ export default function SubjectStudyLog({
                         return (
                         <div
                             key={`${task.date}:${task.block.id}`}
+                            data-session-tone={sessionTone(task.date, task.completed, task.block, today)}
                             className={`subject-log-task subject-card-live ${viewedDate === today ? 'subject-log-task-today' : ''} ${getSubjectCardStyles(task.paletteColor).card}`}
                             style={{ '--subject-hover-color': getSubjectAccentColor(task.paletteColor) } as CSSProperties}
                         >
@@ -163,10 +166,7 @@ export default function SubjectStudyLog({
                                 </div>
                                 <div className="contents">
                                     <p
-                                        className={`subject-log-chapter min-w-0 break-words text-sm font-semibold ${task.completed
-                                                ? "text-slate-400 line-through"
-                                                : "text-slate-700"
-                                            }`}
+                                        className="subject-log-chapter min-w-0 break-words text-sm font-semibold text-slate-700"
                                     >
                                         {chapter && <span className="subject-log-chapter-number">{chapter.chapterNumber}</span>}
                                         <span>{chapter ? chapter.banglaName || chapter.name : task.block.title}</span>
@@ -177,6 +177,7 @@ export default function SubjectStudyLog({
                                     >
                                         {task.block.homeworkText?.trim() || "No homework assigned"}
                                     </p>
+                                    {sessionTone(task.date, task.completed, task.block, today) === 'unfinished' && <span className="session-status-label">Not completed</span>}
                                 </div>
 
                                 <label className={`subject-log-check ${chapter ? 'has-chapter' : ''} flex h-7 w-8 cursor-pointer items-center justify-center`}>

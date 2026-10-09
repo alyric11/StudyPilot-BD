@@ -1078,7 +1078,56 @@ body {
 }
 
 .today-task:not(.subject-card-live) {
-  transition: border-color 160ms ease;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+/* Temporary status colors belong to the dated session, never the weekly template. */
+[data-session-tone="completed-today"] {
+  background-color: #f0f8f2 !important;
+  border-color: #bedbc7 !important;
+}
+[data-session-tone="completed-today"]:hover {
+  background-color: #eaf5ee !important;
+  border-color: #9bc9aa !important;
+}
+[data-session-tone="unfinished"] {
+  background-color: #fff3f3 !important;
+  border-color: #e9c9ce !important;
+}
+[data-session-tone="unfinished"]:hover {
+  background-color: #fceeee !important;
+  border-color: #dcafb7 !important;
+}
+[data-session-tone="completed-today"] .subject-task-check,
+[data-session-tone="completed-today"] .task-checkbox-mark {
+  background-color: #42805b !important;
+  border-color: #42805b !important;
+}
+.session-status-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #95606b;
+}
+.subject-log-task .session-status-label { grid-column: 2; grid-row: 3; justify-content: flex-start; padding: 4px 0 0; }
+.session-status-complete { color: #53675b; }
+[data-session-tone="completed-today"] .session-status-complete { color: #427052; }
+[data-session-tone="completed-today"] .today-task-title::before,
+[data-session-tone="unfinished"] .today-task-title::before,
+[data-session-tone="completed-today"] .routine-card-title::before,
+[data-session-tone="unfinished"] .routine-card-title::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+  background-color: var(--session-subject-accent, var(--task-accent, #64748b));
 }
 
 .today-task-content {
