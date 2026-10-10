@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 import { createUserWithEmailAndPassword, onIdTokenChanged, reload, sendEmailVerification,
   sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { SSC_CLASSES_ENABLED } from '../config/classAvailability';
-import CloudSession from "../cloud/CloudSession";
 import { accountError } from "./messages";
 import { canImportLegacy, createAccountStorage, importLegacy } from "../utils/accountStorage";
+import WelcomePage from '../components/WelcomePage';
+import AccountDialog from '../components/AccountDialog';
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import { accountDestination, publicPageFromPath, publicPaths, type PublicPage } from '../utils/publicNavigation';
 
-const field = "mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500";
-const primary = "w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50";
-const secondary = "rounded-lg px-2 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50";
+const CloudSession = lazy(() => import('../cloud/CloudSession'));
+
+const field = "account-field";
+const primary = "welcome-button account-primary";
+const secondary = "account-secondary";
 
 function StudentSession({ user }: { user: User }) {
   const account = useMemo(() => ({ user, storage: createAccountStorage(localStorage, user.uid) }), [user]);
@@ -39,21 +44,42 @@ function StudentSession({ user }: { user: User }) {
       </section>
     </div>
   );
-  return <CloudSession user={user} />;
+  return <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50" role="status">Opening your study space…</div>}><CloudSession user={user} /></Suspense>;
 }
 
 export default function AccountGate() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
+  const [page, setPage] = useState<PublicPage>(() => publicPageFromPath(window.location.pathname));
+  const mode = page === 'signup' ? 'signup' : page === 'reset' ? 'reset' : 'login';
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [resendAfter, setResendAfter] = useState(0);
   const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const onBack = () => {
+      setPage(publicPageFromPath(window.location.pathname));
+      setError(''); setNotice(''); setPassword(''); setConfirmation(''); setShowPassword(false);
+    };
+    window.addEventListener('popstate', onBack);
+    return () => window.removeEventListener('popstate', onBack);
+  }, []);
+  useEffect(() => {
+    if (loading) return;
+    const destination = accountDestination(page, !!user?.emailVerified, !!user);
+    if (destination !== page) {
+      window.history.replaceState(null, '', publicPaths[destination]);
+      setPage(destination);
+    }
+  }, [loading, page, user?.uid, user?.emailVerified]);
+  useEffect(() => {
+    document.title = page === 'welcome' ? 'StudyPilot BD — Your study companion' : page === 'app' ? 'StudyPilot BD' : `${page === 'verify' ? 'Verify your email' : mode === 'signup' ? 'Sign up' : mode === 'reset' ? 'Reset password' : 'Sign in'} · StudyPilot BD`;
+  }, [page, mode]);
   useEffect(() => onIdTokenChanged(auth, next => {
     setUser(next); setLoading(false); setPassword(""); setConfirmation("");
   }, e => { setError(accountError(e)); setLoading(false); }), []);
@@ -69,7 +95,7 @@ export default function AccountGate() {
     finally { setBusy(false); }
   };
   const sendVerification = async (target: User) => {
-    await sendEmailVerification(target, { url: window.location.origin });
+    await sendEmailVerification(target, { url: `${window.location.origin}/app` });
     setResendAfter(Date.now() + 60000); setNow(Date.now());
     setNotice("Verification email sent. Check your inbox and spam folder, then return here.");
   };
@@ -79,30 +105,38 @@ export default function AccountGate() {
     void run(async () => {
       const address = email.trim();
       if (mode === "reset") {
-        await sendPasswordResetEmail(auth, address, { url: window.location.origin });
+        await sendPasswordResetEmail(auth, address, { url: `${window.location.origin}/signin` });
         setNotice("If an account uses this email, a password reset link will arrive. Check your inbox and spam folder.");
       } else if (mode === "signup") {
         const result = await createUserWithEmailAndPassword(auth, address, password);
+        setUser(result.user);
+        navigate('verify');
         await sendVerification(result.user);
       } else {
-        await signInWithEmailAndPassword(auth, address, password);
+        const result = await signInWithEmailAndPassword(auth, address, password);
+        setUser(result.user);
+        navigate(result.user.emailVerified ? 'app' : 'verify');
       }
     });
   };
-  const switchMode = (next: typeof mode) => {
-    setMode(next); setError(""); setNotice(""); setPassword(""); setConfirmation("");
+  const navigate = (next: PublicPage, replace = false) => {
+    if (next !== page) window.history[replace ? 'replaceState' : 'pushState'](null, '', publicPaths[next]);
+    setPage(next); setError(""); setNotice(""); setPassword(""); setConfirmation(""); setShowPassword(false);
   };
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50" role="status">Checking your account…</div>;
-  if (user?.emailVerified) return <StudentSession key={user.uid} user={user} />;
+  const switchMode = (next: typeof mode) => navigate(next);
+  if (loading && page !== 'welcome') return <div className="min-h-screen flex items-center justify-center bg-slate-50" role="status">Checking your account…</div>;
+  if (user?.emailVerified && page === 'app') return <StudentSession key={user.uid} user={user} />;
+  if (!loading && accountDestination(page, !!user?.emailVerified, !!user) !== page) return <div className="min-h-screen flex items-center justify-center bg-slate-50" role="status">Checking your account…</div>;
+  const title = page === 'verify' ? 'Verify your email' : mode === 'signup' ? 'Sign up' : mode === 'reset' ? 'Reset your password' : 'Sign in';
   return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-10">
-      <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-5">
-        <p className="text-sm font-bold text-indigo-600">StudyPilot BD</p>
-        <h1 className="text-2xl font-bold text-slate-800">{user ? "Verify your email" : mode === "signup" ? "Create your student account" : mode === "reset" ? "Reset your password" : "Welcome back"}</h1>
-        {!SSC_CLASSES_ENABLED && !user && mode !== 'reset' && <p className="text-sm leading-relaxed text-slate-500">The current student trial is for Classes 11–12.</p>}
+    <>
+      <WelcomePage onNavigate={navigate} />
+      {!loading && page !== 'welcome' && <AccountDialog title={title} busy={busy} onClose={() => navigate('welcome', true)}>
+      <div className="account-dialog-body">
+        {!SSC_CLASSES_ENABLED && page !== 'verify' && mode !== 'reset' && <p className="text-sm leading-relaxed text-slate-500">The current student trial is for Classes 11–12.</p>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {notice && <p role="status" className="rounded-xl bg-indigo-50 p-3 text-sm text-indigo-800">{notice}</p>}
-        {user ? <>
+        {page === 'verify' && user ? <>
           <p className="text-sm text-slate-600">Verify <strong className="break-all">{user.email}</strong> using the link in your email before opening your study space.</p>
           <button disabled={busy} className={primary} onClick={() => void run(async () => {
             await reload(user);
@@ -114,26 +148,40 @@ export default function AccountGate() {
           </button>
           <button disabled={busy} className={secondary} onClick={() => void run(async () => { await signOut(auth); switchMode("login"); })}>Use another account</button>
         </> : <>
-          <form onSubmit={submit} className="space-y-4">
-            <label className="block text-sm font-semibold text-slate-700" htmlFor="account-email">Email address
-              <input id="account-email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} className={field} disabled={busy} />
-            </label>
-            {mode !== "reset" && <label className="block text-sm font-semibold text-slate-700" htmlFor="account-password">Password
-              <input id="account-password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 8 : undefined} required value={password} onChange={e => setPassword(e.target.value)} className={field} disabled={busy} />
-              {mode === "signup" && <span className="mt-1 block text-xs font-normal text-slate-500">Use at least 8 characters.</span>}
-            </label>}
-            {mode === "signup" && <label className="block text-sm font-semibold text-slate-700" htmlFor="account-confirmation">Confirm password
-              <input id="account-confirmation" type="password" autoComplete="new-password" required value={confirmation} onChange={e => setConfirmation(e.target.value)} className={field} disabled={busy} />
-            </label>}
-            <button disabled={busy} className={primary} type="submit">{busy ? "Please wait…" : mode === "signup" ? "Create account" : mode === "reset" ? "Send reset link" : "Log in"}</button>
+          {user && mode === 'login' && <div className="rounded-xl bg-violet-50 p-3 text-sm leading-relaxed text-slate-600">
+            <p>This browser is signed in as <strong className="break-all">{user.email}</strong>.</p>
+            <button type="button" disabled={busy} className={secondary} onClick={() => navigate('app')}>Open my account</button>
+          </div>}
+          <form onSubmit={submit} className="account-form">
+            <div>
+              <label htmlFor="account-email">Email address</label>
+              <div className="account-input-wrap"><Mail size={18} aria-hidden="true" />
+                <input autoFocus id="account-email" placeholder="Enter your email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} className={field} disabled={busy} />
+              </div>
+            </div>
+            {mode !== "reset" && <div>
+              <label htmlFor="account-password">Password</label>
+              <div className="account-input-wrap account-password-wrap"><LockKeyhole size={18} aria-hidden="true" />
+                <input id="account-password" placeholder="Enter your password" type={showPassword ? 'text' : 'password'} autoComplete={mode === "signup" ? "new-password" : "current-password"} aria-describedby={mode === 'signup' ? 'account-password-hint' : undefined} minLength={mode === "signup" ? 8 : undefined} required value={password} onChange={e => setPassword(e.target.value)} className={field} disabled={busy} />
+                <button type="button" className="account-password-toggle" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} disabled={busy} onClick={() => setShowPassword(value => !value)}>{showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button>
+              </div>
+              {mode === "signup" && <p id="account-password-hint" className="account-field-hint">Use at least 8 characters.</p>}
+            </div>}
+            {mode === "signup" && <div>
+              <label htmlFor="account-confirmation">Confirm password</label>
+              <div className="account-input-wrap"><LockKeyhole size={18} aria-hidden="true" />
+                <input id="account-confirmation" placeholder="Enter your password again" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required value={confirmation} onChange={e => setConfirmation(e.target.value)} className={field} disabled={busy} />
+              </div>
+            </div>}
+            {mode === 'login' && <div className="account-forgot"><button type="button" disabled={busy} className={secondary} onClick={() => switchMode('reset')}>Forgot password?</button></div>}
+            <button disabled={busy} className={primary} type="submit">{busy ? "Please wait…" : mode === "signup" ? "Create account" : mode === "reset" ? "Send reset link" : "Sign in"}</button>
           </form>
-          <div className="flex flex-wrap justify-between gap-2">
-            <button disabled={busy} className={secondary} onClick={() => switchMode(mode === "login" ? "signup" : "login")}>{mode === "login" ? "Create an account" : "Back to login"}</button>
-            {mode === "login" && <button disabled={busy} className={secondary} onClick={() => switchMode("reset")}>Forgot password?</button>}
-          </div>
         </>}
-        <p className="text-xs leading-relaxed text-slate-500">Sign in to access your study records across devices. Your email must be verified before opening your study space.</p>
-      </section>
-    </main>
+      </div>
+      {page !== 'verify' && <footer className="account-dialog-footer">
+        {mode === 'login' ? <><span>Don't have an account?</span><button disabled={busy} className={secondary} onClick={() => switchMode('signup')}>Sign up</button></> : <><span>{mode === 'signup' ? 'Already have an account?' : 'Remember your password?'}</span><button disabled={busy} className={secondary} onClick={() => switchMode('login')}>Sign in</button></>}
+      </footer>}
+      </AccountDialog>}
+    </>
   );
 }

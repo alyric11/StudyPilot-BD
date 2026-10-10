@@ -17,24 +17,20 @@ interface ProfileSetupProps {
   initialProfile: UserProfile | null;
   accountEmail?: string;
   onSave: (profile: UserProfile) => void;
+  feedback?: React.ReactNode;
 }
 
-export default function ProfileSetup({ initialProfile, accountEmail, onSave }: ProfileSetupProps) {
+export default function ProfileSetup({ initialProfile, accountEmail, onSave, feedback }: ProfileSetupProps) {
   const [name, setName] = useState(initialProfile?.name || "");
   const [email, setEmail] = useState(accountEmail || initialProfile?.email || "");
   const [phone, setPhone] = useState(initialProfile?.phone || "");
   const [school, setSchool] = useState(initialProfile?.school || "");
   const [classLevel, setClassLevel] = useState(initialProfile?.classLevel || DEFAULT_ENABLED_CLASS);
-  const [classLevelTouched, setClassLevelTouched] = useState(false);
   const [group, setGroup] = useState<any>(initialProfile?.group || "Science");
-  const [groupTouched, setGroupTouched] = useState(false);
   const [board, setBoard] = useState(initialProfile?.board || "Dhaka");
-  const [boardTouched, setBoardTouched] = useState(false);
   const [examYear, setExamYear] = useState(
     initialProfile?.examYear || String(new Date().getFullYear() + 1)
   );
-  const [examYearTouched, setExamYearTouched] = useState(false);
-  const [demoImported, setDemoImported] = useState(false);
 
   // Validation state
   const [errors, setErrors] = useState<{
@@ -75,7 +71,7 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
 
     // 1. Name validation
     if (!trimmedName) {
-      newErrors.name = "Full Name is required.";
+      newErrors.name = "Full name is required.";
     } else if (trimmedName.length < 2) {
       newErrors.name = "Name must be at least 2 characters long.";
     } else if (trimmedName.length > 50) {
@@ -84,7 +80,7 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
 
     // 2. Email validation
     if (!trimmedEmail) {
-      newErrors.email = "Email Address is required.";
+      newErrors.email = "Email address is required.";
     } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(trimmedEmail)) {
@@ -130,29 +126,13 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
     });
   };
 
-  const triggerGoogleLogin = () => {
-    setName("Jessica Jerin");
-    setEmail("jessica123@gmail.com");
-    setSchool("Dhaka City College");
-    setBoard("Dhaka");
-    setClassLevel("Class 11");
-    setGroup("Science");
-    setExamYear(String(new Date().getFullYear() + 2));
-    setPhone("01712345678");
-    setDemoImported(true);
-    setErrors({});
-  };
-
   return (
-    <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200/60 overflow-hidden" id="profile-setup-card">
-      <div className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-indigo-800 px-6 py-8 text-white text-center">
-        <h2 className="text-2xl font-display font-bold tracking-tight">Set Up Your Academic Profile</h2>
-        <p className="text-indigo-100 mt-2 text-sm leading-relaxed">
-
-        </p>
+    <section className="profile-setup-card" id="profile-setup-card" aria-labelledby="profile-setup-heading">
+      <div className="profile-setup-card-heading">
+        <h1 id="profile-setup-heading">Your academic profile</h1>
+        <p>A few details to make StudyPilot yours.</p>
       </div>
-
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="profile-setup-form">
         {/* General Alert */}
         {errors.general && (
           <div className="p-3.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-xs flex items-center gap-2 font-medium">
@@ -161,121 +141,114 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
           </div>
         )}
 
-        {/* Quick Social Auth */}
-        <div className="border-b border-slate-100 pb-5">
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Fast Account Setup</label>
-          <button
-            type="button"
-            onClick={triggerGoogleLogin}
-            className="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium flex items-center justify-center gap-2 transition-all cursor-pointer"
-            id="google-signin-btn"
-          >
-
-            Import Demo Profile (Jessica Jerin)
-          </button>
-        </div>
-
         {/* Name and Contact */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="profile-setup-field-row">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="name-input">Full Name</label>
+            <label className="profile-setup-label" htmlFor="name-input">Full name</label>
             <div className="relative">
-              <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <User className="profile-setup-field-icon" />
               <input
                 id="name-input"
                 type="text"
-                placeholder="Enter Your Full Name"
+                autoComplete="name"
+                placeholder="Enter your full name"
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
                   if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
                 }}
-                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${errors.name ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
-                  }`}
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? "name-error" : undefined}
+                className="profile-setup-field"
               />
             </div>
-            {errors.name && <p className="text-rose-600 text-[10px] mt-1 font-semibold">{errors.name}</p>}
+            {errors.name && <p id="name-error" className="profile-setup-field-error">{errors.name}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="email-input">Email Address</label>
+            <label className="profile-setup-label" htmlFor="email-input">Email address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Mail className="profile-setup-field-icon" />
               <input
                 id="email-input"
                 readOnly={!!accountEmail}
+                autoComplete="email"
                 type="text"
-                placeholder="Enter Your Email Address"
+                placeholder="Your verified email"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
                   if (errors.email) setErrors(prev => ({ ...prev, email: undefined }));
                 }}
-                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${errors.email ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
-                  }`}
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? "email-error" : undefined}
+                className="profile-setup-field"
               />
             </div>
-            {errors.email && <p className="text-rose-600 text-[10px] mt-1 font-semibold">{errors.email}</p>}
+            {errors.email && <p id="email-error" className="profile-setup-field-error">{errors.email}</p>}
           </div>
         </div>
 
         {/* Phone & School */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="profile-setup-field-row">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="phone-input">Mobile Number (Optional)</label>
+            <label className="profile-setup-label" htmlFor="phone-input">Mobile number (optional)</label>
             <div className="relative">
-              <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Phone className="profile-setup-field-icon" />
               <input
                 id="phone-input"
                 type="tel"
-                placeholder="Enter Your Mobile Number"
+                autoComplete="tel"
+                placeholder="Your mobile number"
                 value={phone}
                 onChange={(e) => {
                   setPhone(e.target.value);
                   if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
                 }}
-                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${errors.phone ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
-                  }`}
+                aria-invalid={!!errors.phone}
+                aria-describedby={errors.phone ? "phone-error" : undefined}
+                className="profile-setup-field"
               />
             </div>
-            {errors.phone && <p className="text-rose-600 text-[10px] mt-1 font-semibold">{errors.phone}</p>}
+            {errors.phone && <p id="phone-error" className="profile-setup-field-error">{errors.phone}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="school-input">School / College Name (Optional)</label>
+            <label className="profile-setup-label" htmlFor="school-input">School / college (optional)</label>
             <div className="relative">
-              <School className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <School className="profile-setup-field-icon" />
               <input
                 id="school-input"
                 type="text"
-                placeholder="School / College Name"
+                autoComplete="organization"
+                placeholder="School / college name"
                 value={school}
                 onChange={(e) => {
                   setSchool(e.target.value);
                   if (errors.school) setErrors(prev => ({ ...prev, school: undefined }));
                 }}
-                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none transition-all text-slate-800 font-medium ${errors.school ? "border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-200" : "border-slate-200 focus:border-indigo-500"
-                  }`}
+                aria-invalid={!!errors.school}
+                aria-describedby={errors.school ? "school-error" : undefined}
+                className="profile-setup-field"
               />
             </div>
-            {errors.school && <p className="text-rose-600 text-[10px] mt-1 font-semibold">{errors.school}</p>}
+            {errors.school && <p id="school-error" className="profile-setup-field-error">{errors.school}</p>}
           </div>
         </div>
 
         {/* Class Selection & Group */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="profile-setup-field-row">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="class-select">NCTB Class Level</label>
+            <label className="profile-setup-label" htmlFor="class-select">Class level</label>
             <div className="relative">
-              <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-black" />
+              <GraduationCap className="profile-setup-field-icon" />
               <select
                 id="class-select"
                 value={classLevel}
                 onChange={(e) => {
                   handleClassChange(e);
-                  setClassLevelTouched(true);
                 }}
-                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || classLevelTouched ? "text-slate-800" : "text-black"} font-medium cursor-pointer`}
+                className="profile-setup-field"
               >
                 {Object.keys(NCTB_CURRICULUM).map((cl) => (
                   <option key={cl} value={cl} disabled={!isClassEnabled(cl)}>
@@ -288,18 +261,17 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="group-select">Academic Group</label>
+            <label className="profile-setup-label" htmlFor="group-select">Academic group</label>
             <div className="relative">
-              <User className="absolute left-3 top-3 h-4 w-4 text-black" />
+              <User className="profile-setup-field-icon" />
               <select
                 id="group-select"
                 value={group}
                 onChange={(e) => {
                   setGroup(e.target.value);
-                  setGroupTouched(true);
                 }}
                 disabled={availableGroups.length === 1 && availableGroups[0] === "None"}
-                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || groupTouched ? "text-slate-800" : "text-black"} font-medium cursor-pointer disabled:opacity-50`}
+                className="profile-setup-field"
               >
                 {availableGroups.map((grp: string) => (
                   <option key={grp} value={grp}>
@@ -312,19 +284,18 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
         </div>
 
         {/* Board & Exam Year */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="profile-setup-field-row">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="board-select">Education Board</label>
+            <label className="profile-setup-label" htmlFor="board-select">Education board</label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-3 h-4 w-4 text-black" />
+              <MapPin className="profile-setup-field-icon" />
               <select
                 id="board-select"
                 value={board}
                 onChange={(e) => {
                   setBoard(e.target.value);
-                  setBoardTouched(true);
                 }}
-                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || boardTouched ? "text-slate-800" : "text-black"} font-medium cursor-pointer`}
+                className="profile-setup-field"
               >
                 {NCTB_BOARDS.map((bd) => (
                   <option key={bd} value={bd}>
@@ -336,9 +307,9 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="year-input">Exam Year (SSC/HSC)</label>
+            <label className="profile-setup-label" htmlFor="year-input">Exam year (SSC/HSC)</label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-3 h-4 w-4 text-black" />
+              <Calendar className="profile-setup-field-icon" />
               <input
                 id="year-input"
                 type="number"
@@ -346,25 +317,26 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
                 value={examYear}
                 onChange={(e) => {
                   setExamYear(e.target.value);
-                  setExamYearTouched(true);
                 }}
-                className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 transition-all ${demoImported || examYearTouched ? "text-slate-800" : "text-black"} font-medium`}
+                className="profile-setup-field"
                 required
               />
             </div>
           </div>
         </div>
 
+        {feedback && <div className="profile-setup-feedback">{feedback}</div>}
+
         {/* Submit */}
         <button
           type="submit"
-          className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="profile-setup-submit"
           id="profile-submit-btn"
         >
-          Confirm & Access
+          Start studying
           <ArrowRight className="w-5 h-5" />
         </button>
       </form>
-    </div>
+    </section>
   );
 }

@@ -13,11 +13,18 @@ function downloadBackup(cloud: StudentCloud) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function CloudSaveStatus() {
+export function CloudSaveStatus({ attentionOnly = false }: { attentionOnly?: boolean }) {
   const { cloud } = useAccount();
   const [state, setState] = useState(cloud?.getState());
   useEffect(() => cloud?.watch(setState), [cloud]);
   if (!cloud || !state) return null;
+  if (attentionOnly) {
+    if (!state.error && (state.status === 'Saved online' || state.status === 'Saving…')) return null;
+    return <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-sm text-amber-900" role={state.error ? 'alert' : 'status'}>
+      <p>{state.error || state.status}</p>
+      <button type="button" className="mt-1 rounded text-sm font-semibold underline underline-offset-4 hover:text-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700" onClick={cloud.retry}>Retry connection</button>
+    </div>;
+  }
   return <div className="px-3 text-xs text-slate-600">
     <span role="status" aria-live="polite">{state.status}{state.pending > 0 && ` (${state.pending} records pending)`}</span>
     <button type="button" className="ml-3 text-indigo-700 underline" onClick={() => downloadBackup(cloud)}>Download backup</button>

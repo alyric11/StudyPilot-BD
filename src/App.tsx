@@ -36,7 +36,7 @@ import {
   localDateKey,
 } from "./utils/routineTasks.ts";
 import useDialogFocus from "./hooks/useDialogFocus";
-import ProfileSetup from "./components/ProfileSetup";
+import ProfileSetupPage from "./components/ProfileSetupPage";
 import TodaysTasks from "./components/TodaysTasks";
 import { navigationSessionKey, restoreNavigationSession, serializeNavigationSession, type AppSection } from './utils/navigationSession';
 
@@ -529,14 +529,15 @@ export default function App() {
   // Profile setup flow if not onboarding complete
   if (!profile) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12 md:p-8 font-sans">
-        <div className="w-full max-w-2xl">
-          <button type="button" onClick={() => void signOut(auth).catch(e => showToast(accountError(e), "error"))} className="mb-4 rounded-lg px-3 py-2 text-sm font-semibold text-indigo-700">Log out</button>
-          {toast && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"><Guidance>{toast.message}</Guidance></p>}
-          <div className="mb-4"><CloudSaveStatus /></div>
-          <ProfileSetup initialProfile={null} accountEmail={user.email || ""} onSave={value => handleSaveProfile({ ...value, email: user.email || "" })} />
-        </div>
-      </div>
+      <ProfileSetupPage
+        accountEmail={user.email || ""}
+        onLogOut={() => void signOut(auth).catch(e => showToast(accountError(e), "error"))}
+        onSave={value => handleSaveProfile({ ...value, email: user.email || "" })}
+        feedback={<>
+          {toast && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700"><Guidance>{toast.message}</Guidance></p>}
+          <CloudSaveStatus attentionOnly />
+        </>}
+      />
     );
   }
 
