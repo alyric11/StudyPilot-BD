@@ -1,11 +1,13 @@
 import type { UserProfile } from '../types';
 import type { StudentStorage } from './accountStorage';
 import { profileAvatarChoices } from './profileAvatars';
+import { CLASS_TRIAL_MESSAGE, isClassEnabled } from '../config/classAvailability';
 
 export type ProfileSettings = Pick<UserProfile, 'name' | 'username' | 'birthdate' | 'classLevel' | 'instructionLanguage' | 'avatarUrl'>;
 export const profileClasses = (level: UserProfile['classLevel']): UserProfile['classLevel'][] =>
   level === 'Class 9' || level === 'Class 10' ? ['Class 9', 'Class 10'] : ['Class 11', 'Class 12'];
 export function validateProfileSettings(current: UserProfile, draft: ProfileSettings, today: string) {
+  if (!isClassEnabled(current.classLevel) || !isClassEnabled(draft.classLevel)) throw new Error(CLASS_TRIAL_MESSAGE);
   if (!draft.name.trim() || draft.name.trim().length > 80) throw new Error('Enter a name of 1–80 characters.');
   if ((draft.username || '').trim().length > 40) throw new Error('Keep your username within 40 characters.');
   if (!profileClasses(current.classLevel).includes(draft.classLevel)) throw new Error('Choose a class within your current SSC or HSC level.');

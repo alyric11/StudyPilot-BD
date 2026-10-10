@@ -1,10 +1,13 @@
 import { Router, type RequestHandler } from 'express';
 import { getServerFirestore } from './firebaseAdmin.ts';
-import { sharedContent, chapterKey } from './sharedContent.ts';
+import { chapterKey } from './sharedContent.ts';
+import { readSharedVideoLibrary } from './sharedVideoLibrary';
+import { SharedChapterConflict } from './sharedChapterMerge';
+import { sharedChapterIdentity } from '../src/utils/sharedChapterIdentity';
 import { readSavedSearchBatch, resolveVideoContext, VideoSearchError } from './videoSearchPool.ts';
 import { videoMetadata } from './videoMetadata.ts';
 import { videoAdminAllowed as adminAllowed } from './videoDevelopment.ts';
-import { editVideoLibrary, seedVideoLibrary, libraryForViewer, selectFeaturedVideos, videoApprovalAllows, type VideoLibrary, type LibraryAction } from '../src/utils/videoLibrary.ts';
+import { editVideoLibrary, libraryForViewer, selectFeaturedVideos, videoApprovalAllows, type VideoLibrary, type LibraryAction } from '../src/utils/videoLibrary.ts';
 
 export const videoLibraryRouter = Router();
 export const requireVideoAdmin: RequestHandler = (req, res, next) => {
@@ -35,12 +38,9 @@ videoLibraryRouter.get('/', async (req, res) => {
   const context = res.locals.videoContext;
   try {
     const key = chapterKey(context.subject.id, context.chapter.id);
-    const [saved, legacy] = await Promise.all([
-      getServerFirestore().collection('chapterVideoLibraries').doc(key).get(), sharedContent.read(key),
-    ]);
-    const library = (saved.data()?.library as VideoLibrary | undefined) || seedVideoLibrary(legacy.videos || []);
+    const library = await readSharedVideoLibrary(key);
     res.json(await view(library, req.query.mode === 'admin'));
-  } catch { res.status(503).json({ error: 'Could not load the chapter library. Your saved videos are unchanged.' }); }
+  } catch (error) { res.status(error instanceof SharedChapterConflict ? 409 : 503).json({ error: error instanceof SharedChapterConflict ? error.message : 'Could not load the chapter library. Your saved videos are unchanged.' }); }
 });
 videoLibraryRouter.post('/', async (req, res) => {
   const context = res.locals.videoContext;
@@ -66,18 +66,16 @@ videoLibraryRouter.post('/', async (req, res) => {
         throw new VideoSearchError('This video is unavailable or could not be checked. Please try later.', 409);
       action = { type: req.body.action, videoId: req.body.videoId };
     }
-    const key = chapterKey(context.subject.id, context.chapter.id), legacy = await sharedContent.read(key);
+    const key = chapterKey(context.subject.id, context.chapter.id);
     const db = getServerFirestore(), ref = db.collection('chapterVideoLibraries').doc(key);
-    const initial = (autoFill || replaceFeatured) ? (await ref.get()).data()?.library as VideoLibrary | undefined : undefined;
-    const before = initial || seedVideoLibrary(legacy.videos || []);
+    const before = await readSharedVideoLibrary(key);
     // Refresh older records without channel IDs through videos.list, never Search.
     // Keep network requests outside Firestore's retryable transaction.
     const details = (replaceFeatured || (autoFill && before.featuredIds.length < 5)) ? await videoMetadata.get([
       ...before.entries.map(entry => entry.videoId), ...(action?.type === 'save' ? action.videos.map(video => video.videoId) : []),
     ], true) : [];
     const library = await db.runTransaction(async transaction => {
-      const saved = (await transaction.get(ref)).data()?.library as VideoLibrary | undefined;
-      const current = saved || seedVideoLibrary(legacy.videos || []);
+      const current = await readSharedVideoLibrary(key, transaction);
       if ((autoFill || replaceFeatured) && current.revision !== before.revision)
         throw new VideoSearchError('The library changed while videos were checked. Please retry; existing choices are kept.', 409);
       let updated;
@@ -90,11 +88,14 @@ videoLibraryRouter.post('/', async (req, res) => {
         }
       }
       catch (error) { throw new VideoSearchError((error as Error).message, 409); }
-      transaction.set(ref, { library: updated, subjectId: context.subject.id, chapterId: context.chapter.id, classLevel: context.classLevel });
+      const { legacyKeys } = sharedChapterIdentity(context.subject.id, context.chapter.id);
+      const [subjectId, chapterId] = key.split(':');
+      transaction.set(ref, { library: updated, subjectId, chapterId,
+        ...(legacyKeys.length ? { sharedClasses: ['Class 11', 'Class 12'], sharedFrom: legacyKeys } : { classLevel: context.classLevel }) });
       return updated;
     });
     res.json(await view(library, true));
   } catch (error) {
-    res.status(error instanceof VideoSearchError ? error.status : 503).json({ error: error instanceof VideoSearchError ? error.message : 'Could not update the chapter library. Reload it before trying again.' });
+    res.status(error instanceof SharedChapterConflict ? 409 : error instanceof VideoSearchError ? error.status : 503).json({ error: error instanceof VideoSearchError || error instanceof SharedChapterConflict ? error.message : 'Could not update the chapter library. Reload it before trying again.' });
   }
 });

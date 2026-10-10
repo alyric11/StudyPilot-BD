@@ -17,8 +17,10 @@
 import express from "express";
 import { AI_ENABLED } from "./src/config/features";
 import { validatePublishedVideos, type ChapterVideo } from "./src/utils/chapterVideos";
-import { sharedContent, chapterKey } from "./server/sharedContent";
+import { sharedContent, sharedOverviews, chapterKey } from "./server/sharedContent";
+import { SharedChapterConflict } from './server/sharedChapterMerge';
 import { verifiedStudentAccess } from "./server/studentAccess";
+import { accountDeletionHandler } from './server/accountDeletion';
 import { getServerFirestore } from "./server/firebaseAdmin";
 import { getVideoPool, poolKey, readSavedSearchBatch, resolveVideoContext, VideoSearchError } from './server/videoSearchPool';
 import { requireVideoAdmin, videoLibraryRouter } from './server/videoLibrary';
@@ -33,6 +35,8 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.get('/api/account-deletion', accountDeletionHandler());
+app.delete('/api/account-deletion', accountDeletionHandler());
 
 // Block AI before any generation handler, including its sample responses.
 app.use([
@@ -298,11 +302,12 @@ app.get("/api/chapter-overviews", async (req, res) => {
   }
 
   try {
-    const overview = (await sharedContent.read(chapterKey(subjectId, chapterId))).overview;
+    const overview = (await sharedOverviews.read(chapterKey(subjectId, chapterId))).overview;
     if (!overview) return res.status(404).json({ error: "No published overview found." });
     return res.json(overview);
   } catch (error) {
     console.error("Chapter overview retrieval failed.");
+    if (error instanceof SharedChapterConflict) return res.status(409).json({ error: error.message });
     return res.status(500).json({ error: "Unable to retrieve the chapter overview." });
   }
 });
@@ -335,10 +340,11 @@ app.put("/api/chapter-overviews", async (req, res) => {
   }
 
   try {
-    await sharedContent.write(chapterKey(subjectId, chapterId), { overview: cleanedOverview });
+    await sharedOverviews.write(chapterKey(subjectId, chapterId), { overview: cleanedOverview });
     return res.json(cleanedOverview);
   } catch (error) {
     console.error("Chapter overview save failed.");
+    if (error instanceof SharedChapterConflict) return res.status(409).json({ error: error.message });
     return res.status(500).json({ error: "Unable to save the chapter overview." });
   }
 });

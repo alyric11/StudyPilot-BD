@@ -10,6 +10,7 @@
 import React, { useState } from "react";
 import { UserProfile } from "../types";
 import { NCTB_BOARDS, NCTB_CURRICULUM } from "../data/curriculum";
+import { CLASS_TRIAL_MESSAGE, DEFAULT_ENABLED_CLASS, isClassEnabled, SSC_CLASSES_ENABLED } from '../config/classAvailability';
 import { GraduationCap, School, Calendar, MapPin, User, Mail, Phone, ArrowRight, AlertCircle } from "lucide-react";
 
 interface ProfileSetupProps {
@@ -23,7 +24,7 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
   const [email, setEmail] = useState(accountEmail || initialProfile?.email || "");
   const [phone, setPhone] = useState(initialProfile?.phone || "");
   const [school, setSchool] = useState(initialProfile?.school || "");
-  const [classLevel, setClassLevel] = useState(initialProfile?.classLevel || "Class 9");
+  const [classLevel, setClassLevel] = useState(initialProfile?.classLevel || DEFAULT_ENABLED_CLASS);
   const [classLevelTouched, setClassLevelTouched] = useState(false);
   const [group, setGroup] = useState<any>(initialProfile?.group || "Science");
   const [groupTouched, setGroupTouched] = useState(false);
@@ -64,6 +65,7 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isClassEnabled(classLevel)) { setErrors({ general: CLASS_TRIAL_MESSAGE }); return; }
     const newErrors: typeof errors = {};
 
     const trimmedName = name.trim();
@@ -276,12 +278,13 @@ export default function ProfileSetup({ initialProfile, accountEmail, onSave }: P
                 className={`w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white transition-all ${demoImported || classLevelTouched ? "text-slate-800" : "text-black"} font-medium cursor-pointer`}
               >
                 {Object.keys(NCTB_CURRICULUM).map((cl) => (
-                  <option key={cl} value={cl}>
-                    {NCTB_CURRICULUM[cl].name}
+                  <option key={cl} value={cl} disabled={!isClassEnabled(cl)}>
+                    {NCTB_CURRICULUM[cl].name}{!isClassEnabled(cl) ? ' — Temporarily unavailable' : ''}
                   </option>
                 ))}
               </select>
             </div>
+            {!SSC_CLASSES_ENABLED && <p className="mt-2 text-xs leading-relaxed text-slate-500">The current trial is for Classes 11–12.</p>}
           </div>
 
           <div>

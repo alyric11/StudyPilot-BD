@@ -4,6 +4,7 @@ import { saveProfileSettings, validateProfileSettings, type ProfileSettings } fr
 import { recordsForKey, restoreRecords } from './cloudRecords';
 import type { UserProfile } from '../types';
 import { profileAvatarChoices } from './profileAvatars';
+import { isClassEnabled } from '../config/classAvailability';
 
 const profile: UserProfile = { name: 'Student', email: 'student@example.test', school: 'School', classLevel: 'Class 11', group: 'Science', board: 'Dhaka', examYear: '2027', avatarUrl: 'existing-avatar' };
 const draft: ProfileSettings = { name: ' New name ', username: 'student', birthdate: '2008-02-29', classLevel: 'Class 12', instructionLanguage: 'bn' };
@@ -24,7 +25,8 @@ test('settings write only the existing profile and preserve other profile fields
 });
 test('class transitions stay within SSC or HSC in both directions', () => {
   for (const [from,to] of [['Class 9','Class 10'],['Class 10','Class 9'],['Class 11','Class 12'],['Class 12','Class 11']] as const)
-    assert.doesNotThrow(() => validateProfileSettings({...profile,classLevel:from},{...draft,classLevel:to},'2026-10-08'));
+    if (isClassEnabled(from) && isClassEnabled(to)) assert.doesNotThrow(() => validateProfileSettings({...profile,classLevel:from},{...draft,classLevel:to},'2026-10-08'));
+    else assert.throws(() => validateProfileSettings({...profile,classLevel:from},{...draft,classLevel:to},'2026-10-08'), /temporarily unavailable/);
   assert.throws(() => validateProfileSettings(profile, {...draft,classLevel:'Class 10'},'2026-10-08'));
 });
 test('optional defaults, invalid dates, future dates and empty names are validated', () => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createUserWithEmailAndPassword, onIdTokenChanged, reload, sendEmailVerification,
   sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { auth } from "../config/firebase";
+import { SSC_CLASSES_ENABLED } from '../config/classAvailability';
 import CloudSession from "../cloud/CloudSession";
 import { accountError } from "./messages";
 import { canImportLegacy, createAccountStorage, importLegacy } from "../utils/accountStorage";
@@ -98,6 +99,7 @@ export default function AccountGate() {
       <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-5">
         <p className="text-sm font-bold text-indigo-600">StudyPilot BD</p>
         <h1 className="text-2xl font-bold text-slate-800">{user ? "Verify your email" : mode === "signup" ? "Create your student account" : mode === "reset" ? "Reset your password" : "Welcome back"}</h1>
+        {!SSC_CLASSES_ENABLED && !user && mode !== 'reset' && <p className="text-sm leading-relaxed text-slate-500">The current student trial is for Classes 11–12.</p>}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {notice && <p role="status" className="rounded-xl bg-indigo-50 p-3 text-sm text-indigo-800">{notice}</p>}
         {user ? <>

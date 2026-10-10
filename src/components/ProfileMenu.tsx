@@ -12,6 +12,7 @@ import { localDateKey } from '../utils/routineTasks';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { useInstruction } from './InstructionLanguage';
 import './profileSettings.css';
+import DeleteAccountSection from './DeleteAccountSection';
 
 export default function ProfileMenu({ profile, onSave, onLogOut }: {
   profile: UserProfile; onSave: (draft: ProfileSettings) => void; onLogOut: () => void;
@@ -92,7 +93,7 @@ export function ProfileSettingsDialog({ profile, onSave, onClose }: {
   }, [dirty]);
   const change = (key: keyof ProfileSettings, value: string) => { setDraft(previous => ({ ...previous, [key]: value })); setMessage(''); setError(''); };
   const save = (event: React.FormEvent) => {
-    event.preventDefault(); setError(''); setMessage('');
+    event.preventDefault(); if (busy) return; setError(''); setMessage('');
     try {
       const saved = { ...draft, name: draft.name.trim(), username: draft.username?.trim() || '', birthdate: draft.birthdate || '' };
       onSave(saved); setDraft(saved); setBaseline({ ...saved });
@@ -178,6 +179,7 @@ export function ProfileSettingsDialog({ profile, onSave, onClose }: {
               <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className="text-sm font-semibold text-indigo-600 disabled:opacity-50" disabled={busy} onClick={() => void passwordAction(true)}>Forgot password?</button><button className="profile-primary" type="submit" disabled={busy}>{busy ? 'Please wait…' : 'Update password'}</button></div>
             </form>
         </section>
+        <DeleteAccountSection user={user} cloud={cloud} disabled={busy} onBusyChange={setBusy} />
       </div>}
     </div>
   </div>;

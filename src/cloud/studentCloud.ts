@@ -210,6 +210,11 @@ export function createStudentCloud(base: Storage, uid: string, transport: CloudT
     start: () => {
       stopped = false; generation++; sending = false;
       try {
+        if (local.getItem('__account_deletion_pending') === 'true') {
+          stopped = true;
+          publish({ phase: 'error', status: 'Account deletion needs attention', error: 'Your account deletion was interrupted. Retry deletion below. Cloud saving remains paused.' });
+          return;
+        }
         pending = new Map(JSON.parse(base.getItem(queueKey) || "[]"));
         confirmed = false;
         const cached = base.getItem(readyKey) === "true";
@@ -219,6 +224,12 @@ export function createStudentCloud(base: Storage, uid: string, transport: CloudT
       } catch { publish({ phase: "error", error: "Pending records could not be read. Download your browser backup before making changes." }); }
     },
     stop: () => { stopped = true; generation++; if (timer) clearTimeout(timer); unsubscribe?.(); },
+    suspendForDeletion: () => {
+      local.setItem('__account_deletion_pending', 'true');
+      stopped = true; generation++; if (timer) clearTimeout(timer); unsubscribe?.();
+      publish({ phase: 'error', status: 'Deleting your account…', error: '' });
+    },
+    deletionFailed: (message: string) => publish({ phase: 'error', status: 'Account deletion needs attention', error: message }),
     retry: () => { if (state.phase !== "ready") publish({ phase: "connecting" }); reconnect(); schedule(); },
     connectionChanged: () => {
       if (!stopped && state.phase === "ready") { publish({ status: savedStatus() }); schedule(); }

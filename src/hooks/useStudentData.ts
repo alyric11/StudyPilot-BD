@@ -1,4 +1,5 @@
 import { saveProfileSettings, type ProfileSettings } from "../utils/profileSettings";
+import { CLASS_TRIAL_MESSAGE, isClassEnabled } from '../config/classAvailability';
 import { localDateKey } from "../utils/routineTasks";
 import { useAccount } from "../auth/AccountContext";
 import { useEffect, useRef, useState } from "react";
@@ -303,6 +304,7 @@ export default function useStudentData(
     };
 
     const handleSaveProfile = (newProfile: UserProfile) => {
+        if (!isClassEnabled(newProfile.classLevel)) { showToast(CLASS_TRIAL_MESSAGE, 'info'); return; }
         setProfile(newProfile);
         storage.setItem(
             "sp_profile",

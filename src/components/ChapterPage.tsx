@@ -19,6 +19,7 @@ import { ChapterOverviewData, ChapterProgress, UserProfile } from "../types";
 import { CheckCircle, Sparkles, Settings2, X, Circle, ChevronDown } from "lucide-react";
 import StudyPageHeader from "./StudyPageHeader";
 import { NCTB_CURRICULUM } from "../data/curriculum";
+import { isSharedHscChapter } from '../utils/sharedChapterIdentity';
 
 interface ChapterPageProps {
   subjectId: string;
@@ -122,14 +123,18 @@ export default function ChapterPage({
         const params = new URLSearchParams({ subjectId, chapterId });
         const response = await studentFetch(`/api/chapter-overviews?${params.toString()}`, { signal: controller.signal });
         if (response.status === 404) return;
-        if (!response.ok) throw new Error("Unable to load saved overview.");
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Unable to load saved overview.");
+        }
         const overview: ChapterOverviewData = await response.json();
         if (!cancelled) {
           setGuideData(overview);
           setShowChapterOverview(true);
         }
-      } catch {
-        if (!cancelled) setLoadError("The saved overview could not be loaded. Please retry.");
+      } catch (error) {
+        if (!cancelled) setLoadError(error instanceof Error && error.name !== 'AbortError'
+          ? error.message : "The saved overview could not be loaded. Please retry.");
       } finally {
         window.clearTimeout(timeout);
         if (!cancelled) setLoadingPublished(false);
@@ -523,6 +528,7 @@ export default function ChapterPage({
                 <p className="mt-1 text-xs text-slate-500">
                   Generate, edit and publish the overview students will see.
                 </p>
+                {isSharedHscChapter(subjectId, chapterId) && <p className="mt-1 text-xs text-slate-500">Shared with Classes 11–12. Publishing updates both classes.</p>}
               </div>
               <button
                 type="button"

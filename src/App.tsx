@@ -1,4 +1,5 @@
 import ProfileMenu from "./components/ProfileMenu";
+import DeleteAccountSection from './components/DeleteAccountSection';
 import { InstructionLanguage, Guidance } from "./components/InstructionLanguage";
 import { CloudSaveStatus } from "./cloud/CloudSession";
 /**
@@ -14,6 +15,7 @@ import { CloudSaveStatus } from "./cloud/CloudSession";
 import { lazy, Suspense, useState, useEffect, useRef, type CSSProperties } from "react";
 import { getSubjectAccentColor } from "./colorPalettes";
 import { AI_ENABLED } from "./config/features";
+import { CLASS_TRIAL_MESSAGE, isClassEnabled } from './config/classAvailability';
 import { signOut } from "firebase/auth";
 import { auth } from "./config/firebase";
 import { useAccount } from "./auth/AccountContext";
@@ -110,7 +112,7 @@ const getTimeGreeting = () => {
 };
 
 export default function App() {
-  const { user } = useAccount();
+  const { user, cloud } = useAccount();
   const { text: timeGreeting, Icon: TimeGreetingIcon } = getTimeGreeting();
 
   // Authentication & Profile state
@@ -498,6 +500,23 @@ export default function App() {
   const overallCompletion = getOverallCompletionRate();
 
   // App loading visual screen
+  if (loaded && profile && !isClassEnabled(profile.classLevel)) {
+    return (
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <section className="w-full max-w-md rounded-2xl border border-indigo-100 bg-white p-6 sm:p-8 shadow-sm space-y-4">
+          <p className="text-sm font-bold text-indigo-600">StudyPilot BD</p>
+          <h1 className="text-xl font-bold text-slate-800">Class temporarily unavailable</h1>
+          <p className="text-sm leading-relaxed text-slate-600">{CLASS_TRIAL_MESSAGE}</p>
+          <p className="text-sm leading-relaxed text-slate-500">Your profile and study records are preserved. You can use them again when your class becomes available.</p>
+          <CloudSaveStatus />
+          {toast && <p role="alert" className="text-sm text-rose-700">{toast.message}</p>}
+          <DeleteAccountSection user={user} cloud={cloud} />
+          <button type="button" onClick={() => void signOut(auth).catch(error => showToast(accountError(error), 'error'))}
+            className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100">Log out</button>
+        </section>
+      </main>
+    );
+  }
   if (!loaded || (profile && !navigationReady)) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-center p-6 space-y-4">

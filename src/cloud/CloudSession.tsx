@@ -4,6 +4,7 @@ import App from "../App";
 import { AccountContext, useAccount } from "../auth/AccountContext";
 import { auth } from "../config/firebase";
 import { createStudentCloud, type StudentCloud } from "./studentCloud";
+import DeleteAccountSection from '../components/DeleteAccountSection';
 
 function downloadBackup(cloud: StudentCloud) {
   const url = URL.createObjectURL(new Blob([cloud.exportBackup()], { type: "application/json" }));
@@ -71,6 +72,7 @@ export default function CloudSession({ user }: { user: User }) {
         <button className="w-full rounded-xl border p-3 text-indigo-700" onClick={() => choose(false)}>Start with the cloud copy</button>
       </> : <p role="status" className="text-sm text-slate-600">{state.status}</p>}
       {(error || state.error) && <p role="alert" className="text-sm text-red-700">{error || state.error}</p>}
+      {state.phase === 'error' && state.error && <DeleteAccountSection user={user} cloud={cloud} />}
       <div className="flex flex-wrap gap-4 text-sm text-indigo-700">
         <button onClick={() => window.location.reload()}>Reload connection</button>
         <button onClick={() => downloadBackup(cloud)}>Download browser backup</button>

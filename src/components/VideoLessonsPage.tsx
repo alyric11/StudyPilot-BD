@@ -10,6 +10,7 @@ import StudyPageHeader from "./StudyPageHeader";
 import { readPersonalVideoIds, videoCandidatePage, youtubeVideoId, type ChapterVideo } from "../utils/chapterVideos";
 import type { SearchVideo } from '../utils/videoSearch';
 import type { LibraryVideo } from '../utils/videoLibrary';
+import { isSharedHscChapter } from '../utils/sharedChapterIdentity';
 
 interface VideoLessonsPageProps {
   chapter: { subjectId: string; subjectName: string; chapterId: string; chapterName: string; chapterBanglaName: string };
@@ -255,6 +256,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
           {loadingPublished && <div role="status" className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">Loading saved lessons…</div>}
           {publishedError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{publishedError} <button className={button} onClick={() => setLoadAttempt(value => value + 1)}>Retry</button></div>}
           {!managerOpen && adminError && <p role="alert" className="text-sm text-red-700">{adminError}</p>}
+          {authorized && isSharedHscChapter(chapter.subjectId, chapter.chapterId) && <p className="text-xs text-slate-500">Shared with Classes 11–12. Library and featured changes update both classes.</p>}
           {libraryNotice && <p role="status" className="text-xs text-slate-500">{libraryNotice}</p>}
           <LayoutGroup id={`shared-${chapter.subjectId}-${chapter.chapterId}`}>
             {!loadingPublished && !publishedError && <div className="space-y-3">
