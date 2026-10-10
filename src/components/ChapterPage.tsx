@@ -290,11 +290,11 @@ export default function ChapterPage({
           <button
             type="button"
             onClick={onWatchVideoLessons}
-            className="subject-panel group w-full rounded-2xl border p-4 text-left transition-colors duration-200 sm:p-5 hover:border-[var(--subject-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--subject-accent)]"
+            className="subject-panel subject-card-live chapter-primary-action group w-full rounded-2xl border p-4 text-left sm:p-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--subject-accent)]"
             style={{ backgroundColor: "color-mix(in srgb, var(--subject-accent) 4%, white)" }}
           >
             <div className="flex items-center gap-3">
-              <div className="shrink-0">
+              <div className="subject-card-live-icon shrink-0">
                 <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
                   <path fill="#FF0000" d="M21.6 7.2a3 3 0 0 0-2.1-2.1C17.6 4.6 12 4.6 12 4.6s-5.6 0-7.5.5a3 3 0 0 0-2.1 2.1A31 31 0 0 0 2 12a31 31 0 0 0 .4 4.8 3 3 0 0 0 2.1 2.1c1.9.5 7.5.5 7.5.5s5.6 0 7.5-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 22 12a31 31 0 0 0-.4-4.8Z" />
                   <path fill="white" d="m10 15.5 5-3.5-5-3.5v7Z" />
@@ -359,7 +359,7 @@ export default function ChapterPage({
                     type="button"
                     aria-pressed={isDone}
                     onClick={() => handleChecklistToggle(item.key as keyof ChapterProgress)}
-                    className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                    className={`chapter-warm-action group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
                       isDone
                         ? "text-slate-700"
                         : "bg-slate-50/65 text-slate-600 hover:bg-slate-100"
@@ -399,7 +399,7 @@ export default function ChapterPage({
       <section className="subject-panel rounded-2xl border bg-white xl:hidden">
         <button type="button" onClick={() => setMobilePlanOpen(open => !open)}
           aria-expanded={mobilePlanOpen} aria-controls="mobile-chapter-study-checklist"
-          className="flex w-full items-center justify-between gap-3 rounded-2xl p-4 text-left text-sm font-semibold text-slate-800 focus-visible:outline-2 focus-visible:outline-indigo-500">
+          className="chapter-warm-action flex w-full items-center justify-between gap-3 rounded-2xl p-4 text-left text-sm font-semibold text-slate-800 focus-visible:outline-2 focus-visible:outline-indigo-500">
           <span>Study Checklist · {completedSteps}/{totalSteps} checked</span>
           <ChevronDown className={`h-4 w-4 transition-transform motion-reduce:transition-none ${mobilePlanOpen ? "rotate-180" : ""}`} />
         </button>
@@ -436,10 +436,10 @@ export default function ChapterPage({
                 {AI_ENABLED && <button
                   type="button"
                   onClick={() => void generateChapterGuide()}
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                  className="subject-card-live chapter-primary-action mt-4 inline-flex items-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                   style={{ backgroundColor: "var(--subject-accent)" }}
                 >
-                  <Sparkles className="h-4 w-4" />
+                  <Sparkles className="subject-card-live-icon h-4 w-4" />
                   Generate chapter guide
                 </button>}
               </div>

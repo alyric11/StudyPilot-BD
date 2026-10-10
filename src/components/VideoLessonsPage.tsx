@@ -191,9 +191,6 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
         <div className="min-w-0">
           <h3 className="line-clamp-2 break-words text-sm font-semibold leading-snug text-slate-800" title={video.title}>{video.title}</h3>
           <p className="mt-1 break-words text-xs leading-relaxed text-slate-500">{video.channelTitle}</p>
-          {((video as Partial<SearchVideo>).matchStatus === 'uncertain' || (video as Partial<LibraryVideo>).approved === false) && <p className="mt-2 text-xs text-amber-700">
-            Review match: {(video as Partial<LibraryVideo>).reviewReason || (video as SearchVideo).matchReason}
-          </p>}
           {video.available === false && <p className="mt-2 text-xs text-slate-500">Unavailable. Your saved link is kept.</p>}
         </div>
         <div className={`flex min-w-0 flex-wrap items-center justify-between gap-2 ${compact ? "col-span-2" : "col-span-2 sm:col-span-1 sm:col-start-2"}`}>
@@ -277,14 +274,12 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
               <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
                 <h3 className="font-semibold">Chapter library</h3><span>{library.length} saved</span>
               </div>
-              <p className="text-xs leading-relaxed text-slate-500">Feature up to five lessons. Review uncertain matches before making them available to students.</p>
+              <p className="text-xs leading-relaxed text-slate-500">Feature up to five lessons. Saved candidates are available to students immediately.</p>
               <button disabled={adminBusy || !library.some(video => video.approved && video.available === true)} className={button}
                 onClick={() => void manage(() => updateLibrary('autoFeature'))}>Auto-select featured</button>
-              <p className="text-xs leading-relaxed text-slate-500">Auto-select replaces the featured choices with the most-viewed approved lessons, one per channel. You can change any choice afterward.</p>
+              <p className="text-xs leading-relaxed text-slate-500">Auto-select replaces the featured choices with the most-viewed lessons, one per channel. You can change any choice afterward.</p>
               {!library.length && <p className="text-sm text-slate-500">Search for videos, then save candidates to this library.</p>}
               {libraryCandidates.videos.map(video => card(video, <>
-                {!video.approved && <button disabled={adminBusy || video.available !== true} className={button}
-                  aria-label={`Approve: ${video.title}`} onClick={() => void manage(() => updateLibrary('approve', video.videoId))}>Approve</button>}
                 <button disabled={adminBusy || !video.approved || video.available !== true || published.length >= 5} className={button}
                   aria-label={`Feature: ${video.title}`} onClick={() => void manage(() => updateLibrary('feature', video.videoId))}>Feature</button>
                 <button disabled={adminBusy} className="rounded-lg px-2 py-2 text-xs text-slate-500 hover:bg-slate-100"
@@ -296,7 +291,7 @@ function VideoWorkspace({ chapter, classLevel, subjectAccent, onBack }: VideoLes
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                 <h3 className="font-semibold">Search results</h3><span>Showing {availableAdmin.length} of {adminCandidates.total} candidates</span>
               </div>
-              <p className="text-xs leading-relaxed text-slate-500">Save all candidates also fills empty featured spots with the most-viewed approved lessons from the library, one per channel. Existing featured choices stay. Uncertain matches remain hidden until approved.</p>
+              <p className="text-xs leading-relaxed text-slate-500">Save all candidates also fills empty featured spots with the most-viewed lessons from the library, one per channel. Existing featured choices stay.</p>
               <button disabled={adminBusy || adminCandidates.total === 0} className={button}
                 onClick={() => void manage(() => updateLibrary('saveCandidates'))}>Save all candidates</button>
               {availableAdmin.length === 0 && <p className="text-sm text-slate-500">No more matching videos in this search.</p>}

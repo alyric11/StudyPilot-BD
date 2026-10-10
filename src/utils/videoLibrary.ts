@@ -2,6 +2,9 @@ import type { ChapterVideo } from './chapterVideos.ts';
 import type { SearchVideo } from './videoSearch.ts';
 
 export interface LibraryEntry { videoId: string; approved: boolean; reviewReason: string; addedAt: number }
+// Preserve saved review decisions so the requirement can be restored without migrating student data.
+export const VIDEO_APPROVAL_REQUIRED = false;
+export const videoApprovalAllows = (entry: Pick<LibraryEntry, 'approved'>) => !VIDEO_APPROVAL_REQUIRED || entry.approved;
 export interface VideoLibrary { entries: LibraryEntry[]; featuredIds: string[]; revision: number }
 export type LibraryVideo = ChapterVideo & { approved: boolean; reviewReason: string };
 export type LibraryAction = { type: 'save'; videos: SearchVideo[] } | { type: 'feature' | 'unfeature' | 'approve' | 'remove'; videoId: string };
@@ -17,7 +20,7 @@ export function selectFeaturedVideos(library: VideoLibrary, details: ChapterVide
   // Unknown channels on preserved choices make uniqueness impossible to establish.
   if (selected.some(id => !byId.get(id)?.channelId)) return selected;
   const channels = new Set(selected.map(id => byId.get(id)!.channelId!));
-  const candidates = library.entries.filter(entry => entry.approved).flatMap(entry => {
+  const candidates = library.entries.filter(videoApprovalAllows).flatMap(entry => {
     const video = byId.get(entry.videoId), views = Number(video?.viewCount);
     return video?.available === true && video.channelId && Number.isFinite(views) && views >= 0 ? [video] : [];
   }).sort((a, b) => Number(b.viewCount) - Number(a.viewCount) || a.videoId.localeCompare(b.videoId));
@@ -43,7 +46,7 @@ export function editVideoLibrary(current: VideoLibrary, action: LibraryAction, n
     if (!entry) throw new Error('This video is no longer in the chapter library. Reload the library.');
     if (action.type === 'approve') { entry.approved = true; entry.reviewReason = ''; }
     if (action.type === 'feature') {
-      if (!entry.approved) throw new Error('Review and approve this video before featuring it.');
+      if (!videoApprovalAllows(entry)) throw new Error('Review and approve this video before featuring it.');
       if (!featuredIds.includes(entry.videoId)) {
         if (featuredIds.length >= 5) throw new Error('Five videos are featured. Unfeature one before choosing another.');
         featuredIds.push(entry.videoId);
@@ -58,9 +61,9 @@ export function editVideoLibrary(current: VideoLibrary, action: LibraryAction, n
 }
 export function libraryForViewer(library: VideoLibrary, details: ChapterVideo[], admin: boolean) {
   const byId = new Map(details.map(video => [video.videoId, video]));
-  const videos: LibraryVideo[] = library.entries.filter(entry => admin || entry.approved).map(entry => ({
+  const videos: LibraryVideo[] = library.entries.filter(entry => admin || videoApprovalAllows(entry)).map(entry => ({
     ...(byId.get(entry.videoId) || { videoId: entry.videoId, title: 'Saved YouTube video', channelTitle: 'Details temporarily unavailable', thumbnail: '', viewCount: '0', duration: null }),
-    approved: entry.approved, reviewReason: entry.reviewReason,
+    approved: videoApprovalAllows(entry), reviewReason: entry.reviewReason,
   }));
   return { videos, featured: library.featuredIds.flatMap(id => videos.find(v => v.videoId === id) || []), revision: library.revision };
 }

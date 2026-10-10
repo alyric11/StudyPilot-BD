@@ -21,7 +21,8 @@ import {
   X,
   AlertTriangle,
   MoreHorizontal,
-  Check
+  Check,
+  Frown
 } from "lucide-react";
 import TimePicker from "./TimePicker";
 import PlannerReveal from "./PlannerReveal";
@@ -539,7 +540,7 @@ export default function StudyPlanner({
           aria-expanded={isOpen}
           aria-haspopup={mobile ? "dialog" : undefined}
           aria-controls={!mobile ? detailsId : undefined}
-          aria-label={`${getMotherRoutineTitle(block)}, ${formatTimeRange(block.startTime, block.endTime)}. ${isOpen ? "Close actions" : "Open actions"}.`}
+          aria-label={`${getMotherRoutineTitle(block)}, ${formatTimeRange(block.startTime, block.endTime)}. ${completed ? "Completed. " : tone === 'unfinished' ? "Not completed. " : ""}${isOpen ? "Close actions" : "Open actions"}.`}
           onClick={event => openRoutineMenu(event.currentTarget.parentElement as HTMLDivElement, block, date)}
           className="planner-focus routine-card-trigger relative flex w-full flex-col items-center justify-center px-2.5 py-2.5 text-center disabled:cursor-default"
         >
@@ -548,13 +549,14 @@ export default function StudyPlanner({
             {block.endTime <= block.startTime && <sup title="Ends the next day"> +1</sup>}
           </span>
           <span className="mt-1 grid w-full grid-cols-[minmax(0,1fr)_14px] items-center gap-1">
-            <span className="routine-card-title min-w-0 text-[13px] font-semibold text-slate-800">{getMotherRoutineTitle(block)}</span>
+            <span className="routine-card-title min-w-0 text-[13px] font-semibold text-slate-800">
+              {completed && <Check aria-hidden="true" className="routine-completion-check" />}
+              {tone === 'unfinished' && <Frown aria-hidden="true" className="routine-completion-check routine-unfinished-icon" />}
+              {getMotherRoutineTitle(block)}
+            </span>
             <MoreHorizontal aria-hidden="true" className="routine-card-more h-3.5 w-3.5 text-slate-400" />
           </span>
         </button>
-        {(completed || tone === 'unfinished') && <div className={`session-status-label ${completed ? 'session-status-complete' : ''}`}>
-          {completed ? <><Check aria-hidden="true" className="h-3 w-3" />Completed</> : 'Not completed'}
-        </div>}
         <PlannerReveal open={expanded && !showDraft} contentWidth={contentWidth}>
           <div className="planner-card-details-copy border-t border-slate-200/70 px-3 pb-2.5 pt-2 text-center">
             {info.chapterLabel && <div className="text-[13px] font-medium text-slate-800">{info.chapterLabel}</div>}

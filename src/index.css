@@ -422,6 +422,27 @@ body {
   transition: transform 170ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+#chapter-page-root .chapter-primary-action {
+  --subject-hover-color: var(--subject-accent);
+}
+#chapter-page-root .chapter-primary-action:hover {
+  border-color: color-mix(in srgb, var(--subject-accent) 28%, white);
+  box-shadow: 0 10px 20px -17px var(--subject-accent), 0 3px 6px rgb(30 41 59 / 7%);
+}
+#chapter-page-root .chapter-warm-action,
+#chapter-page-root .chapter-point-actions > button,
+#chapter-page-root button[aria-label="Manage overview"],
+#chapter-page-header button {
+  transition: background-color 170ms ease, box-shadow 170ms ease, color 170ms ease;
+}
+#chapter-page-root .chapter-warm-action:hover:not(:disabled),
+#chapter-page-root .chapter-point-actions > button:hover:not(:disabled),
+#chapter-page-root button[aria-label="Manage overview"]:hover:not(:disabled),
+#chapter-page-header button:hover:not(:disabled) {
+  background-color: #fff5e8 !important;
+  box-shadow: inset 0 0 0 1px #efdfc7;
+}
+
 /* Landing page: readable type, quiet surfaces, and local action feedback. */
 #cockpit-dashboard-view {
   color: #243247;
@@ -1114,12 +1135,17 @@ body {
   color: #95606b;
 }
 .subject-log-task .session-status-label { grid-column: 2; grid-row: 3; justify-content: flex-start; padding: 4px 0 0; }
-.session-status-complete { color: #53675b; }
-[data-session-tone="completed-today"] .session-status-complete { color: #427052; }
+.routine-completion-check {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  color: #427052;
+}
+.routine-unfinished-icon { color: #b56774; }
 [data-session-tone="completed-today"] .today-task-title::before,
-[data-session-tone="unfinished"] .today-task-title::before,
-[data-session-tone="completed-today"] .routine-card-title::before,
-[data-session-tone="unfinished"] .routine-card-title::before {
+[data-session-tone="unfinished"] .today-task-title::before {
   content: "";
   display: inline-block;
   width: 5px;

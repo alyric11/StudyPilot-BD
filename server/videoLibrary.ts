@@ -4,7 +4,7 @@ import { sharedContent, chapterKey } from './sharedContent.ts';
 import { readSavedSearchBatch, resolveVideoContext, VideoSearchError } from './videoSearchPool.ts';
 import { videoMetadata } from './videoMetadata.ts';
 import { videoAdminAllowed as adminAllowed } from './videoDevelopment.ts';
-import { editVideoLibrary, seedVideoLibrary, libraryForViewer, selectFeaturedVideos, type VideoLibrary, type LibraryAction } from '../src/utils/videoLibrary.ts';
+import { editVideoLibrary, seedVideoLibrary, libraryForViewer, selectFeaturedVideos, videoApprovalAllows, type VideoLibrary, type LibraryAction } from '../src/utils/videoLibrary.ts';
 
 export const videoLibraryRouter = Router();
 export const requireVideoAdmin: RequestHandler = (req, res, next) => {
@@ -24,7 +24,7 @@ videoLibraryRouter.use((req, res, next) => {
   } catch { res.status(400).json({ error: 'Choose a valid class, subject and chapter.' }); }
 });
 async function view(library: VideoLibrary, admin: boolean) {
-  const ids = library.entries.filter(entry => admin || entry.approved).map(entry => entry.videoId);
+  const ids = library.entries.filter(entry => admin || videoApprovalAllows(entry)).map(entry => entry.videoId);
   // A refresh outage must never erase saved identities or admin decisions.
   const details = await videoMetadata.get(ids).catch(() => []);
   const result = libraryForViewer(library, details, admin);
@@ -85,7 +85,7 @@ videoLibraryRouter.post('/', async (req, res) => {
         updated = action ? editVideoLibrary(current, action) : { ...current, revision: current.revision + 1 };
         if (autoFill || replaceFeatured) {
           const featuredIds = selectFeaturedVideos(updated, details, replaceFeatured);
-          if (replaceFeatured && !featuredIds.length) throw new Error('No approved, available videos with verified channels could be selected. Existing choices are kept.');
+          if (replaceFeatured && !featuredIds.length) throw new Error('No available videos with verified channels could be selected. Existing choices are kept.');
           updated = { ...updated, featuredIds };
         }
       }

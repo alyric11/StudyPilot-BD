@@ -54,12 +54,12 @@ test('bulk-save filling preserves editorial choices while deliberate replacement
   assert.deepEqual(selectFeaturedVideos(library, []), library.featuredIds);
   assert.deepEqual(selectFeaturedVideos({ ...library, featuredIds: [videos[0].videoId] }, []), [videos[0].videoId]);
 });
-test('automatic selection excludes pending, unavailable, unknown-channel and invalid-view entries', () => {
+test('automatic selection includes uncertain candidates and excludes unavailable, unknown-channel and invalid-view entries', () => {
   const details = videos.slice(0, 7).map(video => ({ ...video, channelId: 'one-channel' }));
   details[0].available = false; details[1].channelId = ''; details[2].viewCount = 'NaN';
   details[6].channelId = 'pending-channel'; details[6].matchStatus = 'uncertain';
   const library = editVideoLibrary(seedVideoLibrary([]), { type: 'save', videos: details });
-  assert.deepEqual(selectFeaturedVideos(library, details, true), [videos[3].videoId]);
+  assert.deepEqual(selectFeaturedVideos(library, details, true), [videos[3].videoId, videos[6].videoId]);
   assert.deepEqual(selectFeaturedVideos(seedVideoLibrary([]), [], true), []);
 });
 test('older cached metadata gets channel IDs through details once, without any search', async () => {
@@ -86,14 +86,13 @@ test('legacy recommendations seed as featured; save-all merges without replacing
 });
 test('approval, feature limits, unfeaturing and removal preserve independent personal links', () => {
   let library = editVideoLibrary(seedVideoLibrary(videos.slice(0, 5)), { type: 'save', videos });
-  assert.throws(() => editVideoLibrary(library, { type: 'feature', videoId: videos[24].videoId }), /approve/);
+  assert.throws(() => editVideoLibrary(library, { type: 'feature', videoId: videos[24].videoId }), /Five/);
   assert.throws(() => editVideoLibrary(library, { type: 'feature', videoId: videos[5].videoId }), /Five/);
   library = editVideoLibrary(library, { type: 'unfeature', videoId: videos[0].videoId });
   assert.equal(library.entries.length, 25);
-  library = editVideoLibrary(library, { type: 'approve', videoId: videos[24].videoId });
   library = editVideoLibrary(library, { type: 'feature', videoId: videos[24].videoId });
   library = editVideoLibrary(library, { type: 'save', videos: [videos[24]] });
-  assert.equal(library.entries[24].approved, true);
+  assert.equal(library.entries[24].approved, false);
   const personal = [videos[24].videoId];
   library = editVideoLibrary(library, { type: 'remove', videoId: videos[24].videoId });
   assert.equal(library.entries.some(v => v.videoId === videos[24].videoId), false);
@@ -101,13 +100,15 @@ test('approval, feature limits, unfeaturing and removal preserve independent per
   assert.deepEqual(personal, [videos[24].videoId]);
   assert.equal(library.entries.length, 24);
 });
-test('removed legacy entries do not reappear; pending and unavailable videos are not student exploration candidates', () => {
+test('existing pending candidates are available without approval; removed and unavailable videos stay excluded', () => {
   let library = editVideoLibrary(seedVideoLibrary(videos.slice(0, 5)), { type: 'save', videos });
   library = editVideoLibrary(library, { type: 'remove', videoId: videos[0].videoId });
   const details = videos.map(v => ({ ...v, available: v.videoId !== videos[6].videoId }));
   const student = libraryForViewer(library, details, false), admin = libraryForViewer(library, details, true);
   assert.equal(student.videos.some(v => !v.approved), false);
-  assert.equal(admin.videos.some(v => !v.approved), true);
+  assert.equal(admin.videos.some(v => !v.approved), false);
+  assert.equal(student.videos.some(v => v.videoId === videos[24].videoId), true);
+  assert.equal(library.entries.find(v => v.videoId === videos[24].videoId)?.approved, false);
   const explore = student.videos.filter(v => v.available === true);
   const first = videoCandidatePage(explore, student.featured, [videos[5].videoId], 0);
   assert.equal(first.videos.some(v => [videos[0].videoId, videos[5].videoId, videos[6].videoId, videos[24].videoId].includes(v.videoId)), false);
